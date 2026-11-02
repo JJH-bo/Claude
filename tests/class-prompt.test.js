@@ -624,7 +624,7 @@ test('黑板现状（分板）：当前板、板顶的话、超出一屏、常�
   assert.match(t, /^黑板现在是第 2 块板（一共 2 块；学生正翻回去看第 1 块）。学生的屏幕：竖屏 820×1180，一块板能用的地方大约 780×860/);
   assert.ok(t.includes('当前板「推到 n 次」最上面写着你上一句话：「算一下 $A^3$」'));
   assert.ok(t.includes('当前板上的段（从上到下）：\n- b2「题」\n  - answer q-2：还没有作答\n- b3「提示」（已撤回，学生看不到）'));
-  assert.ok(t.includes('内容高约 1100，一屏只放得下约 860'));
+  assert.ok(t.includes('内容高约 1100，一屏约 860，页面会分屏') && t.includes('不用改'));
   assert.ok(t.includes('常驻栏（学生一直看得到）：\n- k1「记号」：A=αβᵀ'));
   assert.ok(t.includes('以前的板（学生翻回去才看得到；上面的图不能再用 figure 动）：\n- 第 1 块「Ax 落在哪」\n  - b1「图」：拖'));
   assert.ok(!t.includes('把 x 拖到 [1, 2]'), '以前板上的作答只留最近 3 条');

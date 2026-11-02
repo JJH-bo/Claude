@@ -185,11 +185,47 @@ test('备课：提示词带范围、挂着的原文、全部规则、记忆、�
   assert.deepEqual(main.components, ['matrix']);
   assert.equal(main.block, 'L2.1.4');
   assert.equal(problems.items.length, 1);
-  assert.throws(() => parsePrep('{"unit":"x"}', { block }), /没有目标和推进计划/);
+  assert.throws(() => parsePrep('{"unit":"x"}', { block }), /没有目标和讲解顺序/);
   const cur = [{ id: 'L2.1.3', level: 'block' }, { id: 'L2.1.4', level: 'block' }, { id: 'L2.1.5', level: 'block' }];
   assert.equal(suggestBlock(cur, { block: 'L2.1.3', next: '重讲块4' }), 'L2.1.4');
   assert.equal(suggestBlock(cur, { block: 'L2.1.3', next: '接着讲 L2.1.5' }), 'L2.1.5');
   assert.equal(suggestBlock(cur, null), 'L2.1.3');
+});
+
+test('备课出教案：规则清单、讲解顺序、每题用到的规则；页面核依赖（题用到没讲过的、讲得比题晚的报出来），资料包写成好读的文字', async () => {
+  const { checkPrep, lessonPlanText } = await import('../kit/src/books/plan.js');
+  const { packText } = await import('../kit/src/class/prompt.js');
+  const block = { id: 'EN-L1.1.1', title: '五种句型' };
+  const raw = JSON.stringify({
+    unit: '五种句型', goal: '能标出五种句型的主干', route: '1. 一主一谓\n2. 划块\n3. 真题演练',
+    review: [{ id: 'R19', how: '一句新的真题，圈全谓语' }, { id: 'R99', how: '不在到期里的' }],
+    methods: [{ id: 'm1', title: '找谓语', steps: '按注释标的词性找 v.', teach: 1 }, { id: 'm2', title: '划块', steps: '名词连同前面的修饰词算一块；代词自己一块', teach: 3 }],
+    sequence: [{ step: 1, point: '一主一谓', how: 'parse 演示' }, { step: 2, point: '及物不及物' }, { step: 3, point: '划块' }],
+    problems: [
+      { q: '标主干：Everybody loves a fat pay rise.', answer: '[S Everybody] [V loves] [O a fat pay rise]', needs: ['m1', 'm2'], after: 3 },
+      { q: '标主干：Such characteristics make them perfect candidates.', answer: '…', needs: ['m1', 'm2'], after: 2 },
+      { q: '标主干：It happened.', answer: '…', needs: ['m3'], after: 3 },
+    ],
+  });
+  const { main, problems, warnings } = parsePrep(raw, { block, reviewIds: ['R19'] });
+  assert.deepEqual(main.review.map((r) => r.id), ['R19'], '只留到期的复现组');
+  assert.equal(main.methods.length, 2);
+  assert.deepEqual(problems.items[0].needs, ['m1', 'm2']);
+  assert.equal(warnings.length, 2);
+  assert.match(warnings[0], /第 2 题放在第 2 步之后，但它要用的 m2（划块）第 3 步才讲/);
+  assert.match(warnings[1], /第 3 题要用的 m3 不在规则清单里/);
+  assert.deepEqual(main.prepCheck, warnings);
+  assert.deepEqual(checkPrep({ methods: [{ id: 'm1', steps: 'x' }] }, { items: [] }), ['规则 m1（）没排进讲解顺序（teach 写第几步讲）']);
+  const t = lessonPlanText(main);
+  assert.match(t.methods, /m2 划块（第 3 步讲）\n  名词连同前面的修饰词/);
+  assert.match(t.sequence, /^1\. 一主一谓\n   怎么讲：parse 演示/);
+  const pt = packText({ main, problems }).text;
+  for (const k of ['【给学生看的路线', '【开头的复现】', '【这节课要用的可执行规则', '【讲解顺序', '【备课检查']) assert.ok(pt.includes(k), k);
+  assert.ok(!pt.includes('"teach"'), '规则清单写成文字，不是 JSON');
+  const p = prepPrompt({ block, due: '- R19 谓语识别（过期 4 天）', lessons: '- T-1 出题前逐题列出要用的规则' });
+  assert.match(p, /到期的复现组/);
+  assert.match(p, /T-1 出题前/);
+  assert.match(p, /先讲后练/);
 });
 
 test('课堂里的教材：资料包点名的条目全文进「教材原文」，这一讲的列目录，原页图按条目编号；备份带上书和条目', async () => {
@@ -227,4 +263,17 @@ test('构建时给 pdf.js 换掉原样的控制字符：值不变', async () => 
   assert.equal(run(out)[3], true);
   assert.throws(() => escapeControls('"\\\x0e"'));
   assert.throws(() => escapeControls('String.raw`\x0e`'));
+});
+
+test('textbook_read 一次取够：编号范围、书页范围都行，放不下的写在 more 里', async () => {
+  const { readChunks } = await import('../kit/src/books/textbook.js');
+  const books = [{ id: 'B1', title: '句句真研' }];
+  const chunks = [10, 11, 12, 13, 17, 19].map((p, i) => ({ id: `B1-${p}.1`, book: 'B1', seq: i + 1, kind: '说明', title: `第 ${p} 页`, page: p, text: `第 ${p} 页的字` }));
+  const a = readChunks(chunks, books, ['B1-11.1~B1-13.1']);
+  assert.deepEqual([...a.text.matchAll(/### (B1-[\d.]+)/g)].map((m) => m[1]), ['B1-11.1', 'B1-12.1', 'B1-13.1']);
+  const b = readChunks(chunks, books, [], { pages: '12-17' });
+  assert.deepEqual([...b.text.matchAll(/### (B1-[\d.]+)/g)].map((m) => m[1]), ['B1-12.1', 'B1-13.1', 'B1-17.1']);
+  assert.deepEqual(readChunks(chunks, books, ['B1-13.1~B1-10.1']).missing, ['B1-13.1~B1-10.1']);
+  const c = readChunks(chunks, books, [], { pages: '10-19', max: 40 });
+  assert.ok(c.more.length > 0);
 });

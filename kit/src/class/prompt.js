@@ -5,6 +5,7 @@
 import { isCS, isEN, docsForSubject, detailNames, componentDoc, allNames } from '../subject.js';
 import { memoryDigest } from '../memory/digest.js';
 import { parseOutput } from './protocol.js';
+import { lessonPlanText } from '../books/plan.js';
 
 // 文档里有大量反引号和 TeX 反斜杠：先用「ˋ」代替反引号，String.raw 保留反斜杠，最后换回来
 const doc = (s, ...v) => String.raw(s, ...v).replace(/ˋ/g, '`').trim();
@@ -88,6 +89,7 @@ const MEMO_DOC = doc`
   ˋˋˋˋboard memo
   pref topic=讲法 text="先看图再推公式" basis=say
   slip text="一次出了两道题，没等学生答第一道" lesson="一块板一件事"
+  lesson id=T-3 again="b7 没讲划块就出了标主干的题"
   note text="换括号那一步还是要停很久" about=W19
   error step="第 1 步换括号" cause="把 βᵀα 当成矩阵" weakness=W19 basis=q-b5
   weakness id=W19 level=L0 basis=q-b5,q-b7
@@ -95,10 +97,12 @@ const MEMO_DOC = doc`
   position next="先收 L2-08 的同类题，再推 Aⁿ" debts="例 2.3；例 2.4"
   ˋˋˋˋ
 
-  - 三档，页面在代码里管着：**直接写**——ˋprefˋ 讲法偏好、学习习惯（ˋtopicˋ 只能是「讲法」「习惯」，写进 profile）、ˋslipˋ 你自己这节课的教学失误（ˋlessonˋ 写下次怎么做）、ˋnoteˋ 观察、ˋproposeˋ 提议；**学生点了确认才写**——ˋerrorˋ 新错题（ˋq mine step causeˋ，ˋweakness=ˋ 挂哪个弱点，不写 ˋidˋ 页面自动编号；题面、学生的答案不写时页面从依据里那次作答补）、ˋweaknessˋ 改已有弱点的 ˋlevel scope status errors blocksˋ（写 ˋid=ˋ），或者新弱点（ˋtitle scope levelˋ，不写 ˋidˋ）、ˋreviewˋ 复现组判结果 ˋresult=过 / 没过ˋ、加题 ˋadd="…"ˋ，或者新的一组（ˋtitle family content weaknessesˋ）、ˋpositionˋ 下一节从哪接（ˋnext block debts firstˋ）；**只能提议**——掌握状态、规则：写成 ˋpropose text="…" about=… basis=…ˋ，由对话里的 Claude 或学生决定。
+  - 三档，页面在代码里管着：**直接写**——ˋprefˋ 讲法偏好、学习习惯（ˋtopicˋ 只能是「讲法」「习惯」，写进 profile）、ˋslipˋ 你自己这节课**新出现的**教学失误（ˋlessonˋ 写下次怎么做）、ˋlessonˋ 教学守则（见下）、ˋnoteˋ 观察、ˋproposeˋ 提议；**学生点了确认才写**——ˋerrorˋ 新错题（ˋq mine step causeˋ，ˋweakness=ˋ 挂哪个弱点，不写 ˋidˋ 页面自动编号；题面、学生的答案不写时页面从依据里那次作答补）、ˋweaknessˋ 改已有弱点的 ˋlevel scope status errors blocksˋ（写 ˋid=ˋ），或者新弱点（ˋtitle scope levelˋ，不写 ˋidˋ）、ˋreviewˋ 复现组判结果 ˋresult=过 / 没过ˋ、加题 ˋadd="…"ˋ，或者新的一组（ˋtitle family content weaknessesˋ）、ˋpositionˋ 下一节从哪接（ˋnext block debts firstˋ）；**只能提议**——掌握状态、规则：写成 ˋpropose text="…" about=… basis=…ˋ，由对话里的 Claude 或学生决定。
   - ˋbasis=ˋ 写依据，逗号隔开：黑板上的组件 id（ˋq-b5ˋ，页面换成学生在那道题上的全部作答）、段 id（ˋb5ˋ）、ˋsayˋ（学生刚说的那句话）、记忆里的编号（ˋL2-07ˋ ˋW19ˋ）、证据 id（ˋev-…ˋ）。ˋpref propose error weakness reviewˋ 一定要有依据，找不到依据的不记。
   - 有空格的值加引号。写错的、找不到依据的，页面不记，下一轮在 [系统] 提醒里告诉你原因。学生在板顶那句话下面看得到这一轮记了什么，能撤销；等确认的由学生决定，不用催。
   - 不是每一轮都要写：确实看到了再记。一轮最多几条。
+  - 学生临时改了计划、这节课讲的不是资料包里那一块：写一行 ˋblock id=EN-L1.1.1ˋ（课程地图里的编号），之后的作答、记忆都按那一块记。
+  - **教学守则**（记忆里「教学守则」那一节，ˋT-…ˋ）是以前的失误归纳出来的，上课照着做。又犯了其中一条：写 ˋlesson id=T-3 again="这次怎么犯的"ˋ（一行，**不要再记一条 slip**）；只有守则里没有的新失误才写 ˋslipˋ。板放不下不用记：页面量得出来，会自动分成几屏。
 `;
 export const DESK_DOC = doc`
 ### 在学习台里上课
@@ -137,7 +141,7 @@ export const PROTOCOL_DOC = doc`
 
 ### 一块板放多少
 
-- 一块板要**一屏放得下**，学生不用上下滚。一句话 + 一张图 + 一道题，差不多就满了。「黑板现状」里写着学生屏幕上一块板能用的大小；当前板放不下时，它也会告诉你。
+- 一块板要**一屏放得下**，学生不用上下滚。一句话 + 一张图 + 一道题，差不多就满了。「黑板现状」里写着学生屏幕上一块板能用的大小。真写长了页面会自动分成几屏让学生左右翻，不用为这个改板、记失误；但一块板一个点仍然是讲法上的要求。
 - 一块板只讲一件事。讲到下一个问题、下一步推导，就换一块新板，不在旧板上往下接。
 - 横屏的 iPad 上，一段里正好有一张图（ˋsceneˋ、ˋgraphˋ、ˋspaceˋ）和别的内容时，页面会自动排成左图右文。
 
@@ -367,6 +371,11 @@ const PACK_FIELDS = [
   ['unit', '单元'],
   ['goal', '这节课的目标'],
   ['scope', '范围和详略（考试口径；超出的不讲）'],
+  ['route', '给学生看的路线（开课第一块板照着写，可以缩短；学生要改就按学生的）'],
+  ['review', '开头的复现'],
+  ['methods', '这节课要用的可执行规则（课前定好、写完整了的：讲到时照这里写上黑板，常驻栏里放一份；做题只用这里讲过的）'],
+  ['sequence', '讲解顺序（一块板一个点；讲完一个点再出考它的题）'],
+  ['prepCheck', '备课检查（页面核出来的问题：上课时绕开，比如先补讲、或者那道题不出）'],
   ['textbook', '教材原文（教材内容只能用这里的）'],
   ['plan', '建议的推进顺序（是建议，按学生的实际情况调整）'],
   ['student', '学生的情况'],
@@ -377,7 +386,9 @@ const PACK_FIELDS = [
 const PACK_SKIP = /^(rules|updatedAt|createdAt|id|model|modelTier|effort|components|chunks|by|at|cost|date)$/i;
 
 export function packText(pack, budget = PACK_BUDGET) {
-  const main = pack?.main && typeof pack.main === 'object' ? pack.main : {};
+  const main0 = pack?.main && typeof pack.main === 'object' ? pack.main : {};
+  // 学习台备课写的教案（规则清单、讲解顺序、复现、备课检查）是结构化的，写成好读的文字
+  const main = { ...main0, ...lessonPlanText(main0) };
   const parts = [];
   const known = new Set([...PACK_FIELDS.map(([k]) => k), 'images']);
   for (const [k, label] of PACK_FIELDS) {
@@ -553,7 +564,10 @@ function pagedStateText(board) {
     } else lines.push('当前板上还没有段。');
     const fit = board.fit;
     if (fit && fit.fits === false && fit.need > 0 && fit.avail > 0) {
-      lines.push(`（这块板超出一屏：内容高约 ${fit.need}，一屏只放得下约 ${fit.avail}，学生要往下滚才看得全。下一块板写少一点，或者用 replace 把这块精简。）`);
+      // 页面会自动分屏（boardview.js），不用为这个改板、也不用记成失误（改一次就是多写一整块板）
+      lines.push(fit.screens > 1
+        ? `（这块板比一屏长，页面已经分成 ${fit.screens} 屏，学生左右翻着看，不用改。下一块板照常一块板一个点。）`
+        : `（这块板比一屏长：内容高约 ${fit.need}，一屏约 ${fit.avail}，页面会分屏给学生翻着看，不用改。下一块板照常一块板一个点。）`);
     }
   }
   const pins = list.filter((s) => s.place === 'pin');
@@ -1040,7 +1054,7 @@ export function summaryTurn(text) {
 
 // —— 下课小结（存进 class_notes，给项目对话里的 Claude 课后看）——
 // 学习台里（report：页面算好的课后报告，memory/report.js 的 reportText）：同一次调用里接着写整理单（memo 块），不多调用一次（docs/desk-plan.md 4.2）
-export function closingPrompt({ report = '', review = '' } = {}) {
+export function closingPrompt({ report = '', review = '', slips = '' } = {}) {
   const base = doc`
 下课了。请写这节课的小结，给项目对话里的 Claude 课后看：它会据此判断学生掌握得怎么样、下一节从哪里接。
 
@@ -1057,8 +1071,14 @@ export function closingPrompt({ report = '', review = '' } = {}) {
   return `${base}\n\n${doc`
 这节课在学习台里上。下面是页面按证据算好的课后报告（每道题的对错、没做完的、没交的草稿、学生说的话）。
 
-小结写完以后，接着写一个 ˋmemoˋ 块当**整理单**（写法和上课时一样，见「在学习台里上课」）：这节课新出现的错题（ˋerrorˋ）、弱点该怎么变（ˋweaknessˋ）、复现组怎么调（ˋreviewˋ）、下一节从哪接（ˋpositionˋ，一定写）、你这节课的教学失误（ˋslipˋ）。每条都写 ˋbasis=ˋ（下面报告里的组件 id 或证据 id）。等确认的那几类学生会在小结那块板上逐条点「确认 / 改 / 不要」；上课时已经记过的不用再写。整理单只写在 memo 块里，小结正文里不用重复。
-${review ? `\n这是复现课（复现组 ${review}）：整理单里一定写一行 ˋreview id=${review} result=过ˋ 或 ˋresult=没过ˋ（依据写这节课做的那几道题），学生确认了，档位才按结果变。\n` : ''}
+小结写完以后，接着写一个 ˋmemoˋ 块当**整理单**（写法和上课时一样，见「在学习台里上课」）：这节课新出现的错题（ˋerrorˋ）、弱点该怎么变（ˋweaknessˋ）、复现组怎么调（ˋreviewˋ）、下一节从哪接（ˋpositionˋ，一定写）。每条都写 ˋbasis=ˋ（下面报告里的组件 id 或证据 id）。
+
+整理单最后**归纳教学失误**（这是你真正改掉它们的地方，不是再记一遍）：下面「还没归纳进守则的教学失误」每一条（这节课上课时记的也在里面），都要归到一条守则里——
+- 和已有的一条是同一件事：并进去，并把那条**改写得更能照着做**（同一件事又犯，说明原来的说法不管用）：ˋlesson id=T-3 slips=S-…,S-… text="新的说法"ˋ；
+- 是新的一件事：ˋlesson text="…" why="根因" slips=S-…ˋ；这节课新犯、上课时没记的，也直接写成守则，不用先写 slip；
+- 守则写成下次照着就能做的动作，带上判断的时机（「出一组题之前，逐题列出要用到的规则，没讲过的先讲完；讲不了的那题不出」），不写「注意」「小心」「要清楚」这种做不出来的话；一条只管一件事；
+- 意思重复的两条合成一条：留下的那条改写，另一条 ˋlesson id=T-7 status=retired into=T-3ˋ；不再适用的 ˋlesson id=T-5 status=retired why="…"ˋ。一科最多 20 条，到了上限页面不收新的，先合并。等确认的那几类学生会在小结那块板上逐条点「确认 / 改 / 不要」；上课时已经记过的不用再写。整理单只写在 memo 块里，小结正文里不用重复。
+${slips ? `\n${slips}\n` : ''}${review ? `\n这是复现课（复现组 ${review}）：整理单里一定写一行 ˋreview id=${review} result=过ˋ 或 ˋresult=没过ˋ（依据写这节课做的那几道题），学生确认了，档位才按结果变。\n` : ''}
 ${report}
 `}`;
 }

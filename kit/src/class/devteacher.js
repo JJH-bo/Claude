@@ -157,6 +157,8 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
         board('memo', [
           'pref topic=讲法 text="（模拟老师）先看图再推公式" basis=say',
           'slip text="（模拟老师）刚才一口气讲了三步才停" lesson="一步一停"',
+          'lesson id=T-1 again="（模拟老师）这块板的题用到了没讲的外积"',
+          'slip text="b3 又超出一屏（约 900）"',
           'note text="（模拟老师）问到形状时犹豫了很久" about=W19',
           'error q="（模拟）βᵀα 是几行几列" mine="3×3" step="判断形状" cause="（模拟老师）把内积当外积" weakness=W19 basis=say',
           'weakness id=W19 level=L0 basis=say',
@@ -701,7 +703,8 @@ function closingMemo(said) {
     `weakness id=W19 level=L2 basis=${comp}`,
     `review id=R5 add="（模拟）βᵀα 是几行几列" basis=${comp}`,
     'position next="（模拟老师）先收形状判断的同类题，再推 Aⁿ" debts="形状判断的同类题"',
-    'slip text="（模拟老师）下课前没让学生用自己的话再说一遍" lesson="下课前留一题让学生口述"',
+    'lesson text="（模拟老师）下课前留一道题让学生用自己的话说一遍" why="下课前没让学生口述，看不出懂没懂" topic=检验',
+    'lesson id=T-1 text="（模拟老师）出一组练习之前，先把整组题读一遍，逐题列出要用到的规则，没讲过的先讲完；讲不了的那题不出" slips=S-1-1',
   ].join('\n')) + '\n';
 }
 

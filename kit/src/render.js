@@ -24,6 +24,7 @@ function maskMath(src, store) {
       store.push({ tex: dd ?? br ?? pr ?? inl, display });
       return `\uE001${store.length - 1}\uE002`;
     });
+    text = forgive(text, store);
     out.push(text.replace(/\uE000/g, '\\$'));
     buf = [];
   };
@@ -44,11 +45,39 @@ function maskMath(src, store) {
   return out.join('\n');
 }
 
+// 容错（不报错、不让 Claude 重写——重写要多跑一整轮）：两种常见写法照作者的意思显示
+// - \chalk{颜色}{…}、\hl{名字}{…} 写在了公式外面：照样上色 / 起名字（不然学生看到的是一串源码）
+// - 粗体贴着中文标点（**判断步骤：**①）：CommonMark 的规矩认不成粗体，星号原样露在板上；这种照样加粗
+// 代码 `…` 里的不动。换成占位符，unmask 时放回去
+const CJK_PUNCT = /[\u3000-\u303f\uff00-\uffef\u2018-\u201f\u2026\u2014]/;
+function forgive(text, store) {
+  if (!/\\(?:chalk|hl)\{|\*\*/.test(text)) return text;
+  const raw = (html) => { store.push({ raw: html }); return `\uE001${store.length - 1}\uE002`; };
+  return text.split(/(`+[\s\S]*?`+)/).map((part, i) => {
+    if (i % 2) return part;
+    let t = part.replace(/\\(chalk|hl)\{([\w-]{1,24})\}\{([^{}\n]{1,300})\}/g, (m, cmd, name, body) => {
+      if (cmd === 'chalk' && !MARK_COLORS.includes(name)) return body;
+      return raw(`<span data-${cmd === 'chalk' ? 'lkc' : 'lkmark'}="${escapeHtml(name)}">${md.renderInline(body)}</span>`);
+    });
+    t = t.replace(/(^|[^*])\*\*(?=\S)([^*\n]{1,200}?)\*\*(?!\*)/g, (m, pre, body, at, all) => {
+      const after = all[at + m.length] || '';
+      const before = pre || '';
+      const endsPunct = CJK_PUNCT.test(body.at(-1)) && after && !/[\s\p{P}]/u.test(after);
+      const startsPunct = CJK_PUNCT.test(body[0]) && before && !/[\s\p{P}]/u.test(before);
+      if (!endsPunct && !startsPunct) return m;
+      return `${pre}${raw(`<strong>${md.renderInline(body)}</strong>`)}`;
+    });
+    return t;
+  }).join('');
+}
+
 function unmask(html, store) {
   return html
     .replace(/<p>\s*\uE001(\d+)\uE002\s*<\/p>/g, (m, i) => (store[+i].display ? `\uE001${i}\uE002` : m))
     .replace(/\uE001(\d+)\uE002/g, (_, i) => {
-      const { tex, display } = store[+i];
+      const { tex, display, raw } = store[+i];
+      // 容错放回来的 HTML 里可能还套着公式的占位符
+      if (raw !== undefined) return unmask(raw, store);
       return tex2html(tex, display);
     });
 }

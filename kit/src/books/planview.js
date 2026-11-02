@@ -4,12 +4,13 @@
 // 都用 Opus 5.5（和课堂同一个模型）；一次调用，花了多少记在书 / 资料包上
 import { escapeHtml, mdToHtml } from '../render.js';
 import { toast } from '../record.js';
-import { assertWrite, toDate } from '../memory/schema.js';
-import { mapPrompt, parseMap, mapDoc, prepPrompt, parsePrep } from './plan.js';
+import { assertWrite, toDate, dueList } from '../memory/schema.js';
+import { mapPrompt, parseMap, mapDoc, prepPrompt, parsePrep, parsePages } from './plan.js';
 import { loadBooks } from './importer.js';
 import { blockChunks, chunkLine } from './textbook.js';
 import { memoryDigest } from '../memory/digest.js';
-import { prefixOf, packIds, subjectOf, sharedFor, spaceOfId, COURSES } from '../memory/space.js';
+import { prefixOf, packIds, subjectOf, sharedFor, spaceOfId, filterSpace, COURSES } from '../memory/space.js';
+import { activeLessons } from '../memory/memo.js';
 import { COMPONENT_DOCS } from '../class/docs.js';
 import { allNames } from '../subject.js';
 import { CORE_COMPONENTS } from '../class/prompt.js';
@@ -84,14 +85,17 @@ export function createPlanner({ db, getAI, model, getData, space }) {
 
   /* —— 备课 —— */
   /** 给 block 备课，写进这一科的 pack/main、pack/problems。onStep(msg) 报进度 */
-  async function prep(blockId, { onStep = () => {} } = {}) {
+  async function prep(blockId, { onStep = () => {}, pages = '' } = {}) {
     const data = getData();
     const sp = space();
     const block = data.curriculum.find((b) => b.id === blockId);
     if (!block) throw new Error(`课程地图里没有 ${blockId}`);
     onStep('读资料…');
     const { books, chunks } = await loadBooks(db, sp);
-    const material = blockChunks(block, chunks);
+    // 这一块挂着的条目，加上我写的教材页范围里的（课程地图还没挂好、或者想按书页备的时候）
+    const range = parsePages(pages);
+    const byPage = range ? chunks.filter((c) => Number(c.page) >= range[0] && Number(c.page) <= range[1]) : [];
+    const material = [...new Map([...blockChunks(block, chunks), ...byPage].map((c) => [c.id, c])).values()].sort((a, b) => (a.seq || 0) - (b.seq || 0));
     const subject = subjectOf(blockId);
     const today = toDate(Date.now());
     // 记忆：和课堂里带的同一份（全文 + 目录）；规则：全部（备课和资料包的规矩是给对话里的 Claude 的，现在备课的就是它的活）
@@ -99,9 +103,17 @@ export function createPlanner({ db, getAI, model, getData, space }) {
     const rules = sharedFor(data.rules, sp).filter((r) => r.status !== 'void').map((r) => `- ［${r.cat || ''}］${r.text}`).join('\n');
     const recent = data.sessions.filter((s) => s.status === 'closed' && s.report?.line).sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0)).slice(0, 3).map((s) => `- ${s.id}（${s.block || ''}）：${s.report.line}`).join('\n');
     const components = [...new Set([...CORE_COMPONENTS, ...allNames(COMPONENT_DOCS, subject)])];
+    // 到期的复现组（这一科的）：从没复现过的、上次没过的在前，再按过期久排；教学守则全带
+    const mine = filterSpace(data, sp);
+    const revs = new Map(mine.reviews.map((x) => [String(x.id), x]));
+    const due = dueList(mine.reviews, today).filter((d) => d.days <= 0)
+      .map((d) => ({ ...d, r: revs.get(d.id) })).sort((a, b) => (a.r?.result ? 1 : 0) - (b.r?.result ? 1 : 0) || (a.r?.result === '没过' ? 0 : 1) - (b.r?.result === '没过' ? 0 : 1) || a.days - b.days);
+    const dueText = due.map((d) => `- ${d.id} ${d.title}（${d.days < 0 ? `过期 ${-d.days} 天` : '今天到期'}；${d.r?.result ? `上次${d.r.result}` : '从没复现过'}${d.r?.content?.length ? `；内容：${[].concat(d.r.content).slice(0, 3).join('；')}` : ''}）`).join('\n');
+    const lessons = activeLessons(data.lessons, sp).map((l) => `- ${l.id} ${l.text}`).join('\n');
     onStep('Claude 在备课（一次调用，一两分钟）…');
-    const r = await ask(prepPrompt({ block, material, books, memoryText: `${mem.rules ? `${mem.rules}\n\n` : ''}${mem.text}`, rulesText: rules, components, subject, recent }));
-    const { main, problems } = parsePrep(r.text, { block, chunkIds: material.map((c) => c.id), components, today });
+    const r = await ask(prepPrompt({ block, material, books, memoryText: mem.text, rulesText: rules, components, subject, recent, due: dueText, lessons }));
+    const { main, problems } = parsePrep(r.text, { block, chunkIds: material.map((c) => c.id), components, today, reviewIds: due.map((d) => d.id) });
+    if (range) main.pages = `${range[0]}-${range[1]}`;
     main.cost = { bytes: r.bytes, model: r.model };
     const ids = packIds(sp);
     await db.doc(`pack/${ids.main}`).set(main);
@@ -114,10 +126,23 @@ export function createPlanner({ db, getAI, model, getData, space }) {
   function prepHtml({ suggested = '', blocks = [], main = null, busy = false, msg = '' } = {}) {
     return `<div class="dk-prep">
         <div class="dk-mrow"><label class="mm-f" style="flex:1"><span>下一节讲哪一块</span><select class="dk-prep-block">${blocks.map((b) => `<option value="${esc(b.id)}"${b.id === suggested ? ' selected' : ''}>${esc(b.id)} ${esc(b.title || '')}${b.chunks?.length ? '' : '（没挂资料）'}</option>`).join('')}</select></label>
+        <label class="mm-f" style="width:9em"><span>教材页（可选）</span><input class="dk-prep-pages" inputmode="numeric" placeholder="比如 10-17" value="${esc(main?.pages || '')}"></label>
         <button type="button" class="btn dk-prep-go"${busy ? ' disabled' : ''}>${main ? '重新备课' : '让 Claude 备课'}</button></div>
         ${msg ? `<p class="muted dk-prep-msg">${esc(msg)}</p>` : ''}
-        ${main?.plan ? `<details class="dk-soft"><summary>看备好的推进计划和题</summary><div class="dk-summary">${mdToHtml(String(main.plan))}</div>${main.chunks?.length ? `<p class="muted">照着讲的资料：${esc(main.chunks.join('、'))}</p>` : ''}</details>` : ''}
+        ${main?.prepCheck?.length ? `<p class="dk-warn">备课检查：${esc(main.prepCheck.join('；'))}（课堂里的 Claude 会看到，上课时绕开）</p>` : ''}
+        ${main && (main.route || main.sequence || main.plan) ? `<details class="dk-soft"><summary>看备好的教案</summary><div class="dk-summary">${planHtml(main)}</div>${main.chunks?.length ? `<p class="muted">照着讲的资料：${esc(main.chunks.join('、'))}</p>` : ''}</details>` : ''}
       </div>`;
+  }
+
+  // 教案给我看：路线、开头复现、规则、讲解顺序，补充说明放最后
+  function planHtml(main) {
+    const parts = [];
+    if (main.route) parts.push(`<p><b>路线</b></p>${mdToHtml(String(main.route))}`);
+    if (main.review?.length) parts.push(`<p><b>开头复现</b></p><ul>${main.review.map((r) => `<li><b>${esc(r.id)}</b> ${esc(r.how)}</li>`).join('')}</ul>`);
+    if (main.methods?.length) parts.push(`<p><b>这节课的规则</b></p><ul>${main.methods.map((m) => `<li><b>${esc(m.title || m.id)}</b>：${mdToHtml(String(m.steps || ''), { inline: true })}</li>`).join('')}</ul>`);
+    if (main.sequence?.length) parts.push(`<p><b>讲解顺序</b></p><ol>${main.sequence.map((x) => `<li>${mdToHtml(String(x.point || ''), { inline: true })}</li>`).join('')}</ol>`);
+    if (main.plan) parts.push(`<p><b>补充</b></p>${mdToHtml(String(main.plan))}`);
+    return parts.join('');
   }
 
   return { openMap, prep, prepHtml };

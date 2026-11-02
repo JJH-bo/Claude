@@ -7,6 +7,7 @@
 - 需求原文：`docs/live-board-spec.md`（实时黑板）、`docs/classroom-spec.md`（课堂模式）、`docs/teaching-tools-spec.md`（课堂教具：板书标注、会动的矩阵、页面验算）、`docs/live-tools-spec.md`（实时黑板追上课堂：标注、让图动、板顶的话）、`docs/learner-memory-spec.md`（学习台的系统记忆：分类存储、各管一块，两个 Claude 共用）
 - **一个学习台（所有东西在一处）：`docs/hub-plan.md`**；记忆分两层（全文 + 目录）、省额度不丢信息：`docs/memory-plan.md`；教材板块（入库、按需读）和学习台自己备课：`docs/textbook-plan.md`；学习台的记录、交互、内部 Claude 改记忆：`docs/desk-plan.md`（记录能力、交互、内部 Claude 改记忆；外内协作的分工；分批和验收）。新对话做学习台先读它。
 - 下一步的总计划（线代和 408 一起做到优秀：验收尺子、外壳升级、线代六章、408 加深）和进度：`docs/quality-plan.md`
+- 教学方向的升级（教学守则：失误归纳成守则不再累加；学习台备课出教案；板放不下自动分屏等不花额度的修复）：`docs/teach-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
 ## 分支
@@ -76,6 +77,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - `features.js`：功能开关。截图粘贴开着；页面上的手写板（手写识别）暂时关着，入口都不出现，代码保留。
 - `flatten.js`：截图 / 手写图转白底 PNG（透明底的浅色笔迹先压暗）。
 - iPad 粘贴的坑（实测）：Notability 圈选「拷贝」后粘贴，`paste` 事件里什么都没有，Safari 直接把 `<img src="blob:…">` 插进**可编辑框**（文本框不插）。所以粘贴框必须是 contenteditable，空的 paste 绝不能 `preventDefault`，图从插进来的 `<img>` 里取。系统截图则正常带 `image/png` 文件。
+- 写法容错（`render.js` 的 `forgive`，不报错、不让 Claude 重写）：`\chalk`、`\hl` 写在公式外面照样上色、起名字；粗体贴着中文标点照样加粗。
 - 样式：`styles.css`（默认石墨风格），课堂模式另有 `class/class.css`、`class/board.css`。别的风格在 `themes.css`（`chalk` 墨绿黑板、`paper` 纸本、`midnight` 深蓝、`white` 白板），front matter 写 `theme:` 选（`theme.js`）。
   - 颜色都是变量：组件样式里写 `rgb(var(--chalk-rgb) / 0.4)`、`var(--yellow)` 这样，不要写死 `rgba(238, 240, 230, …)`（`tests/theme.test.js` 守着）。`--chalk-rgb` 是「写字的颜色」，浅色风格里是墨色。
   - 字体：手写体 `var(--hand)` 只用在标题上（板的标题、组件标题、图上的标注）；按钮、输入框、对错提示、计数、底部那条都用正文字体 `var(--sans)`（小字号的手写体在 iPad 上不好认）。
@@ -94,7 +96,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 
 ### 实时黑板（`kit/src/live/`）
 
-- 和课堂模式共用一屏一块板：`class/boardview.js`（板、常驻栏、翻板、一屏放不放得下）、`class/pagenav.js`（翻板条）、`class/selfcheck.js`（额外的写法自检）、`class/boardtools.js`（教具：标注、让图动）。改这几个文件，两种模式都要看。
+- 和课堂模式共用一屏一块板：`class/boardview.js`（板、常驻栏、翻板、一屏放不放得下；放不下就分屏 `fitScreens`：按段、段里的块分，底部上一屏 / 下一屏，划动、方向键先在屏之间走，内容变了才重新分）、`class/pagenav.js`（翻板条）、`class/selfcheck.js`（额外的写法自检）、`class/boardtools.js`（教具：标注、让图动）。改这几个文件，两种模式都要看。
 - `live.js`：订阅 `steps`，按 `layout.js` 的 `planBoards` 分板（`page` 不写就接着前一段那块板，`pin: true` 进常驻栏，板号最大的是当前板）；新板翻过去，翻回去看旧板时当前板来了新内容让「回到当前板」闪。学生作答过的段被改了，先提示不替换。
 - 对话里的 Claude 看不到页面：写法错误写回 `lint/{段 id}`，屏幕和当前板放不放得下写回 `meta/screen`（`layout.js` 的 `lintRecord`、`screenRecord`，有变化才写）。
 - 黑板现状 `meta/now`（`layout.js` 的 `statusRecord`）：最近的作答（和课堂模式发给课堂 Claude 的写法一样，`class/prompt.js` 的 `actionText`）、没提交的草稿（`drafts.js`）、写法错误、屏幕、交来的截图、这块黑板用的组件库版本（`kit`，对话里的 Claude 拿它和说明的版本比，旧了先换新版）、教具指令的结果 `ops`、板上的标注 `marks`、能动的图 `figures`。有变化后最多 2 秒写一次。学生说「好了」时对话里的 Claude 只读这一份。
@@ -105,7 +107,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 ### 学习台和记忆库（`kit/src/memory/`，`docs/learner-memory-spec.md`）
 
 - 分三批做，每一批做完对话里的 Claude 用一节真课验过再做下一批。**现在做完的是第 1、2 批**（记忆库本身；在学习台里上课）。原来的第 3 批并进了 `docs/desk-plan.md`（学习台做强：记录、交互、内部 Claude 改记忆），以它为准；**desk-plan 四批都做完了**（记录能力、课堂里的 Claude 改记忆、给我看的页面、复现课 / 启动语 / 说明书瘦身 / 组件手册按需带 / 统计）。
-- `schema.js`（纯函数）：十三类集合（`COLLECTIONS`：中文名、`history` / `state`、谁能写、编号的正则、必填、只能取的值、日期字段、指向别的类的字段、改了要记 log 的字段；第十三类是改动单 `pending`）；四种角色 `chat` / `class` / `page` / `me`（我在页面上点的），`assertWrite` 在代码层面拦住不该写的（课堂里的 Claude 只能写 `observations`、`slips`、`profile`；错题、弱点、复现组、位置只有 `chat` 和 `me`）；撤销时限 `UNDO_DAYS`；复现档位 1 → 3 → 7 → 14 → 30（`nextTier`、`reviewDue`：到期 = last + tier，页面算）；`applyChange` 改状态类时按字段记 log。
+- `schema.js`（纯函数）：十四类集合（`COLLECTIONS`：中文名、`history` / `state`、谁能写、编号的正则、必填、只能取的值、日期字段、指向别的类的字段、改了要记 log 的字段；改动单 `pending`、教学守则 `lessons`）；四种角色 `chat` / `class` / `page` / `me`（我在页面上点的），`assertWrite` 在代码层面拦住不该写的（课堂里的 Claude 只能写 `observations`、`slips`、`lessons`、`profile`；错题、弱点、复现组、位置只有 `chat` 和 `me`）；撤销时限 `UNDO_DAYS`；复现档位 1 → 3 → 7 → 14 → 30（`nextTier`、`reviewDue`：到期 = last + tier，页面算）；`applyChange` 改状态类时按字段记 log。
 - `check.js`（纯函数）：自检对话里的 Claude 写的记忆（编号、字段、日期、指向的 id、结论挂证据），外加指纹 `meta/ledger`：历史类（错题、观察、失误）改了、删了记一条提醒留 7 天；状态类改了 `tracked` 字段却没在 log 里记到新值就一直报（指纹停在旧值，补上 log 才前进）。结果写回 `meta/memcheck` 给对话里的 Claude 读。
 - `desk.js`：学习台首页（今天、自检、记忆库每类几条）；页面只写 `meta`。`sample.js` 是一份守规矩的示例记忆（`?dev` 的「填入示例记忆」、测试都用它）。说明书 `CLAUDE-PROJECT.md` 第七节的 JSON 例子拼起来要能过自检（`tests/memory.test.js` 守着）。
 - 在学习台里上课（第 2 批）：首页「开新课」→ `sessions/{编号}`（`c-20261027-1`，页面写），`pack/main`、`pack/problems` 抄进 `sessions/{编号}/pack/`；地址带 `#编号` 就进这节课（`desk.js` 的 `classHash` / `enterClass`，进出都整页刷新，课堂挂的全局监听不留）。课堂照旧是 `classroom.js`，多一个 `desk` 参数：
@@ -120,11 +122,12 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - 备份：`backup.js`（纯函数）把记忆库、资料包、每节课的报告（可选证据、黑板）拼成一个 JSON，`docs` 每条就是 ArtifactData batch 的样子；首页「导出备份」用 `downloads` 能力存（`store.js` 的 `getDownloads`，`?dev` 用下载链接）。恢复由外部 Claude 照说明书第七节「备份和恢复」写回（`restoreBatches` 是同样的切法，测试用）。首页还显示 assets 用了多少（`assets.list()` 的 `usage`）。
 - 课堂里的 Claude 改记忆（desk-plan 第 2 批）：
   - 写法：输出里的 ```` ```board memo ```` 块，一行一条（`protocol.js` 的 `memoOp` → `memo.js` 的 `parseMemoLines`），不用工具（工具 `lesson_note`、`slip_note` 留着兼容，说明里不再推荐）。说明在 `prompt.js` 的 `MEMO_DOC`（`DESK_DOC` 里）。
-  - `memo.js`（纯函数）：三档 `MEMO_KINDS`（direct：pref / slip / note / propose；confirm：error / weakness / review / position；mastery、rule 拒绝）、依据 `resolveBasis`（组件 id / 段 id 换成这节课的证据，`say` 是最近一句话）、`planEntry` 查编号字段取值、改动单 `pendingRecord`、执行 `applyPending`（直接写的用 class 的身份，确认的用 me；状态类记 log，`ref` 是改动单编号）、`rejectPending`、`undoPending`（状态类按 `applied` 退回，新加的改 `void`；历史类追加 `void` 的更正）、我自己改 `meChange`、作废的 `voidedIds`（`digest.js` 跳过它们，并列出还在等确认的）。
+  - `memo.js`（纯函数）：三档 `MEMO_KINDS`（direct：pref / slip / lesson / note / propose；confirm：error / weakness / review / position；mastery、rule 拒绝；`block` 由课堂自己处理：`blockSwitch` 查过后改这节课的块）、依据 `resolveBasis`（组件 id / 段 id 换成这节课的证据，`say` 是最近一句话）、`planEntry` 查编号字段取值、改动单 `pendingRecord`、执行 `applyPending`（直接写的用 class 的身份，确认的用 me；状态类记 log，`ref` 是改动单编号）、`rejectPending`、`undoPending`（状态类按 `applied` 退回，新加的改 `void`；历史类追加 `void` 的更正）、我自己改 `meChange`、作废的 `voidedIds`（`digest.js` 跳过它们，并列出还在等确认的）。
   - `memops.js`：数据库这一层（课堂和首页共用）：`applyMemo`、`confirm`（自动编号被占了就换下一个）、`reject`、`undo`、`me`。确认只由 `memoview.js` 里我点的按钮调用。
   - `memoview.js`：改动单的画面（板顶那句话下面的一行小字、小结板上的整理单、首页的「待确认」）：确认 / 改 / 不要 / 撤销，点依据看那次作答原文。`classroom.js` 的 `decoratePage`（`boardview.js` 的 `decorate` 钩子）挂上去，板记着 `memo`（改动单 id，存进 `class_pages`）。
   - 下课：`desk.makeReport` 先算一份报告，`report.js` 的 `reportText` 放进 `closingPrompt({ report })`，小结和整理单同一次写；小结正文是 memo 块以外的文字。
   - 首页：「待确认」「我改记忆」两张卡。
+- 教学守则（`docs/teach-plan.md`）：`lessons`（`T-…`，状态类）是失误归纳出来的「下次照着做」。上课时又犯写 `lesson id=… again=…`（不另记失误），只说板放不下的失误不收（`layoutOnly`）；下课时 `closingPrompt({ slips })`（`slipsToFold`：这一科还没归纳的失误全文）要它全部并进守则（改写、合并 `status=retired into=…`）；一科最多 `LESSONS_MAX` 条、几乎照抄的新守则不收（`similarity`）。`digest.js`：守则紧跟规则全文带，已归纳的失误（`absorbedSlips`）不再带。首页「我改记忆」能改、能不要（`meChange` 的 `lesson` / `lesson-retire`）。
 - 给我看的页面和第 4 批（desk-plan 第 3、4 批）：
   - 开场简报：首页打开时写 `meta/brief`、`brief-cs`、`brief-en`（`views.js` 的 `deskBrief`：接手要知道的 + 这一科记忆库的目录），对话里的 Claude 开场 get 一份。
   - `views.js`（纯函数）：课程地图 `curriculumTree` / `blockDetail`、时间线 `blockTimeline`、弱点表 `weaknessRows`、错题本 `errorRows`、以前的课 `classRows`、统计 `learningStats`（按每节课报告的要点 `sessions.report.activeMs/items/first`）、复现课的资料包 `reviewPack`、启动语 `handoffText`。
@@ -132,6 +135,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - 复现课：首页到期的复现组「开复现课」→ `newClass(block, reviewPack(…))`，`sessions` 和资料包记 `review`，下课的 `closingPrompt({ review })` 要它写 `review id=… result=…`。
   - 组件手册按需带：资料包写了 `components` 时，`prompt.js` 的 `systemDocs` 只带 `CORE_COMPONENTS` 和点名的（`subject.js` 的 `docsForSubject({ only })`），别的只留标题（没有工具时照旧全带）。
   - 说明书瘦身：`kit/build-split.js`，构建时写 `kit/dist/docs/`（要提交）。
+- 备课出教案（`docs/teach-plan.md`）：`plan.js` 的 `prepPrompt` 要路线 `route`、开头复现 `review`（到期的组按从没复现 > 没过 > 过期久给它挑）、可执行规则 `methods`（`teach` 第几步讲）、讲解顺序 `sequence`、题的 `needs` / `after` / `traps`，带教学守则；`checkPrep` 核依赖写进 `prepCheck`；`lessonPlanText` 把它们写成文字（`prompt.js` 的 `packText` 用）；首页备课可写教材页范围（`parsePages`）。`textbook_read` 能取编号范围、书页（`readChunks`）。
 - 教材板块和自己备课（`kit/src/books/`，`docs/textbook-plan.md`）：`zip.js`（解 zip，用浏览器的 DecompressionStream）、`office.js`（docx 段落、pptx 每页的字和图）、`ingest.js`（看图转写的提示词和读回、拼条目 `assembleChunks`、文稿切条，纯函数）、`textbook.js`（目录、搜索、按编号取、课堂里的教材 `textbookForClass`，纯函数）、`plan.js`（挂课程地图、备课的提示词和读回，纯函数）、`pdf.js`（取 `pdf/` 下的 pdf.js、画页、文字层）、`importer.js`（入库流程：存原页图 → 几页一次看图转写 → 拼条目，停了能接着转）、`bookview.js`（学习台「教材」页 `#books`）、`planview.js`（挂课程地图、首页的备课）、`devmock.js`（`?dev` 的模拟 Claude）。数据在 `books/{B1}`、`books/{B1}/pages/{页}`、`books/{B1}/chunks/{B1-23.1}`。课堂（`classroom.js`）：资料包点名的条目全文并进「教材原文」、目录一节，工具 `textbook_read` / `textbook_search` / `textbook_page`，`image` 组件写条目编号贴原页（`session.chunkImage`）。
 - 分科（数学 / 408 / 英语，`space.js`，纯函数）：一个学习台三个空间。课程编号带门课前缀（线代不带；`DS-` `OS-` `CO-` `CN-` `EN-`，`courseOf` / `spaceOfId` / `subjectOf`），错题跟着前缀编号；弱点、复现组按挂的块 / 错题认（或写 `space`）；`position` 每科一条（`now`、`now-cs`、`now-en`，`positionId`），资料包每科一份（`pack/main`、`main-cs`、`main-en`，`packIds`）。首页顶上切换（`desk.js` 的 `setSpace`，这台设备记着），首页各卡、页面、待确认都只看这一科（`filterSpace`）；「关于我」、规则、失误、自检、备份全科共用。开课时 `sessions` 记 `space`、`subject`，`enterClass` 把 `session.subject` 设成这一块的门课，课堂按它带组件说明和教法；记忆摘要也只带这一科。
 - 浏览器里看：`kit/examples/desk-demo.html?dev`（「填入示例记忆」→「开新课」，输入框打「测试:整理」：模拟老师写一个 memo 块，三档各几条、再故意写两条不对的；下课时模拟小结后面带整理单。打「测试:记忆」：模拟老师真的调用 `memory_read`、`lesson_note`、`slip_note`，写一段标了 `point=tr` 的题；点「下课」后回首页看「上一节」、补记、导出备份）。

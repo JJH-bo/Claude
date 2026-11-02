@@ -6,6 +6,8 @@ import { mdToHtml, escapeHtml } from '../render.js';
 const reduceMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 // 一块板超出一屏多少才算放不下（KaTeX、图的取整会差几个像素）
 const FIT_SLACK = 12;
+// 分屏时底部那条「上一屏 / 下一屏」占的高度
+const PAGER_H = 58;
 // 在这些东西上划动不算翻页：要拖的图、要选的字、要横着滚的公式
 const NO_SWIPE = 'input, textarea, select, button, a, label, [contenteditable=""], [contenteditable="true"], svg, canvas, .keypad, .ink-bar, .class-pins';
 
@@ -138,10 +140,115 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
   }
 
   // 往前 / 往后翻一块（划动、方向键）：按实际有的板走，板号中间缺了一块（那块没存上）也不会卡住
+  // 一块板分了几屏时先在屏之间走，走到头才翻到别的板；往回翻到一块分了屏的板，落在它最后一屏
   function step(d) {
+    const cur = pages.get(viewPage);
+    if (cur?.screens?.length > 1) {
+      const s = cur.screen + d;
+      if (s >= 0 && s < cur.screens.length) { setScreen(cur, s); return; }
+    }
     const ns = [...pages.keys()].sort((a, b) => a - b);
     const to = ns[ns.indexOf(viewPage) + d];
-    if (to !== undefined) go(to);
+    if (to === undefined) return;
+    const tp = pages.get(to);
+    if (tp) tp.wantScreen = d < 0 ? 'last' : 0;
+    go(to);
+  }
+
+  // —— 放不下就分屏（不叫 Claude 改：改一次要多跑一整轮）——
+  // 学生不喜欢上下滚、宁愿左右翻（profile）。一块板比一屏长时，按段（一段太长就按段里的块）分成几屏，
+  // 底部一条「上一屏 / 下一屏」，划动、方向键也先在屏之间走。板的标题每屏都在，板顶的话只在第一屏。
+  // 内容变了（Claude 加了段、换了段、屏幕转了）才重新分；新加了段就翻到新内容那一屏
+  function screenKey(p, avail) {
+    const b = p.bodyEl;
+    // 还在自检、没露出来的段（class-pending）露出来时也要重新分
+    return `${avail}|${b.childElementCount}|${b.querySelectorAll('*').length}|${b.textContent.length}|${b.querySelectorAll('[hidden], .class-pending').length}|${p.talk?.length || 0}|${p.talkEl.hidden}`;
+  }
+  function fitScreens(p, avail) {
+    const key = screenKey(p, avail);
+    if (p.screenKey === key) return;
+    const prevCount = p.screenKids ?? 0;
+    p.screenKey = key;
+    for (const el of p.sec.querySelectorAll('.is-off')) el.classList.remove('is-off');
+    p.pagerEl?.remove();
+    p.pagerEl = null;
+    const top = p.sec.getBoundingClientRect().top;
+    const rel = (el) => { const r = el.getBoundingClientRect(); return { top: r.top - top, bottom: r.bottom - top }; };
+    const kids = [...p.bodyEl.children].filter((el) => !el.hidden && el.offsetParent !== null);
+    const last = kids.at(-1);
+    p.fullNeed = Math.round(last ? rel(last).bottom : rel(p.bodyEl).top);
+    p.screenKids = p.bodyEl.childElementCount;
+    if (!kids.length || p.fullNeed <= avail + FIT_SLACK) { p.screens = null; p.screen = 0; p.wantScreen = null; return; }
+    // 第一屏从板顶算起；后面几屏的内容接在标题下面（板顶的话不再出现）
+    const restStart = p.talkEl.hidden ? rel(p.bodyEl).top : rel(p.talkEl).top;
+    const cap0 = avail - PAGER_H;
+    const capN = avail - PAGER_H - restStart;
+    // 一块一块排：一段比一屏还高就拆成段里的几块（段的标题、组件、段落）
+    // （段的结构是 section.class-seg > .stage-body > 段里的块：只有一个孩子的那层穿过去）
+    const pieces = [];
+    const visible = (c) => !c.hidden && c.offsetParent !== null;
+    const split = (el, wraps, depth) => {
+      const r = rel(el);
+      let inner = [...el.children].filter(visible);
+      let host = el;
+      const chain = [...wraps];
+      while (inner.length === 1 && inner[0].children.length && depth < 4) { chain.push(host); host = inner[0]; inner = [...host.children].filter(visible); depth++; }
+      // 段一律拆成段里的块（一段跨在两屏中间时能从块之间分开）；块再比一屏高才往里拆
+      if ((wraps.length === 0 || r.bottom - r.top > capN) && inner.length > 1 && depth < 4) { chain.push(host); for (const c of inner) split(c, chain, depth + 1); }
+      else pieces.push({ el, wraps, ...r });
+    };
+    for (const el of kids) split(el, [], 0);
+    const screens = [[]];
+    let start = 0; // 这一屏从哪儿开始（第一屏是板顶）
+    for (const pc of pieces) {
+      const cur = screens.at(-1);
+      const cap = screens.length === 1 ? cap0 : capN;
+      if (cur.length && pc.bottom - start > cap) { screens.push([pc]); start = pc.top; }
+      else cur.push(pc);
+    }
+    if (screens.length < 2) { p.screens = null; p.screen = 0; return; }
+    p.screens = screens;
+    const pager = document.createElement('nav');
+    pager.className = 'class-screens';
+    pager.setAttribute('aria-label', '这块板分了几屏');
+    pager.innerHTML = '<button type="button" class="btn class-scr-prev">‹ 上一屏</button><span class="class-scr-n"></span><button type="button" class="btn class-scr-next">下一屏 ›</button>';
+    pager.querySelector('.class-scr-prev').addEventListener('click', () => setScreen(p, p.screen - 1));
+    pager.querySelector('.class-scr-next').addEventListener('click', () => setScreen(p, p.screen + 1));
+    p.sec.appendChild(pager);
+    p.pagerEl = pager;
+    // 停在哪一屏：翻回来的落在最后一屏；新加了段落在新内容那一屏；不然尽量留在原来那屏
+    let at = Math.min(p.screen || 0, screens.length - 1);
+    if (p.wantScreen === 'last') at = screens.length - 1;
+    else if (p.wantScreen === 0) at = 0;
+    else if (prevCount && p.screenKids > prevCount) at = screens.length - 1;
+    p.wantScreen = null;
+    setScreen(p, at, { quiet: true });
+  }
+  function setScreen(p, s, { quiet = false } = {}) {
+    if (!p.screens) return;
+    const n = Math.max(0, Math.min(p.screens.length - 1, s));
+    p.screen = n;
+    const on = new Set(p.screens[n].map((x) => x.el));
+    const wraps = new Set();
+    const used = new Set(); // 这一屏有块的外层（拆开的段）
+    p.screens.forEach((sc) => sc.forEach((x) => {
+      x.el.classList.toggle('is-off', !on.has(x.el));
+      for (const w of x.wraps) { wraps.add(w); if (on.has(x.el)) used.add(w); }
+    }));
+    // 拆开的段：这一屏一块都没有就整段藏起来（不留一个空框）
+    for (const w of wraps) w.classList.toggle('is-off', !used.has(w));
+    p.talkEl.classList.toggle('is-off', n > 0);
+    if (p.pagerEl) {
+      p.pagerEl.querySelector('.class-scr-n').textContent = `第 ${n + 1} / ${p.screens.length} 屏`;
+      p.pagerEl.querySelector('.class-scr-prev').disabled = n === 0;
+      p.pagerEl.querySelector('.class-scr-next').disabled = n === p.screens.length - 1;
+    }
+    if (!quiet) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      if (!reduceMotion()) { p.sec.classList.remove('is-enter'); void p.sec.offsetWidth; p.sec.classList.add('is-enter'); }
+    }
+    window.LAKit?.ink?.redraw?.();
+    syncMoreHint();
   }
 
   function syncNav() {
@@ -179,13 +286,17 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
     const top = sr.top + window.scrollY;
     const avail = Math.max(240, Math.round(window.innerHeight - (bar?.height || 0) - top - 10));
     board.style.setProperty('--board-h', `${avail}px`);
+    const shown = pages.get(viewPage);
+    if (shown && !shown.sec.hidden && shown.kind !== 'closing') fitScreens(shown, avail);
     const p = pages.get(curPage);
     if (p && !p.sec.hidden) {
       const r = p.sec.getBoundingClientRect();
-      const last = [...p.sec.querySelectorAll(':scope > *, :scope > .class-page-body > *')].filter((el) => !el.hidden && el.offsetParent !== null).at(-1);
-      const need = Math.round(last ? last.getBoundingClientRect().bottom - r.top : 0);
-      lastFit = { fits: need <= avail + FIT_SLACK, need, avail, w: Math.round(r.width) };
-      p.sec.classList.toggle('is-overflow', !lastFit.fits);
+      const last = [...p.sec.querySelectorAll(':scope > *, :scope > .class-page-body > *')].filter((el) => !el.hidden && el.offsetParent !== null && !el.classList.contains('is-off')).at(-1);
+      const seen = Math.round(last ? last.getBoundingClientRect().bottom - r.top : 0);
+      // 分了屏：报给讲课的 Claude 的是整块板的高度和分了几屏（页面已经处理了，不用它改）
+      const need = p.screens ? p.fullNeed : seen;
+      lastFit = { fits: need <= avail + FIT_SLACK, need, avail, w: Math.round(r.width), ...(p.screens ? { screens: p.screens.length, screenFits: seen <= avail + FIT_SLACK } : {}) };
+      p.sec.classList.toggle('is-overflow', p.screens ? !lastFit.screenFits : !lastFit.fits);
     }
     syncMoreHint();
     onMeasure?.(lastFit);
@@ -204,6 +315,9 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(scheduleFit) : null;
   ro?.observe(pagesBox);
   ro?.observe(pinsBox);
+  // 段自检完露出来（class-pending 只改 visibility，尺寸不变，ResizeObserver 不响）、组件揭开一步：也要再量一次、重新分屏
+  const mo = typeof MutationObserver === 'function' ? new MutationObserver(scheduleFit) : null;
+  mo?.observe(pagesBox, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden'] });
 
   // —— 左右划动翻板（只认手指；在图、输入框、按钮上划不算；屏幕边缘留给系统的返回手势）——
   let swipe = null;
@@ -292,6 +406,6 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
       syncNav();
       scheduleFit();
     },
-    ensurePage, addPage, removePage, paint, show, go, step, syncNav, syncPins, scheduleFit, measureFit, splitFigure, place,
+    ensurePage, addPage, removePage, paint, show, go, step, syncNav, syncPins, scheduleFit, measureFit, splitFigure, place, setScreen,
   };
 }

@@ -118,6 +118,18 @@ export const COLLECTIONS = {
     refs: { session: 'sessions', corrects: 'slips' },
     tracked: [],
   },
+  // 教学守则：两个 Claude 的教学失误归纳出来的「下次照着做」（失误本身是历史，只增不改；守则是可以改写的状态）。
+  // 课堂里每犯一次新错记一条失误，下课时并进守则：同一件事又犯就把原来那条改写得更能照着做、记上又犯几次（hits），
+  // 意思重复的合并（被并掉的 retired + into）。课堂只带守则和还没归纳的失误，失误不会越积越多（docs/teach-plan.md）
+  lessons: {
+    label: '教学守则', kind: 'state', writers: ['chat', 'class', 'me'],
+    id: { re: /^T-[A-Za-z0-9_-]+$/, eg: 'T-3（页面自动编号）' },
+    required: ['text', 'since'],
+    enums: { status: ['active', 'retired', 'void'], space: ['math', 'cs', 'en'] },
+    dates: ['since', 'last'],
+    refs: { slips: 'slips', into: 'lessons' },
+    tracked: ['text', 'status'],
+  },
   sessions: {
     // 课堂由页面开；实时黑板、自学单元由对话里的 Claude 开（kind: live / unit），所以 chat 也能写
     label: '每节课', kind: 'state', writers: ['page', 'chat'],
