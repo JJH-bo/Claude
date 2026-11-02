@@ -18,6 +18,7 @@ import deskCss from './memory/desk.css';
 import themesCss from './themes.css';
 import { themeOf } from './theme.js';
 import { VERSION } from './version.js';
+import './confidence.js';
 
 // 粉笔手写体：数字和字母用 Caveat（1 和 7 容易分辨），中文用龙藏体。
 // Google Fonts 是 artifact 唯一允许的外部样式来源；加载不到时退回系统楷体

@@ -37,6 +37,8 @@ export function itemKey(ev) {
 export const OUTCOMES = ['first', 'ok', 'wrong', 'giveup', 'revealed', 'open'];
 export const OUTCOME_TEXT = { first: '一次对', ok: '改对了', wrong: '错', giveup: '想不出来', revealed: '看了答案', open: '没判' };
 
+const sureOf = (evs) => { const s = evs.filter((e) => e.kind === 'sure').at(-1); const v = s?.detail?.sure ?? s?.sure; return typeof v === 'boolean' ? v : null; };
+
 function itemOf(key, list, segs) {
   const recs = list.filter((e) => e.src === 'record').sort(byAt);
   const evs = list.filter((e) => e.src === 'event').sort(byAt);
@@ -78,6 +80,8 @@ function itemOf(key, list, segs) {
     giveup,
     revealed,
     reveals: evs.filter((e) => e.kind === 'reveal').length,
+    // 有没有把握（学生点的，最后一次为准）：true / false / null（没点）
+    sure: sureOf(evs),
     ms,
     last: cut(final?.last ?? recs.at(-1)?.value ?? recs.at(-1)?.text ?? '', 200),
     expected: final?.expected !== undefined ? cut(final.expected, 120) : undefined,
@@ -87,6 +91,29 @@ function itemOf(key, list, segs) {
     end: at.length ? Math.max(...at) : null,
     evidence: list.sort(byAt).map((e) => e.id).filter(Boolean).slice(0, 30),
   };
+}
+
+/**
+ * 证据 → 一道道题（作答记录和揭开 / 放弃 / 有没有把握按「组件 + 第几步」归到一起）。
+ * bySession：跨好几节课算的时候（mastery.js），不同课里同名的组件（都叫 q1）分开算。
+ */
+export function itemsOf(evs, segs = new Map(), { bySession = false } = {}) {
+  const groups = new Map();
+  for (const e of evs || []) {
+    if (!e || !['record', 'event'].includes(e.src) || !e.comp) continue;
+    if (e.src === 'event' && !['giveup', 'reveal', 'sure'].includes(e.kind)) continue;
+    // 「有把握吗」记的是那道题的键（confidence.js 照 itemKey 算好的）
+    const k0 = e.kind === 'sure' && e.detail?.key ? String(e.detail.key) : itemKey(e);
+    const k = bySession ? `${e.session || ''}§${k0}` : k0;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(e);
+  }
+  // 只有「揭开」、没有作答的步（老师的例题一步步揭开看）不算一道题；有作答的步，揭开记在它的 reveals 上
+  const items = [...groups].filter(([, list]) => list.some((e) => e.src === 'record' || e.kind === 'giveup'))
+    .map(([k, list]) => ({ ...itemOf(k, list, segs), ...(bySession ? { session: list[0].session || null } : {}) }))
+    .sort((a, b) => (a.first ?? 0) - (b.first ?? 0) || a.key.localeCompare(b.key));
+  for (const it of items) if (!Number.isFinite(it.turn)) delete it.turn;
+  return items;
 }
 
 /** 这节课的时长：开课到下课（没下课就到最后一个动静），去掉两次动静之间超过 IDLE_GAP 的空档 */
@@ -131,20 +158,7 @@ export function buildReport({ session = {}, evidence = [], manual = [], observat
   const segs = new Map((steps || []).filter((s) => s && s.id).map((s) => [String(s.id), s]));
   const evs = (evidence || []).filter((e) => e && (!sid || !e.session || e.session === sid));
 
-  // —— 题：作答记录和揭开 / 放弃按「组件 + 第几步」归到一起 ——
-  const groups = new Map();
-  for (const e of evs) {
-    if (!['record', 'event'].includes(e.src) || !e.comp) continue;
-    if (e.src === 'event' && !['giveup', 'reveal'].includes(e.kind)) continue;
-    const k = itemKey(e);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(e);
-  }
-  // 只有「揭开」、没有作答的步（老师的例题一步步揭开看）不算一道题；有作答的步，揭开记在它的 reveals 上
-  const items = [...groups].filter(([, list]) => list.some((e) => e.src === 'record' || e.kind === 'giveup'))
-    .map(([k, list]) => itemOf(k, list, segs))
-    .sort((a, b) => (a.first ?? 0) - (b.first ?? 0) || a.key.localeCompare(b.key));
-  for (const it of items) if (!Number.isFinite(it.turn)) delete it.turn;
+  const items = itemsOf(evs, segs);
 
   const drafts = evs.filter((e) => e.kind === 'draft').sort(byAt).map((e) => ({
     id: e.id, comp: e.comp ?? null, compKind: e.compKind || '', seg: e.step ?? null, label: e.label || '', text: cut(e.text, 300), at: e.at,
@@ -174,7 +188,7 @@ export function buildReport({ session = {}, evidence = [], manual = [], observat
     endedAt: num(session.endedAt),
     time,
     totals: {
-      items: items.length, first: count('first'), ok: count('ok'), wrong: count('wrong'), giveup: count('giveup'), revealed: count('revealed'), open: count('open'),
+      items: items.length, unsure: items.filter((it) => it.sure === false).length, first: count('first'), ok: count('ok'), wrong: count('wrong'), giveup: count('giveup'), revealed: count('revealed'), open: count('open'),
       evidence: evs.length, says: says.filter((s) => s.kind === 'say').length, photos: says.filter((s) => s.kind === 'photo' || s.images.length).length, drafts: drafts.length,
       turns: (turns || []).filter((t) => t?.role === 'student' || t?.role === 'claude').length,
     },
@@ -233,7 +247,7 @@ export function reportText(r, { max = 8 * 1024 } = {}) {
     `- 时长约 ${min} 分钟；做了 ${t.items || 0} 题：一次对 ${t.first || 0}、改对 ${t.ok || 0}、错 ${t.wrong || 0}、想不出来 ${t.giveup || 0}、看了答案 ${t.revealed || 0}、程序判不了 ${t.open || 0}。`];
   const tags = (r.byTag || []).filter((x) => x.tag).map((x) => `${x.tag} ${x.items} 题一次对 ${x.first}`);
   if (tags.length) head.push(`- 按块 / 知识点：${tags.join('；')}`);
-  const items = (r.items || []).map((it) => `- ${it.comp}${it.seg ? `（${it.seg}）` : ''}「${cut(it.q, 60)}」：${it.seq || '·'} ${OUTCOME_TEXT[it.outcome] || it.outcome}${it.last ? `，最后写的 ${cut(it.last, 40)}` : ''}${it.ms ? `，${Math.round(it.ms / 1000)} 秒` : ''}；证据 ${it.evidence.slice(-3).join(',')}`);
+  const items = (r.items || []).map((it) => `- ${it.comp}${it.seg ? `（${it.seg}）` : ''}「${cut(it.q, 60)}」：${it.seq || '·'} ${OUTCOME_TEXT[it.outcome] || it.outcome}${it.sure === false ? '（学生标了没把握）' : it.sure === true ? '（有把握）' : ''}${it.last ? `，最后写的 ${cut(it.last, 40)}` : ''}${it.ms ? `，${Math.round(it.ms / 1000)} 秒` : ''}；证据 ${it.evidence.slice(-3).join(',')}`);
   const tail = [];
   if (r.drafts?.length) tail.push(`- 没交的草稿：${r.drafts.map((d) => `${d.comp || ''}「${cut(d.text, 40)}」（${d.id}）`).join('；')}`);
   if (r.says?.length) tail.push(`- 学生说的话：${r.says.filter((s) => s.text).slice(-12).map((s) => `「${cut(s.text, 60)}」（${s.id}）`).join('；')}`);

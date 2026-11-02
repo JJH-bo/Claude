@@ -26,6 +26,7 @@ import { reviewPack, handoffText, deskBrief, briefId } from './views.js';
 import { readOnlyDb } from './session.js';
 import { SPACES, SPACE_KEYS, DEFAULT_SPACE, filterSpace, spaceOfDoc, spaceOfId, subjectOf, positionId, packIds } from './space.js';
 import { dueList } from './schema.js';
+import { masteryProposals, masteryPendingWrites } from './mastery.js';
 
 // 正在看哪一科（这台设备记着；分科见 space.js）
 const SPACE_KEY = 'la-desk-space';
@@ -79,7 +80,7 @@ export async function renderDesk(root, meta) {
     <div class="dk-col">
     <section class="dk-card dk-class" hidden><h2 class="dk-h">上课</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-today" hidden><h2 class="dk-h">今天</h2><div class="dk-body"></div></section>
-    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">课堂里的 Claude 提的错题、弱点、复现组、下一节：点「确认」才写进记忆库。写进去的 7 天内能撤销。</p><div class="dk-popen"></div><div class="dk-memo-sub" role="heading" aria-level="3">最近写进去的</div><div class="dk-pdone"></div></section>
+    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">课堂里的 Claude 提的错题、弱点、复现组、下一节，页面按证据算的掌握、练习后的复现结果：点「确认」才写进记忆库。写进去的 7 天内能撤销。</p><div class="dk-popen"></div><div class="dk-memo-sub" role="heading" aria-level="3">最近写进去的</div><div class="dk-pdone"></div></section>
     <section class="dk-card dk-manual" hidden><h2 class="dk-h">补记</h2><p class="dk-sub muted">在学习台外面做的（纸上、Notability、对话里）：写一句、贴张截图，下一节课的课后报告会列出来。</p><div class="dk-body"></div><div class="dk-mlist"></div></section>
     </div>
     <div class="dk-col dk-col-side">
@@ -168,6 +169,7 @@ export async function renderDesk(root, meta) {
     for (const c of failed) res.problems.unshift({ coll: c, id: '', msg: `读不到 ${c}（${COLLECTIONS[c].label}），这一次的自检不全` });
     paint(res, today);
     writeBriefs(today);
+    if (!failed.size) proposeMastery();
     const rec = memcheckRecord(res, { kit: VERSION, today });
     const json = JSON.stringify(rec);
     if (json !== lastCheck) {
@@ -182,6 +184,18 @@ export async function renderDesk(root, meta) {
         put('meta', 'ledger', { ...res.ledger, at: Date.now() }).catch(() => {});
       }
     }
+  }
+
+  // 掌握：页面按证据算（mastery.js），有变化就出一张改动单（by: page），在「待确认」里等我点。
+  // 刚写的改动单订阅还没回来时，下一次算出同样的结论别再写一张：先记在手上
+  const myPd = new Map(); // 改动单 id → 刚写的那份
+  function proposeMastery() {
+    const pend = [...data.pending.filter((p) => !myPd.has(p.id)), ...myPd.values()];
+    for (const w of masteryPendingWrites(masteryProposals({ ...data, pending: pend }), pend)) {
+      myPd.set(w.id, { id: w.id, ...w.doc });
+      put('pending', w.id, w.doc).catch(() => myPd.delete(w.id));
+    }
+    for (const id of [...myPd.keys()]) if (data.pending.some((p) => p.id === id && JSON.stringify(p.patch || p.data) === JSON.stringify(myPd.get(id).patch || myPd.get(id).data))) myPd.delete(id);
   }
 
   // 给对话里的 Claude 的开场简报（views.js 的 deskBrief）：每科一份，内容变了才写

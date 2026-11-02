@@ -17,6 +17,7 @@ export const session = {
   replaying: false, // 课堂刷新后把学生的作答重放回组件时为 true：这期间不记录、不发给 Claude
   live: false, // 实时黑板模式（作答同时写进数据库，由对话里的 Claude 决定往下讲什么）
   sink: null, // live 模式下接收每条作答 / 事件 / 手写原图：{ record(entry), event(e), images(key, blobs) }
+  hooks: [], // 每条作答记下以后调用的（entry, el）：信心标定（confidence.js）挂在这里
 
   reset(title) {
     this.title = title;
@@ -66,6 +67,7 @@ export const session = {
       save(this.title, { log: this.log });
     }
     this.sink?.record(e);
+    for (const h of this.hooks) { try { h(e, el); } catch (err) { console.error(err); } }
     emit();
   },
 

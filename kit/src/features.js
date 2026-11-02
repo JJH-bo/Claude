@@ -7,4 +7,6 @@ export const FEATURES = {
   handwriting: false,
   // 截图作答、粘贴框、把图拖进来（组件里的、课堂输入框里的）
   photo: true,
+  // 作答以后问一句「有把握吗」（confidence.js）：只在作答会记下来的地方（课堂、实时黑板、学习台）出现
+  confidence: true,
 };

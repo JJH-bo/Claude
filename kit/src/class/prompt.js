@@ -23,7 +23,7 @@ const ROLE = doc`
    - 缺思路（知识都有，但不知道从哪下手）：给提示，不给答案。提示一轮比一轮具体：先指方向，再把问题缩小，再在图上指出来。
 4. 同一个点提示了三轮还不通，就不要再绕：把这一步完整讲清楚，然后换一道同类的题，让学生自己再走一遍。
 5. 学生说「没把握」「蒙的」「大概是」，按没过处理：和答错一样，追问理由或换一道题检验，不要因为结果碰巧对了就往下走。
-6. 不要宣布学生「已经掌握」「完全懂了」。答对了，只说这一题对在哪里；掌握没掌握，课后由项目对话里的 Claude 看整节课的记录来判断。
+6. 不要宣布学生「已经掌握」「完全懂了」。答对了，只说这一题对在哪里；掌握没掌握，课后由学习台按证据算、学生确认（或项目对话里的 Claude 判断）。学生点了「没把握」的题，答对了也按没过处理（见第 5 条）。
 7. 资料包里没有的教材内容不讲。学生问到资料包以外的定义、定理、例题、考试范围，就说「这个课后问对话里的 Claude」，然后回到这节课。资料包里的定义、记号、数字照原样用，不换成别的教材的说法。
 8. 话要短。每一轮说一两句就够，主要内容写在黑板上（用黑板指令画出来）；不在说的话里写长推导，也不把黑板上的内容再念一遍。一块板只讲一件事，一屏要放得下。
 9. 能让学生拖、点、选、预测的，就不要让学生写长段文字。要学生说想法时，问得具体，一句话能答。`;
@@ -865,6 +865,10 @@ function eventText(a, type) {
       // 演示、分拍板书的 step：走到第几步
       if (get('name') === 'step' && get('beat') !== undefined) return `[动作] ${where(a, '演示', { title: false })}：走到第 ${val(get('value'))} 步（共 ${val(get('beat'))} 步）`;
       return `[动作] ${where(a, '图', { title: false })}：把 ${get('name') ?? '点'} 拖到 ${val(get('value'))}`;
+    case 'sure': {
+      const sure = get('sure'), ok = get('ok');
+      return `[动作] ${where(a, '组件', { title: false })}${subText}：学生标了「${sure ? '有把握' : '没把握'}」${sure === false && ok === true ? '——这题答对了，但没把握，按没过处理（红线 5）' : sure === true && ok === false ? '——答错了却有把握：多半是一个误解，先弄清学生是怎么想的' : ''}`;
+    }
     case 'done': return `[动作] 点了 ${typeof a.step === 'string' ? a.step : '这一段'}${stepTitle ? `「${short(stepTitle, 30)}」` : ''}的「这段做完了」`;
     case 'ask': return `[动作] 问了：「${short(get('question'), 200)}」`;
     case 'open': return '[动作] 打开了课堂页面';
@@ -1067,12 +1071,15 @@ ${report}
 
 const typeOf = (a) => String(a?.type ?? a?.kind ?? '').replace(/-try$/, '');
 
+const sureOf = (a) => (typeof a?.sure === 'boolean' ? a.sure : typeof a?.detail?.sure === 'boolean' ? a.detail.sure : null);
+const okOf = (a) => (typeof a?.ok === 'boolean' ? a.ok : typeof a?.detail?.ok === 'boolean' ? a.detail.ok : null);
+
 // 学生在黑板上的一个动作要不要告诉课堂 Claude。
 // 同一道题的「最终结果」只在看了答案、放弃时说（每次尝试已经说过了）；提问、提示这类不是作答
 export function reportable(a) {
   if (!a || typeof a !== 'object') return false;
   const type = typeOf(a);
-  if (a.source === 'event') return type === 'reveal' || type === 'drag';
+  if (a.source === 'event') return type === 'reveal' || type === 'drag' || type === 'sure';
   if (type === 'ask' || type === 'findbug-hint') return false;
   if (a.final && !a.revealed && !a.giveup) return false;
   return true;
@@ -1090,6 +1097,8 @@ export function actionTrigger(a, { lastStep = false } = {}) {
   if (urgent) return 'now';
   if (a.source === 'event' && typeOf(a) === 'reveal' && !lastStep) return 'later';
   if (a.source === 'event' && typeOf(a) === 'drag') return 'later';
+  // 有没有把握：答对了却说没把握，老师要马上知道（红线 5，按没过处理）；别的跟着下一条一起说，不单独调用
+  if (a.source === 'event' && typeOf(a) === 'sure') return sureOf(a) === false && okOf(a) === true ? 'soon' : 'later';
   return 'soon';
 }
 
