@@ -682,7 +682,7 @@ b = [1, 1, -2]
 
 ### 改动单：`pending`（页面写，你读）
 
-课堂里的 Claude 改记忆、我在学习台上改记忆，每一条都先记一张改动单。编号 `pd-…`。字段：`kind`（`pref` 偏好 / `slip` 失误 / `note` 观察 / `propose` 提议 / `error` 错题 / `weakness` 弱点 / `review` 复现组 / `position` 下一节 / `mastery` 掌握（页面算的提议））；练习做完页面出的复现组结果是 `kind: "review"`、`by: "page"`、`tier`（`direct` 直接写的 / `confirm` 要我确认的 / `me` 我自己改的）、`by`（`class` / `me` / `page` 页面按证据算的）、`coll`、`target`（改哪一条）、`op`（`add` 新加 / `update` 改）、`data`（新加的内容）或 `patch`（改的字段）、`reason`、`basis`（依据：证据 id、记忆里的编号）、`session`、`turn`、`status`、`at`、`log`。
+课堂里的 Claude 改记忆、我在学习台上改记忆，每一条都先记一张改动单。编号 `pd-…`。字段：`kind`（`pref` 偏好 / `slip` 失误 / `note` 观察 / `propose` 提议 / `error` 错题 / `weakness` 弱点 / `review` 复现组 / `position` 下一节 / `mastery` 掌握（页面按证据算的提议）；练习做完页面出的复现组结果也是 `review`，`by` 是 `page`）、`tier`（`direct` 直接写的 / `confirm` 要我确认的 / `me` 我自己改的）、`by`（`class` / `me` / `page` 页面按证据算的）、`coll`、`target`（改哪一条）、`op`（`add` 新加 / `update` 改）、`data`（新加的内容）或 `patch`（改的字段）、`reason`、`basis`（依据：证据 id、记忆里的编号）、`session`、`turn`、`status`、`at`、`log`。
 
 - `status`：`open` 等我确认、`done` 写进去了（`doneAt`；改的写在 `applied`：每个字段的 `from`、`to`；我在「改」里改过的在 `edited`）、`rejected` 我点了「不要」、`undone` 我撤销了（`undoneAt`）。
 - **撤销**：写进去 7 天内我能撤。状态类（弱点、复现组、位置、偏好）退回旧值（也记一条 `by: "me"` 的 log）；新加的偏好、弱点、复现组改成 `status: "void"`（复现组的 `status` 还有 `active` / `paused` 我暂停了 / `done` 停掉了 / `void`）。历史类（错题、失误、观察）原条不动，追加一条作废的更正：`corrects` 指向原条、`void: true`、`note` 写为什么。**读记忆时 `void` 的、被作废更正指向的都当没有**；错题有一条 `resolved: true` 的更正指向它，就是我标了已解决。
