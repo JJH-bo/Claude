@@ -175,6 +175,8 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
         pic + String.raw`我们接着上次停下的地方：$A\mathbf x$ 本身也是一个向量，所以 $A$ 还能再作用一次。`,
         board(`new id=b${n} title="Ax 落在哪条线上"`, firstBody()),
         board('pin id=k1 title="这节课的记号"', NOTATION),
+        // 教学计划（学生看不到）：真的老师开课时写一份，下一轮页面放进说明（docs/learning-plan.md 第 5 节）
+        board('plan', '目标：学生自己看出 Ax 总在 α 那条线上\n猜：（模拟）可能把 βᵀx 当成向量\n证实：第 1 步选什么'),
         String.raw`先拖一拖图里灰色的 $\mathbf x$，看黄色的 $A\mathbf x$ 停在哪，再回答第 1 步。`,
       ),
     };

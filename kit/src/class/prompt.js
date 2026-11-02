@@ -121,6 +121,23 @@ ${MEMO_DOC}
 // 记忆摘要最多占多少（规则 + 摘要合起来）；剩下的给资料包
 export const MEMORY_BUDGET = 32 * 1024; // docs/memory-plan.md：规则（给课堂的）全文 + 和这节课直接有关的全文 + 其余的目录；省额度靠只带这一科、给课堂的，和对话里省略旧段原文
 
+// —— 教学计划（docs/learning-plan.md 第 5 节）：老师写给自己看的几行，学生看不到。
+// 一节课几十轮、中间还会压缩对话，「我要带学生到哪、我猜卡在哪、怎么证实」很容易断。页面只把最新的一份放进下一轮的说明，
+// 对话历史里把 plan 块去掉（不重复付钱）；只在判断变了时改写，平时不写（每写一次多等几秒）。
+export const PLAN_DOC = doc`
+### plan：你的教学计划（学生看不到）
+
+ˋˋˋˋboard plan
+目标：学生自己说出 $A^n$ 为什么等于 $(\operatorname{tr}A)^{n-1}A$
+猜：把 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 当成矩阵（上一题选了 3×3）
+证实：让学生说 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 几行几列；对了就推 $A^2$
+ˋˋˋˋ
+
+- 写给你自己的：这节课要到哪（目标），你现在猜学生卡在哪种误解（猜），下一步拿什么来证实或推翻（证实）。三四行就够，最多 200 个字。
+- 页面不显示它，只把**你最近写的那一份**放进下一轮说明的「黑板现状」前面；对话历史里的 plan 块页面会去掉。
+- **只在判断变了时写**：开课时写一份；学生的作答让你改了猜测、目标达到了要换目标时再写。没变就不写（每写一次学生要多等几秒）。
+`;
+
 // —— 2. 黑板指令协议（需求 2.1 / 2.2）。写法要和 protocol.js 的解析一致 ——
 export const PROTOCOL_DOC = doc`
 你的每一轮输出是一段文本，页面一边收一边处理：
@@ -645,7 +662,7 @@ export function docLookup(componentDocs, subject, name) {
  * memory（学习台里上课时才有）：{ mem: 记忆库各类的数组, block: 这节课的块, session: 这节课的编号 }。
  * 有记忆时多一节「你对学生的了解」，记忆库 rules 替换内置的红线；记忆先占（最多 MEMORY_BUDGET），资料包用剩下的
  */
-export function buildSystem({ rules, componentDocs, pack, board, packBudget = PACK_BUDGET, subject = '线代', tools = true, memory = null } = {}) {
+export function buildSystem({ rules, componentDocs, pack, board, packBudget = PACK_BUDGET, subject = '线代', tools = true, memory = null, plan = null, planDoc = true } = {}) {
   const custom = asText(rules) || asText(pack?.main?.rules);
   const { docs } = systemDocs(componentDocs, subject, packComponents(pack), { lookup: tools });
   const lookupNote = tools
@@ -656,12 +673,12 @@ export function buildSystem({ rules, componentDocs, pack, board, packBudget = PA
     const role = custom || (mem?.rules ? memoryRules(subject, mem.rules) : defaultRules(subject));
     const sections = [
       `你的角色和红线\n\n${role}`,
-      `组件写法和黑板指令\n\n## 组件说明\n\n下面的组件说明原本是学生写给项目对话里的 Claude 的，文中的「我」指学生。说到 guided 课件的关卡、小节结构的地方，课堂里不适用；课堂里的段落由你用黑板指令一段一段写。有的组件这里只写了最常用的写法（末尾写着「更多写法」）：照着写就行；${lookupNote}写错了页面会把那个组件的完整写法附在提醒里。资料包里点了名的组件，完整写法已经放在下面；点了名时，没点名的不常用组件只留了标题（要用就按名字取）。\n\n${docs || '（组件说明没有打包进来。只用最常见的组件：answer、steps、scene、predict，写法要保守。）'}\n\n## 黑板指令\n\n${PROTOCOL_DOC}`,
+      `组件写法和黑板指令\n\n## 组件说明\n\n下面的组件说明原本是学生写给项目对话里的 Claude 的，文中的「我」指学生。说到 guided 课件的关卡、小节结构的地方，课堂里不适用；课堂里的段落由你用黑板指令一段一段写。有的组件这里只写了最常用的写法（末尾写着「更多写法」）：照着写就行；${lookupNote}写错了页面会把那个组件的完整写法附在提醒里。资料包里点了名的组件，完整写法已经放在下面；点了名时，没点名的不常用组件只留了标题（要用就按名字取）。\n\n${docs || '（组件说明没有打包进来。只用最常见的组件：answer、steps、scene、predict，写法要保守。）'}\n\n## 黑板指令\n\n${PROTOCOL_DOC}${planDoc ? `\n\n${PLAN_DOC}` : ''}`,
       // 顺序按「一节课里多久变一次」排：组件说明、资料包几乎不变，记忆（等确认的改动）偶尔变，黑板现状每轮都变。
       // 每一轮整份重发；平台要是对重复的开头打折，不变的放前面最省
       `这节课的资料包\n\n课前由项目对话里的 Claude 准备，课中也可能更新。${memory ? '在学习台里，资料包是这节课的额外安排（推进建议、备好的题），学生的情况看后面的记忆。' : ''}\n\n${packBody}`,
       ...(memory ? [`你对学生的了解（学习台的记忆库）\n\n${mem?.text || ''}\n\n${desk}`] : []),
-      `黑板现状\n\n${boardStateText(board)}`,
+      `黑板现状\n\n${planDoc ? `${planText(plan)}\n\n` : ''}${boardStateText(board)}`,
     ];
     const NUM = ['一', '二', '三', '四', '五', '六'];
     return [
@@ -680,6 +697,37 @@ export function buildSystem({ rules, componentDocs, pack, board, packBudget = PA
   const { text: packBody } = packText(pack, Math.max(16 * 1024, Math.min(packBudget, SYSTEM_MAX - rest - 3 * 1024)));
   return parts(packBody, mem);
 }
+/** 「你上一轮写的教学计划」那一段：plan 是 latestPlan 的结果（或者直接是文字） */
+export function planText(plan) {
+  const t = typeof plan === 'string' ? plan : plan?.text || '';
+  if (!t.trim()) return '## 你的教学计划\n\n（还没写。开课时用 ˋboard planˋ 写一份：目标、你猜学生卡在哪、拿什么证实。）'.replace(/ˋ/g, '`');
+  return `## 你的教学计划（你${plan?.seq ? `第 ${plan.seq} 轮` : '之前'}写的，学生看不到；判断变了就重写一份）\n\n${t.trim()}`;
+}
+
+/**
+ * 这节课最近一份教学计划：从后往前找 Claude 写过的 plan 块（作废的轮不算）。
+ * 看整段历史（不只是压缩后剩下的），压缩了也不丢。返回 { text, seq } 或 null
+ */
+export function latestPlan(history) {
+  const said = (history || []).filter((h) => h && !h.discarded && h.role === 'claude' && h.kind !== 'closing');
+  for (let i = said.length - 1; i >= 0; i--) {
+    const { segments } = parseOutput(String(said[i].text ?? ''), { final: true });
+    const p = segments.filter((sg) => sg.type === 'board' && sg.op?.op === 'plan' && sg.op.text).at(-1);
+    if (p) return { text: p.op.text, seq: said[i].seq ?? null };
+  }
+  return null;
+}
+
+/** 对话历史里去掉 plan 块（最新的一份已经在说明里，不重复付钱） */
+export function stripPlan(text) {
+  const src = String(text ?? '');
+  if (!/board[ \t]+plan/i.test(src)) return src;
+  const { segments } = parseOutput(src, { final: true });
+  if (!segments.some((sg) => sg.type === 'board' && sg.op?.op === 'plan')) return src;
+  return segments.filter((sg) => !(sg.type === 'board' && sg.op?.op === 'plan'))
+    .map((sg) => (sg.type === 'board' ? `\`\`\`\`board ${sg.header}\n${sg.body}\n\`\`\`\`` : sg.text)).join('\n\n');
+}
+
 // 每一轮的整份说明的上限（给对话留地方；CLAUDE.md 里写的 160 KiB）
 export const SYSTEM_MAX = 160 * 1024;
 
@@ -948,6 +996,7 @@ export function buildTurns({ system, history = [], maxBytes = 262144, keepRecent
     const role = h.role === 'claude' ? 'assistant' : h.role === 'student' || h.role === 'system' ? 'user' : null;
     if (!role) continue;
     let content = String(h.text ?? '').trim();
+    if (h.role === 'claude') content = stripPlan(content).trim();
     if (old.has(h)) content = stubBoardText(content).trim();
     if (!content) continue; // sample 不收空的 content
     if (h.role === 'system' && !content.startsWith('[系统]')) content = `[系统] ${content}`;
@@ -1044,7 +1093,7 @@ export function summaryTurn(text) {
 
 // —— 下课小结（存进 class_notes，给项目对话里的 Claude 课后看）——
 // 学习台里（report：页面算好的课后报告，memory/report.js 的 reportText）：同一次调用里接着写整理单（memo 块），不多调用一次（docs/desk-plan.md 4.2）
-export function closingPrompt({ report = '', review = '' } = {}) {
+export function closingPrompt({ report = '', review = '', plan = null } = {}) {
   const base = doc`
 下课了。请写这节课的小结，给项目对话里的 Claude 课后看：它会据此判断学生掌握得怎么样、下一节从哪里接。
 
@@ -1057,8 +1106,14 @@ export function closingPrompt({ report = '', review = '' } = {}) {
 
 不写黑板指令，不对学生说话，不要说学生「已经掌握」。提到学生时写「学生」，不用「他」「她」。
 `;
-  if (!report) return base;
-  return `${base}\n\n${doc`
+  const pt = typeof plan === 'string' ? plan : plan?.text || '';
+  const withPlan = pt.trim() ? `${base}
+
+你最后写的教学计划（对照它写第 2、4 点：目标到了没有，猜的误解证实了没有）：
+
+${pt.trim()}` : base;
+  if (!report) return withPlan;
+  return `${withPlan}\n\n${doc`
 这节课在学习台里上。下面是页面按证据算好的课后报告（每道题的对错、没做完的、没交的草稿、学生说的话）。
 
 小结写完以后，接着写一个 ˋmemoˋ 块当**整理单**（写法和上课时一样，见「在学习台里上课」）：这节课新出现的错题（ˋerrorˋ）、弱点该怎么变（ˋweaknessˋ）、复现组怎么调（ˋreviewˋ）、下一节从哪接（ˋpositionˋ，一定写）、你这节课的教学失误（ˋslipˋ）。每条都写 ˋbasis=ˋ（下面报告里的组件 id 或证据 id）。等确认的那几类学生会在小结那块板上逐条点「确认 / 改 / 不要」；上课时已经记过的不用再写。整理单只写在 memo 块里，小结正文里不用重复。

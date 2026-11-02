@@ -15,12 +15,13 @@ import { getAI, errorText } from '../ai.js';
 import { getStore, isDev, assetUrl } from '../live/store.js';
 import { createSink } from '../live/sync.js';
 import { copyRecord, toast } from '../record.js';
-import { parseOutput } from './protocol.js';
+import { parseOutput, PLAN_MAX } from './protocol.js';
 import {
   buildSystem, actionText, actionsMessage, fitTurns, needsCompaction, compactionPrompt, summaryTurn, closingPrompt,
   reportable, actionTrigger, promptHistory, pendingTurn, nextSegmentId, nextPinId, bytes, PACK_BUDGET, compactionSlice, worthCompacting, draftLine,
-  lintDocs, docLookup,
+  lintDocs, docLookup, latestPlan,
 } from './prompt.js';
+import { FEATURES } from '../features.js';
 import { draftsIn } from '../drafts.js';
 import { COMPONENT_DOCS } from './docs.js';
 import { createDevTeacher } from './devteacher.js';
@@ -549,6 +550,8 @@ export async function renderClass(root, meta, desk = null) {
 
   // 执行一条黑板指令。返回 { op, id, ok, error?, ... }；画不出来的 new/add/replace/pin 记进 failures 等着重写
   function execOp(op, failures, notes) {
+    // 教学计划：不上黑板；下一轮从对话历史里取最新的一份放进说明（prompt.js 的 latestPlan）
+    if (op.op === 'plan') return { op: 'plan', ok: true, ...(op.cut ? { note: `plan 写了 ${op.cut} 个字，只留了前 ${PLAN_MAX} 个` } : {}) };
     if (op.op === 'memo') {
       if (!desk?.memo) return { op: 'memo', ok: false, error: 'memo 只在学习台里上课时能用（单独的课堂没有记忆库）' };
       turnMemos.push(...op.entries);
@@ -941,7 +944,7 @@ export async function renderClass(root, meta, desk = null) {
       }
       bv.measureFit();
       const level = Math.min(budgetLevel, 3);
-      const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(teacher.tools), board: boardState(), packBudget: PACK_BUDGET >> level, subject: session.subject, tools: teacher.tools, memory: memoryArg() });
+      const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(teacher.tools), board: boardState(), packBudget: PACK_BUDGET >> level, subject: session.subject, tools: teacher.tools, memory: memoryArg(), ...planArg() });
       const maxBytes = Math.round(promptLimit() * [1, 0.85, 0.7, 0.55][level]);
       const fit = fitTurns({ system, history: promptHistory(history), maxBytes, stub: teacher.tools });
       lastPrompt = { bytes: fit.bytes, maxBytes, keepRecent: fit.keepRecent, dropped: fit.dropped, turns: fit.turns.length, level };
@@ -1218,7 +1221,7 @@ export async function renderClass(root, meta, desk = null) {
     const t = op.title ? `「${escapeHtml(op.title)}」` : '';
     const label = op.op === 'new' ? `换一块新板${t}` : op.op === 'add' ? `在这块板上加一段${t}` : op.op === 'replace' ? `改写 ${escapeHtml(op.id || '')}${t}`
       : op.op === 'hide' ? `擦掉 ${escapeHtml(op.id || '')}` : op.op === 'pin' ? `常驻栏${t || ` ${escapeHtml(op.id || '')}`}` : op.op === 'unpin' ? `从常驻栏撤下 ${escapeHtml(op.id || '')}`
-        : op.op === 'figure' ? `让图 ${escapeHtml(op.target || '')} 动一下` : op.op === 'mark' ? `在 ${escapeHtml(op.target || '板')} 上圈一下` : op.op === 'unmark' ? '擦掉标注' : '写黑板';
+        : op.op === 'figure' ? `让图 ${escapeHtml(op.target || '')} 动一下` : op.op === 'mark' ? `在 ${escapeHtml(op.target || '板')} 上圈一下` : op.op === 'unmark' ? '擦掉标注' : op.op === 'plan' ? '想一想下一步' : op.op === 'memo' ? '记一笔' : '写黑板';
     return `<span class="class-draft-op${b.closed ? '' : ' is-writing'}">${label}</span>`;
   }
 
@@ -1236,6 +1239,12 @@ export async function renderClass(root, meta, desk = null) {
     draft.box.remove();
     draft = null;
     bv.scheduleFit();
+  }
+
+  // 教学计划（docs/learning-plan.md 第 5 节）：开关关着时说明里不提，也不带
+  function planArg() {
+    if (FEATURES.plan === false) return { planDoc: false };
+    return { planDoc: true, plan: latestPlan(history) };
   }
 
   // 学习台里：每一轮带着的记忆（页面一直订阅着记忆库，拼摘要在 prompt.js）
@@ -1516,8 +1525,8 @@ export async function renderClass(root, meta, desk = null) {
       const steps = () => [...segs.values()].map((x) => ({ id: x.id, page: x.page, title: x.title || x.sec?.querySelector('h2')?.textContent?.trim() || '', place: x.place, md: x.md, seq: x.seq, ...(x.point ? { point: x.point } : {}), ...(x.failed ? { failed: true } : {}) }));
       // 学习台里：先用代码算一份课后报告放进这次的输入，小结和整理单同一次写（docs/desk-plan.md 4.2，不多调用一次）
       const report = desk?.makeReport ? await desk.makeReport({ turns: history, steps: steps() }).then(reportText, () => '') : '';
-      const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(false), board: boardState(), subject: session.subject, memory: memoryArg() });
-      const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review }) }], maxBytes: promptLimit(), stub: teacher.tools });
+      const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(false), board: boardState(), subject: session.subject, memory: memoryArg(), ...planArg() });
+      const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review, plan: FEATURES.plan === false ? null : latestPlan(history) }) }], maxBytes: promptLimit(), stub: teacher.tools });
       const cost = (why) => callCost({ bytes: fit.bytes, why });
       let res;
       try {
