@@ -1,0 +1,20 @@
+抱歉，是我写的那段没显示出来，已经重写了。这题是 $\boldsymbol\alpha=(2,-1)^{\mathrm T}$，$\boldsymbol\beta=(1,4)^{\mathrm T}$。
+
+````board replace id=b7 title="换一组数"
+```key
+$1\times1$ 的矩阵 $[\,5\,]$ 和数 $5$ 当成一回事：乘别的矩阵时，就是数乘。
+```
+
+```answer
+id: q-k2
+title: 不乘矩阵，求倍数
+let u = [2, -1]
+let v = [1, 4]
+let B = u*v'
+q: $\boldsymbol\alpha=\begin{bmatrix}2\\-1\end{bmatrix}$，$\boldsymbol\beta=\begin{bmatrix}1\\4\end{bmatrix}$，$B=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}=\calc{B}$。不算 $B\cdot B$，直接写出 $B^2=kB$ 里的 $k$。
+answer: v'*u
+before: k =
+hint: $k$ 就是那个 $1\times1$ 的：$\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$，行乘列。
+explain: $k=\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=\calc{v'*u}$，所以 $B^2=\calc{v'*u}B=\calc{B^2}$。
+```
+````

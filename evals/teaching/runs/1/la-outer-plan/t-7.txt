@@ -1,0 +1,22 @@
+你的理由对：外面是 1 和 1，所以是 1×1。光选还不够踏实，我们直接把 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 算出来，看它到底是不是一个数。
+
+````board new id=b6 title="算出 βᵀα"
+```let
+a = [1, 3]
+b = [2, 1]
+A = a*b'
+```
+
+$\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=\begin{bmatrix}2&1\end{bmatrix}\begin{bmatrix}1\\3\end{bmatrix}$：一行乘一列，对应相乘再相加。
+
+```answer
+id: q-b6
+title: 算 βᵀα
+q: $\boldsymbol\alpha=(1,3)^{\mathrm T}$，$\boldsymbol\beta=(2,1)^{\mathrm T}$，计算 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$。
+answer: b'*a
+before: \boldsymbol\beta^{\mathrm T}\boldsymbol\alpha =
+hint: $2\cdot1+1\cdot3$。
+```
+````
+
+算出来以后，看看这个数在前面哪里出现过。

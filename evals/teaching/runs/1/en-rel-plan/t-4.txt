@@ -1,0 +1,21 @@
+你选的那一项是对的：北京本身已经明确，从句只是补充。页面又判成了错，是选择题这个写法在出问题，不是你的问题；下面改成直接填词。
+
+````board plan
+目标：学生知道非限制性定语从句（逗号后）不能用 that，能在长难句里认出、填对 which / who
+猜：「挑人 vs 补充」已经接住（b3 选对、有把握）；选择题判分一直出错，改用填空题
+证实：逗号后填关系词，看学生会不会填 that；填 that 就讲规则，填 which 就追问能不能换成 that
+````
+
+````board pin id=k1 title="逗号的意思"
+无逗号 = 限制性：**挑出**是哪个
+有逗号 = 非限制性：**补充**一句，去掉仍指同一个
+````
+
+````board new id=b4 title="逗号后填什么"
+```quiz
+id: q-b4
+q: 填一个关系词（只填一个词）：*The Yangtze River, \_\_\_\_\_ flows through eleven provinces, is the longest river in China.*
+answer: which
+explain: 逗号隔开、补充说明长江（长江只有一条），是非限制性定语从句；先行词是物，用 **which**。这里**不能用 that**：that 只引导限制性定语从句，不能放在逗号后面。
+```
+````

@@ -1,0 +1,19 @@
+这次填了 that，而且你很有把握。先别急着看规则，说一句你当时是怎么判断的，我好知道该从哪儿讲。
+
+````board new id=b5 title="that 能放逗号后吗"
+```steps
+id: ex-that
+title: 逗号后的 that
+q: *The Yangtze River, \_\_\_\_\_ flows through eleven provinces, is the longest river in China.*
+
+step: 你的判断
+ask: 你填 that 的理由是什么？一句话就行（比如「先行词是物，that 和 which 都行」）。
+show: 先行词是物，在**限制性**定语从句里 that 和 which 确实常常都行。但这里有逗号，是**非限制性**定语从句：**that 不能放在逗号后面**，物只能用 which，人用 who。
+
+step: 换个先行词
+ask: *My mother, \_\_\_\_\_ works in a hospital, gets up at six every day.* 空里填什么？
+choices: who | that | which
+answer: who
+show: 逗号隔开、补充说明「我妈妈」（只有一个），是非限制性；先行词是人，用 **who**，不能用 that。
+```
+````

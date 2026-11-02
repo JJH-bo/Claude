@@ -1,0 +1,18 @@
+解析你已经看过了，又标了「没把握」，那我们换一对句子再验一次。这回问的是反过来的情况。
+
+````board new id=b2 title="谁都及格了？"
+**A.** The students who passed the exam went home early.
+
+**B.** The students, who passed the exam, went home early.
+
+```quiz
+id: q-b2
+q: 哪一句说的是：**所有**学生都及格了，而且都早早回家了？
+- [ ] A（没有逗号）
+- [x] B（有逗号）
+- [ ] 两句都是这个意思
+explain: B 的逗号把 who passed the exam 隔开，只是顺带补充一句「他们都及格了」，说的是全体学生。A 没有逗号，who passed the exam 在**挑人**：只有及格的那部分学生早回家，没及格的还在。
+```
+````
+
+先想清楚「挑人」还是「补充」，再选。

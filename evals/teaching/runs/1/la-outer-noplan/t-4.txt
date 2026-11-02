@@ -1,0 +1,9 @@
+第一步写对了，$\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$ 就是 $A^2$。往下化的线索在形状上：矩阵乘法可以随便加括号，挑哪两个相邻的先乘都行。
+
+````board add id=b4 title="提示：看形状"
+$$\underbrace{\boldsymbol\alpha}_{2\times1}\;\underbrace{\boldsymbol\beta^{\mathrm T}}_{1\times2}\;\underbrace{\boldsymbol\alpha}_{2\times1}\;\underbrace{\boldsymbol\beta^{\mathrm T}}_{1\times2}$$
+
+相邻的两个乘起来，哪一对乘出来最「小」？
+````
+
+带着这个想法，把第 2 步的选项选一下。

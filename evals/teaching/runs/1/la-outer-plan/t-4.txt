@@ -1,0 +1,32 @@
+对，每多乘一个 $A$ 就多一个因子 5。现在的问题是：这个 5 是从哪来的？回到 $A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$ 看。
+
+````board new id=b4 title="5 从哪来"
+```let
+a = [1, 3]
+b = [2, 1]
+A = a*b'
+```
+
+```steps
+id: ex-b4
+title: 拆开 A²
+q: $\boldsymbol\alpha=(1,3)^{\mathrm T}$，$\boldsymbol\beta=(2,1)^{\mathrm T}$，$A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$。看 $A^2$ 里的 5 是怎么出来的。
+
+step: 写成四个因子
+ask: 不算数，$A^2$ 用 $\boldsymbol\alpha$、$\boldsymbol\beta$ 怎么写？
+show: $A^2=(\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})(\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})=\boldsymbol\alpha\,\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha\,\boldsymbol\beta^{\mathrm T}$
+
+step: 换个括号
+ask: 按结合律，中间的 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 可以先乘。它乘出来是什么形状？
+choices: 一个数（1×1） | 一个 2×2 矩阵 | 一个 1×2 行向量
+answer: 一个数（1×1）
+show: $A^2=\boldsymbol\alpha\,(\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)\,\boldsymbol\beta^{\mathrm T}$，$\boldsymbol\beta^{\mathrm T}$ 是 1×2、$\boldsymbol\alpha$ 是 2×1，乘出来 1×1，就是一个数。
+
+step: 算出这个数
+do: true
+ask: $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 等于多少？
+answer: b'*a
+```
+````
+
+一步一步来：先在每一步写下你的想法，再揭开。

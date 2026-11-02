@@ -1,0 +1,19 @@
+that 在**没逗号**的从句里确实很常用，但它有一个限制：只能引导限制性定语从句。逗号一出现，就只能用 which（指物）/ who（指人）。所以上一题只有 which 对。
+
+````board pin id=k1 title="两种定语从句"
+- 没逗号＝限制性（restrictive）：**挑出**是哪一个，可以用 that
+- 有逗号＝非限制性（non-restrictive）：只**补充**一句，**不能用 that**，用 which / who
+````
+
+````board new id=b3 title="换成人试一次"
+My mother, \_\_\_\_\_ has taught English for thirty years, still reads a novel every week.
+
+```quiz
+id: q-b3
+q: 空里填哪个词？
+- [x] who
+- [ ] that
+- [ ] which
+explain: 逗号隔开、先行词 my mother 是人，非限制性只能用 who；that 不能跟在逗号后面，which 指物。
+```
+````

@@ -1,0 +1,17 @@
+who 是对的（页面又判错了，是题目设置的问题）。你问为什么 that 不行，这个问得好，看下面这两行，再做一道检验。
+
+````board new id=b4 title="为什么 that 不行"
+- that 的本职就是**挑出**：the brother **that** lives in Shanghai ＝ 好几个里的那一个
+- 逗号的意思是**已经知道是谁了**，只是顺便补一句：my mother**,** who … ＝ 只有一个妈妈，不用挑
+
+一个要挑，一个说不用挑，放在一起就矛盾了，所以逗号后面不跟 that。
+
+```quiz
+id: q-b4
+q: 下面哪一句**有错**？
+- [ ] The man that lives next door is a doctor.
+- [x] My father, that is a doctor, works very hard.
+- [ ] My father, who is a doctor, works very hard.
+explain: 第二句逗号后面用了 that；只有一个父亲，不用挑出，应改成 who。第一句没逗号，是限制性的，that 没问题。
+```
+````

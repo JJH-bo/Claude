@@ -1,0 +1,24 @@
+不是巧合，这两个 5 就是同一个数。为什么能提出来，靠两条规则，一行一行看。
+
+````board new id=b6 title="为什么能提出来"
+```derive
+id: d-a2
+title: A² 一行一行化
+A^2 = (\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})(\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})
+    = \boldsymbol\alpha\,(\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)\,\boldsymbol\beta^{\mathrm T}   // 结合律：只换括号，四个因子的**顺序没动**
+    = \boldsymbol\alpha\,\calc{b'*a}\,\boldsymbol\beta^{\mathrm T}   // $1\times1$ 的矩阵就是一个数
+    = \calc{b'*a}\,\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}   // 数乘矩阵就是每个元素都乘它，写在前面后面都一样
+    = \calc{b'*a}A
+```
+
+```quiz
+id: q-why
+q: 第 3 行到第 4 行，能把 $\calc{b'*a}$ 挪到最前面，是因为：
+- [ ] 矩阵乘法可以交换顺序
+- [x] $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 是一个数，数乘可以写在任何位置
+- [ ] $\boldsymbol\alpha$ 和 $\boldsymbol\beta$ 正好垂直
+explain: 矩阵一般不能交换（$\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$ 和 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 连形状都不同），能挪的只有数。
+```
+````
+
+点「下一行」看完，再选一下。

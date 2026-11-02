@@ -1,0 +1,23 @@
+你以前的想法没错：$\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 确实是矩阵，只不过是 $1\times1$ 的，只有一个元素，所以当数用。换一组数，自己走一遍。
+
+````board new id=b7 title="换一组数"
+```let
+p = [2, -1]
+q = [1, 4]
+B = p*q'
+```
+
+```key
+$1\times1$ 的矩阵 $[\,5\,]$ 和数 $5$ 当成一回事：乘别的矩阵时，就是数乘。
+```
+
+```answer
+id: q-k2
+title: 不乘矩阵，求倍数
+q: $\boldsymbol\alpha=\calc{p}$，$\boldsymbol\beta=\calc{q}$，$B=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}=\calc{B}$。不算 $B\cdot B$，直接写出 $B^2=kB$ 里的 $k$。
+answer: q'*p
+before: k =
+hint: $k$ 就是那个 $1\times1$ 的：$\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$，行乘列。
+explain: $k=\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=\calc{q'*p}$，所以 $B^2=\calc{q'*p}B=\calc{B^2}$。
+```
+````

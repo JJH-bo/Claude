@@ -1,0 +1,15 @@
+2×2 的是 $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$（就是 $A$）。顺序反过来，形状就不一样了：乘积的形状看两头。
+
+````board add id=b5 title="顺序一换，形状就变"
+$(m\times n)(n\times p)\to m\times p$：中间的 $n$ 对上就消掉，留下两头。
+
+$$\underbrace{\boldsymbol\alpha}_{2\times1}\underbrace{\boldsymbol\beta^{\mathrm T}}_{1\times2}\to 2\times2\qquad \underbrace{\boldsymbol\beta^{\mathrm T}}_{1\times2}\underbrace{\boldsymbol\alpha}_{2\times1}\to\ ?$$
+
+```answer
+id: q-bta
+title: 用数算一下
+q: 用 $\boldsymbol\beta=\calc{b}$、$\boldsymbol\alpha=\calc{a}$ 算 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$。
+answer: b'*a
+before: \boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=\calc{b'}\calc{a}=
+```
+````
