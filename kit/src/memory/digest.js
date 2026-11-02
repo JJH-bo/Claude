@@ -21,7 +21,7 @@ const cmpId = (a, b) => String(a).localeCompare(String(b), undefined, { numeric:
 const blockOf = (id) => String(id || '').split('#')[0];
 const sectionOf = (id) => blockOf(id).split('.').slice(0, 2).join('.');
 export const RULES_SHARE = 0.6;
-export const LESSONS_SHARE = 0.2;
+export const LESSONS_SHARE = 0.35; // 一科最多 20 条守则，一条四五百字节：要全文放得下
 export const CATALOG_MAX = 7 * 1024;
 const ERRORS_FULL = 8; // 相关的错题最多带几条原文（这一块的、最新的在前），其余进目录
 const SLIPS_FULL = 6;
