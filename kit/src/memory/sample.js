@@ -46,6 +46,9 @@ export function sampleMemory(today) {
     slips: [
       { id: 'S-1-1', by: 'chat', date: d(-6), text: '一次写了五块板，没等我答就往下讲。', lesson: '一块板一件事，等作答再写下一块。' },
     ],
+    lessons: [
+      { id: 'T-1', text: '出一组练习之前，逐题列出要用到的规则，没讲过的先讲完；讲不了的那题不出。', why: '边讲边出题，学生撞墙后才补规则', topic: '出题', slips: [], hits: 2, since: d(-6), last: d(-2), status: 'active', log: [] },
+    ],
   };
 }
 

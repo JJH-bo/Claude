@@ -20,7 +20,7 @@ import { createManualForm } from './manual.js';
 import { usageText } from '../class/usage.js';
 import { createMemOps } from './memops.js';
 import { createMemoView } from './memoview.js';
-import { resolvedErrors, voidedIds } from './memo.js';
+import { resolvedErrors, voidedIds, activeLessons } from './memo.js';
 import { createPages } from './pages.js';
 import { reviewPack, handoffText, deskBrief, briefId } from './views.js';
 import { readOnlyDb } from './session.js';
@@ -260,7 +260,7 @@ export async function renderDesk(root, meta) {
     box.querySelector('.dk-body').innerHTML = `
       ${lastOpen ? `<p class="dk-warn">上一节的整理单还有 ${lastOpen} 条没确认：<a class="dk-link" href="#classes/${escapeHtml(last.id)}">去看那节课</a> 或者在下面「待确认」里点。</p>` : openPd.length ? `<p><a class="dk-link dk-to-pending" href="#">待确认 ${openPd.length} 条 ↓</a></p>` : ''}
       ${last ? `<p class="dk-last"><span class="dk-k">上一节</span>${escapeHtml(last.id)}${last.block ? `（${escapeHtml(last.block)}）` : ''}${lastLine ? `<span class="muted">：${escapeHtml(lastLine)}</span>` : ''}</p>` : ''}
-      ${opens.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || x.id)}${x.block ? `<span class="muted">（${escapeHtml(x.block)}）</span>` : ''}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button></div>`; }).join('')}
+      ${opens.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || x.id)}${x.block ? `<span class="muted">（${escapeHtml(x.block)}）</span>` : ''}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button></div>`; }).join('')}
       <div class="dk-next">${main ? `<p><span class="dk-k">备好的课</span>${inline(main.unit || '（资料包没写 unit）')}${block ? `<span class="muted">（${escapeHtml(block)}）</span>` : ''}${main.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>${main.goal ? `<p class="dk-goal muted" title="点一下看全文">${inline(main.goal)}</p>` : ''}`
         : `<p class="muted">${SPACES[space].label}还没有备好的课：在下面选一块，让 Claude 备课（也可以直接开课：课堂里的 Claude 带着记忆，但没有这节课的安排）。</p>`}
         ${blocksHere.length ? planner.prepHtml({ suggested: main?.block || suggestBlock(blocksHere, mine.position.find((d) => d.id === positionId(space))), blocks: blocksHere, main, busy: prepBusy, msg: prepMsg }) : ''}
@@ -274,13 +274,27 @@ export async function renderDesk(root, meta) {
       try { await navigator.clipboard.writeText(text); toast('复制好了，去对话里粘贴'); } catch { prompt('没能自动复制，长按全选后复制：', text); }
     });
     box.querySelectorAll('.dk-go').forEach((b) => b.addEventListener('click', (e) => goto(e.currentTarget.dataset.sid)));
+    // 挂着没下课的旧课：直接结束（不写小结、不调用 Claude），课后报告由 fixReports 用代码补上，证据就有了归处
+    box.querySelectorAll('.dk-close').forEach((b) => b.addEventListener('click', async (e) => {
+      const sid = e.currentTarget.dataset.sid;
+      if (!confirm(`直接结束 ${sid}？不写小结、不调用 Claude，页面按证据算课后报告。`)) return;
+      e.currentTarget.disabled = true;
+      try {
+        assertWrite('page', 'sessions');
+        const cur = await db.doc(`sessions/${sid}`).get().then((x) => (x.exists ? x.data() : null));
+        if (!cur) throw new Error('找不到这节课');
+        await db.doc(`sessions/${sid}`).set({ ...cur, status: 'closed', endedAt: cur.endedAt || Date.now(), closedBy: 'me' });
+        toast(`${sid} 下课了，课后报告马上补上`);
+      } catch (err) { toast(`没结束成：${err?.message || err}`); e.currentTarget.disabled = false; }
+    }));
     box.querySelector('.dk-prep-go')?.addEventListener('click', async () => {
       const id = box.querySelector('.dk-prep-block').value;
+      const pages = box.querySelector('.dk-prep-pages')?.value || '';
       if (pack.main && !confirm(`重新备课会换掉现在备好的「${pack.main.unit || ''}」，接着？`)) return;
       prepBusy = true;
       prepMsg = '开始备课…';
       paintClass();
-      try { await planner.prep(id, { onStep: (m) => { prepMsg = m; paintClass(); } }); prepMsg = '备好了：看一眼推进计划，没问题就开新课'; }
+      try { await planner.prep(id, { pages, onStep: (m) => { prepMsg = m; paintClass(); } }); prepMsg = '备好了：看一眼教案，没问题就开新课'; }
       catch (err) { prepMsg = `没备成：${err?.message || err?.code || err}`; }
       prepBusy = false;
       paintClass();
@@ -323,7 +337,10 @@ export async function renderDesk(root, meta) {
     const mine = sv();
     const errs = mine.errors.filter((e) => !e.corrects && !gone.has(`errors/${e.id}`) && !solved.has(String(e.id))).sort((a, b) => cmpId(a.id, b.id));
     const revs = mine.reviews.filter((r) => !gone.has(`reviews/${r.id}`) && r.status !== 'done').sort((a, b) => cmpId(a.id, b.id));
+    // 教学守则（这一科和不分科的）：课堂里的 Claude 下课时把失误归纳进来；我能改说法、不要某一条
+    const lessons = activeLessons(data.lessons || [], space).sort((a, b) => (Number(b.hits) || 1) - (Number(a.hits) || 1) || cmpId(a.id, b.id));
     box.innerHTML = `
+      <div class="dk-memo-sub" role="heading" aria-level="3">教学守则（老师的失误归纳出来的，${lessons.length} 条）</div>${lessons.map((l) => `<div class="dk-edit-row" data-id="${escapeHtml(l.id)}"><span><b>${escapeHtml(l.id)}</b> ${inline(l.text)}${(Number(l.hits) || 1) > 1 ? `<span class="muted">（犯过 ${Number(l.hits)} 次）</span>` : ''}</span><button type="button" class="btn btn-sm dk-lesson">改</button><button type="button" class="btn btn-sm dk-lesson-x">不用了</button></div>`).join('') || '<p class="muted">还没有：下课时课堂里的 Claude 会把这节课的失误归纳成守则。</p>'}
       <div class="dk-memo-sub" role="heading" aria-level="3">关于我（讲法、习惯……）</div>${prefs.map((p) => `<div class="dk-edit-row" data-id="${escapeHtml(p.id)}"><span><span class="dk-k">${escapeHtml(p.topic || '')}</span>${inline(p.text)}</span><button type="button" class="btn btn-sm dk-pref">改</button></div>`).join('') || '<p class="muted">还没有。</p>'}
       <div class="dk-memo-sub" role="heading" aria-level="3">没解决的错题</div>${errs.map((e) => `<div class="dk-edit-row" data-id="${escapeHtml(e.id)}"><span><b>${escapeHtml(e.id)}</b> ${inline(String(e.cause || e.q || '').slice(0, 80))}</span><button type="button" class="btn btn-sm dk-solve">已解决</button></div>`).join('') || '<p class="muted">没有。</p>'}
       <div class="dk-memo-sub" role="heading" aria-level="3">复现组</div>${revs.map((r) => `<div class="dk-edit-row" data-id="${escapeHtml(r.id)}"><span><b>${escapeHtml(r.id)}</b> ${inline(r.title)}${r.status === 'paused' ? '<span class="muted">（暂停了）</span>' : ''}</span><button type="button" class="btn btn-sm dk-pause">${r.status === 'paused' ? '恢复' : '暂停'}</button></div>`).join('') || '<p class="muted">没有。</p>'}`;
@@ -342,7 +359,13 @@ export async function renderDesk(root, meta) {
       row.innerHTML = `<label class="mm-f" style="flex:1"><span>${escapeHtml(p?.topic || '')}</span><textarea rows="2">${escapeHtml(p?.text || '')}</textarea></label><button type="button" class="btn btn-sm btn-primary dk-pref-save">保存</button><button type="button" class="btn btn-sm dk-pref-x">算了</button>`;
       row.querySelector('textarea').focus();
     } else if (b.classList.contains('dk-pref-save')) await run('pref', { text: row.querySelector('textarea').value }, '改好了（7 天内能撤）').then(() => paintMine());
-    else if (b.classList.contains('dk-pref-x')) { row.innerHTML = ''; paintMine(); }
+    else if (b.classList.contains('dk-pref-x') || b.classList.contains('dk-lesson-cancel')) { row.innerHTML = ''; paintMine(); }
+    else if (b.classList.contains('dk-lesson')) {
+      const l = (data.lessons || []).find((x) => x.id === id);
+      row.innerHTML = `<label class="mm-f" style="flex:1"><span>${escapeHtml(id)}</span><textarea rows="3">${escapeHtml(l?.text || '')}</textarea></label><button type="button" class="btn btn-sm btn-primary dk-lesson-save">保存</button><button type="button" class="btn btn-sm dk-lesson-cancel">算了</button>`;
+      row.querySelector('textarea').focus();
+    } else if (b.classList.contains('dk-lesson-save')) await run('lesson', { text: row.querySelector('textarea').value }, '改好了（7 天内能撤）').then(() => paintMine());
+    else if (b.classList.contains('dk-lesson-x')) { if (confirm(`${id} 不用了？（7 天内能撤）`)) await run('lesson-retire', {}, `${id} 不用了`); }
     else if (b.classList.contains('dk-solve')) { if (confirm(`把 ${id} 标成已解决？（原条不动，加一条更正）`)) await run('resolve', {}, `${id} 标了已解决`); }
     else if (b.classList.contains('dk-pause')) await run(b.textContent === '暂停' ? 'pause' : 'resume', {}, b.textContent === '暂停' ? `${id} 暂停了，不算到期` : `${id} 恢复了`);
   });

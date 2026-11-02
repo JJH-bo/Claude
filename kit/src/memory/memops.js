@@ -46,6 +46,8 @@ export function createMemOps({ db, mem }) {
       const ch = planEntry(e, { mem: local, evidence, session, block, date });
       if (ch.error) { rejected.push({ line: e.line, error: ch.error }); continue; }
       if (ch.op === 'add') local[ch.coll] = [...(local[ch.coll] || []), { id: ch.target, ...(ch.data || {}) }];
+      // 同一块里对同一条改两次（守则又犯两次）：第二条要看到第一条改过的
+      else if (ch.tier === 'direct') local[ch.coll] = (local[ch.coll] || []).map((d) => (String(d.id) === String(ch.target) ? { ...d, ...(ch.patch || {}) } : d));
       let pd = pendingRecord(ch, { session, turn, by: 'class', line: e.line });
       if (!e.attrs.id && NEXT[ch.coll]) pd.autoId = true;
       try {

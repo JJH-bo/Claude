@@ -15,7 +15,7 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
 // —— 分类和谁能写 ——
 
 test('需求第 2 节的十二类都在（加上 desk-plan 4.1 的改动单），每类的写入方照表', () => {
-  assert.deepEqual(MEMORY_COLLECTIONS.sort(), ['curriculum', 'errors', 'evidence', 'mastery', 'observations', 'pending', 'position', 'profile', 'reviews', 'rules', 'sessions', 'slips', 'weaknesses'].sort());
+  assert.deepEqual(MEMORY_COLLECTIONS.sort(), ['curriculum', 'errors', 'evidence', 'mastery', 'observations', 'pending', 'position', 'profile', 'reviews', 'rules', 'sessions', 'slips', 'weaknesses', 'lessons'].sort());
   // 掌握、规则、课程地图只有对话里的 Claude 写；错题、弱点、复现组、位置多了「我确认」这条路（me）；偏好课堂里的 Claude 能直接写
   for (const c of ['rules', 'mastery']) assert.deepEqual(COLLECTIONS[c].writers, ['chat'], c);
   // 课程地图：学习台上「挂课程地图」我确认了的，页面替我写（docs/textbook-plan.md）

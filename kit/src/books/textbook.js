@@ -77,14 +77,32 @@ export function searchChunks(chunks = [], query = '', { limit = 8, book = '' } =
   });
 }
 
-/** 按编号取几条（textbook_read）：一次最多 max 字节，放不下的写在 more 里 */
-export function readChunks(chunks = [], books = [], ids = [], { max = 24 * 1024 } = {}) {
-  const want = [...new Set((Array.isArray(ids) ? ids : String(ids).split(/[,，\s]+/)).map((x) => String(x).trim()).filter(Boolean))].slice(0, 12);
-  const out = [];
+/** 按编号、范围或书页取（textbook_read）：一次最多 max 字节，放不下的写在 more 里 */
+export function readChunks(chunks = [], books = [], ids = [], { max = 48 * 1024, pages = '', book = '' } = {}) {
+  // 一次取够（每取一次课堂要多跑一整轮：2026-11-02 一节课取了 21 次，一次一两条）：
+  // 编号可以写范围「B1-10.1~B1-17.3」（按书里的顺序，含两头），也可以按书页取「10-17」
+  const order = [...chunks].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+  const raw = (Array.isArray(ids) ? ids : String(ids || '').split(/[,，\s]+/)).map((x) => String(x).trim()).filter(Boolean);
+  const want = [];
   const missing = [];
+  for (const r of raw) {
+    const m = r.split(/\s*[~～]\s*/);
+    if (m.length === 2) {
+      const a = order.findIndex((c) => c.id === m[0]);
+      const b = order.findIndex((c) => c.id === m[1]);
+      if (a < 0 || b < a) { missing.push(r); continue; }
+      want.push(...order.slice(a, b + 1).map((c) => c.id));
+    } else want.push(r);
+  }
+  const pm = String(pages || '').trim().match(/^(\d{1,4})(?:\s*[-~～—–到]\s*(\d{1,4}))?$/);
+  if (pm) {
+    const lo = Number(pm[1]), hi = Number(pm[2] ?? pm[1]);
+    want.push(...order.filter((c) => (!book || c.book === book) && Number(c.page) <= Math.max(lo, hi) && Number(c.pageEnd ?? c.page) >= Math.min(lo, hi)).map((c) => c.id));
+  }
+  const out = [];
   const more = [];
   let used = 0;
-  for (const id of want) {
+  for (const id of [...new Set(want)].slice(0, 80)) {
     const c = chunks.find((x) => x.id === id);
     if (!c) { missing.push(id); continue; }
     const t = chunkText(c, books.find((b) => b.id === c.book));
@@ -122,7 +140,7 @@ export function textbookForClass({ main = null, block = null, books = [], chunks
   const around = mine.map((c) => c.id);
   const cat = bookCatalog(books, chunks, { around: around.length ? around : null, max: 6 * 1024 });
   const how = tools
-    ? '上面没放全文的条目，用 textbook_read 按编号取（ids 一次写几条）；不知道在哪就用 textbook_search 按词找（比如「伴随矩阵」「克拉默」）；要核对转写、照原页讲，用 textbook_page 看那条的原页图，或者用 image 组件把原页贴上黑板（name 写条目编号）。每用一次工具要多等一整轮，挑准了再取。'
+    ? '上面没放全文的条目，用 textbook_read 取：ids 写编号，连着的一串写范围「B1-10.1~B1-17.3」，或者 pages 写书页「10-17」——**要讲一整节就一次取一整节**，不要一条一条取；不知道在哪就用 textbook_search 按词找（比如「伴随矩阵」「克拉默」）；要核对转写、照原页讲，用 textbook_page 看那条的原页图，或者用 image 组件把原页贴上黑板（name 写条目编号）。每用一次工具要多等一整轮，挑准了再取。'
     : '这个查看方式不能用工具：目录里的条目取不了全文。';
   const images = mine.flatMap((c) => (Array.isArray(c.img) ? c.img.slice(0, 2) : []).map((id, i) => ({ name: i ? `${c.id}-${i + 1}` : c.id, id, title: `${c.title}（原页${c.page ? ` p.${c.page}` : ''}）` }))).slice(0, 16);
   return { textbook: full.join('\n\n'), catalog: cat ? `${cat}\n\n${how}` : '', images };

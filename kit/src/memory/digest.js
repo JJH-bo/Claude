@@ -7,7 +7,7 @@
 // 规则最多占全文预算的 RULES_SHARE（红线、掌握、检验、讲解在前），放不下的进目录：真实的记忆库里规则有十几 KB，
 // 不限的话全被规则占满（2026-10-29 用真数据量出来的）。目录有自己的上限 CATALOG_MAX，太长时远处的错题、掌握收成按块的编号。
 // 撤销了的（status: void、有一条作废的更正指向它）不带；学生标了已解决的错题注明；还在等学生确认的改动单列出来，免得它再提一遍。
-import { voidedIds, resolvedErrors, pendingTitle } from './memo.js';
+import { voidedIds, resolvedErrors, pendingTitle, absorbedSlips } from './memo.js';
 import { filterSpace, spaceOfId, positionId, sharedFor } from './space.js';
 import { dueList, toDate } from './schema.js';
 
@@ -21,6 +21,7 @@ const cmpId = (a, b) => String(a).localeCompare(String(b), undefined, { numeric:
 const blockOf = (id) => String(id || '').split('#')[0];
 const sectionOf = (id) => blockOf(id).split('.').slice(0, 2).join('.');
 export const RULES_SHARE = 0.6;
+export const LESSONS_SHARE = 0.2;
 export const CATALOG_MAX = 7 * 1024;
 const ERRORS_FULL = 8; // 相关的错题最多带几条原文（这一块的、最新的在前），其余进目录
 const SLIPS_FULL = 6;
@@ -51,7 +52,7 @@ export function nearBlocks(curriculum, block) {
 export function classView(mem0 = {}, { block = '', forClass = true, space: sp = '' } = {}) {
   const space = sp || spaceOfId(block || (mem0.position || []).find((d) => d?.id === 'now')?.block);
   const mem = filterSpace(mem0, space);
-  for (const c of ['rules', 'profile', 'slips']) mem[c] = sharedFor(mem[c], space);
+  for (const c of ['rules', 'profile', 'slips', 'lessons']) mem[c] = sharedFor(mem[c], space);
   if (forClass) mem.rules = (mem.rules || []).filter((r) => r?.for !== 'chat');
   const gone = voidedIds(mem);
   const solved = resolvedErrors(mem);
@@ -91,6 +92,9 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   const sections = [];
   const rules = get('rules').filter((r) => r.status !== 'void').sort((a, b) => ruleRank(a) - ruleRank(b) || cmpId(a.id, b.id));
   sections.push({ coll: 'rules', share: RULES_SHARE, items: rules.map((r) => ({ key: `rules/${r.id}`, text: ruleLine(r) })) });
+  // 教学守则（以前的失误归纳出来的）紧跟规则：它们就是这位老师自己定下的做法。又犯得多的在前
+  const lessons = get('lessons').filter((l) => (l.status || 'active') === 'active').sort((a, b) => (Number(b.hits) || 1) - (Number(a.hits) || 1) || byDate('last')(a, b));
+  sections.push({ coll: 'lessons', share: LESSONS_SHARE, head: '## 教学守则（两个 Claude 以前的教学失误归纳出来的，每条都要做到；又犯得多的在前）', items: lessons.map((l) => ({ key: `lessons/${l.id}`, text: `- ${l.id} ${l.topic ? `［${one(l.topic, 10)}］` : ''}${one(l.text, 400)}${(Number(l.hits) || 1) > 1 ? `（犯过 ${l.hits} 次${l.last ? `，最近 ${l.last}` : ''}${Array.isArray(l.recent) && l.recent.length ? `：${one(l.recent.at(-1), 80)}` : ''}）` : ''}` })) });
   sections.push({ coll: 'profile', head: '## 学生（profile）', items: get('profile').map((p) => ({ key: `profile/${p.id}`, text: `- ${p.topic ? `${one(p.topic, 30)}：` : ''}${one(p.text, 600)}` })) });
   // 上一节停在哪：很短、每节课开头都要用
   if (position) {
@@ -146,8 +150,10 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   const relM = get('mastery').filter((m) => nearIds.has(blockOf(m.block || m.id)))
     .sort((a, b) => (blockOf(a.id) === here ? 0 : 1) - (blockOf(b.id) === here ? 0 : 1) || cmpId(a.id, b.id));
   sections.push({ coll: 'mastery', head: '## 掌握状态（mastery，只读：你不能宣布掌握）', items: relM.map((m) => ({ key: `mastery/${m.id}`, text: `- ${m.id}：${m.state}${m.state === '复现通过' && m.tier ? `（第 ${m.tier} 天那档）` : ''}` })) });
-  const slips = get('slips').sort(byDate('date'));
-  sections.push({ coll: 'slips', head: '## 别再犯（两个 Claude 以前的教学失误，最近的在前）', limit: SLIPS_FULL, items: slips.map((s) => ({ key: `slips/${s.id}`, text: `- ${s.date || ''}（${s.by === 'class' ? '课堂里的 Claude' : '对话里的 Claude'}）${one(s.text, 300)}${s.lesson ? ` → ${one(s.lesson, 200)}` : ''}` })) });
+  // 失误：已经归纳进守则的不再带（守则里有了），只带还没归纳的，最近的在前
+  const absorbed = absorbedSlips(mem.lessons);
+  const slips = get('slips').filter((s) => !absorbed.has(String(s.id))).sort(byDate('date'));
+  sections.push({ coll: 'slips', head: '## 还没归纳进守则的教学失误（最近的在前；下课时并进守则）', limit: SLIPS_FULL, items: slips.map((s) => ({ key: `slips/${s.id}`, text: `- ${s.id}（${s.date || ''}，${s.by === 'class' ? '课堂里的 Claude' : '对话里的 Claude'}）${one(s.text, 300)}${s.lesson ? ` → ${one(s.lesson, 200)}` : ''}` })) });
   // 还在等学生确认的改动（memo 写的错题、弱点、复现组、位置）：已经提过了，别再提
   const open = (Array.isArray(mem.pending) ? mem.pending : []).filter((p) => p && p.status === 'open').sort((a, b) => (a.at || 0) - (b.at || 0));
   sections.push({ coll: 'pending', head: '## 已经提了、等学生确认的改动（不用再提）', items: open.map((p) => ({ text: `- ${one(pendingTitle(p), 160)}` })) });
@@ -250,8 +256,11 @@ export function memoryCatalog(view, { shown = new Set(), here = view.here, nearI
   }
   const due = dueList(get('reviews'), today);
   if (due.length) parts.push({ head: '复现组', full: due.map((d) => `${d.id} ${one(d.title, 30)}（${d.days < 0 ? `过期 ${-d.days} 天` : d.days === 0 ? '今天到期' : `${d.due.slice(5)} 到期`}）`), short: [due.map((d) => `${d.id}${d.days <= 0 ? '（到期）' : ''}`).join('、')] });
-  const slips = get('slips').filter(not('slips')).sort(byDate('date'));
-  if (slips.length) parts.push({ head: '较早的教学失误', full: [slips.map((s) => s.id).join('、')], short: [`${slips.length} 条`] });
+  const absorbed = absorbedSlips(view.mem.lessons);
+  const slips = get('slips').filter(not('slips')).filter((s) => !absorbed.has(String(s.id))).sort(byDate('date'));
+  const lessonsLeft = get('lessons').filter((l) => (l.status || 'active') === 'active').filter(not('lessons'));
+  if (lessonsLeft.length) parts.push({ head: '教学守则（没放全文的）', full: lessonsLeft.map((l) => `${l.id} ${one(l.text, 34)}`), short: [lessonsLeft.map((l) => l.id).join('、')] });
+  if (slips.length) parts.push({ head: '较早的、还没归纳的教学失误', full: [slips.map((s) => s.id).join('、')], short: [`${slips.length} 条`] });
   // 课程地图：这一科的讲、节（这一节的块写标题）——知道还有哪些块、编号怎么写
   const cur = get('curriculum');
   if (cur.length) {

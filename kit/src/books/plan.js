@@ -107,12 +107,17 @@ export function mapDoc(row, old = null, { today = '', book = '' } = {}) {
 
 /**
  * 备课的提示词。block：这一块（课程地图）；material：挂着的条目全文（教材、文稿）；memoryText：学生的记忆（memoryDigest 的全文 + 目录）；
- * rulesText：全部规则（包括只给对话里 Claude 的：资料包怎么写、备课的规矩）；components：能用的组件名；subject：门课
+ * rulesText：全部规则（包括只给对话里 Claude 的：资料包怎么写、备课的规矩）；components：能用的组件名；subject：门课；
+ * due：到期的复现组（一行一组，最多几组由规则定，没写就 3 组）；lessons：教学守则（以前的失误归纳出来的）
+ *
+ * 备课产出的是一份教案，不只是资料包：2026-11-02 那节课 27 条失误大半是「没备课、边讲边编」——规则课上补了三次、
+ * 题目用到没讲过的规则、一块板塞讲解加题。所以这里要它课前就把可执行的规则写完整、排好讲解顺序（一块板一个点）、
+ * 每道题写清用到哪几条规则、放在哪一步之后，页面再核一遍依赖（checkPrep）。
  */
-export function prepPrompt({ block, material = [], books = [], memoryText = '', rulesText = '', components = [], subject = '', recent = '' }) {
+export function prepPrompt({ block, material = [], books = [], memoryText = '', rulesText = '', components = [], subject = '', recent = '', due = '', lessons = '' }) {
   const b = block || {};
   return [
-    '你是这个学生的老师，现在给下一节课备课。备好的资料包交给课堂里的 Claude（也是 Opus 5.5）在学习台里照着上：它每一轮都会带着资料包、学生的记忆和组件说明，现场写黑板、出题、判断学生懂没懂。资料包写得越准、越贴学生，课越好。',
+    '你是这个学生的老师，现在给下一节课备课。备好的教案交给课堂里的 Claude（也是 Opus 5.5）在学习台里照着上：它每一轮都会带着教案、学生的记忆和组件说明，现场写黑板、出题、判断学生懂没懂。它上课时来不及把整节的材料从头读一遍，所以**要讲的规则、讲的顺序、每道题用到什么，都在这里想好**：课上现编，就会出现「题目用到了没讲过的规则、学生撞墙后才补」。',
     '',
     `## 这节课：${b.id || ''} ${b.title || ''}（${subject}）`,
     b.scope ? `- 范围：${b.scope}` : '',
@@ -121,50 +126,115 @@ export function prepPrompt({ block, material = [], books = [], memoryText = '', 
     list(b.points).length ? `- 要点：\n${list(b.points).map((p, i) => `  ${i + 1}. ${p}`).join('\n')}` : '',
     list(b.requires).length ? `- 准入依赖：${list(b.requires).join('、')}` : '',
     '',
-    '## 挂在这一块上的资料（教材、文稿原文）',
+    '## 这节课的资料（教材、文稿原文）',
     material.length ? material.map((c) => chunkText(c, books.find((x) => x.id === c.book))).join('\n\n') : '（这一块还没挂资料。只能按范围和要点备，教材原文要讲到时课堂里的 Claude 用 textbook_search 找。）',
     b.transcript ? `\n### 这一块的文稿原文（课程地图里存的）\n${String(b.transcript).slice(0, 20000)}` : '',
     '',
     '## 学生的规则（全部，包括备课和资料包的规矩）',
     rulesText || '（没有）',
+    lessons ? `\n## 教学守则（以前上课的失误归纳出来的，备课时就要照着做）\n${lessons}` : '',
     '',
     '## 学生的记忆（和这一块有关的全文 + 其余的目录）',
     memoryText || '（没有）',
     recent ? `\n## 最近几节课\n${recent}` : '',
+    due ? `\n## 到期的复现组（开头复现从这里挑，按学生的规则：一轮最多几组、从没复现 > 上次没过 > 过期久）\n${due}` : '',
     '',
     `## 能用的组件\n${components.join('、')}`,
     '',
-    '## 要你写的资料包（只输出 JSON，不要别的文字；字符串里公式的反斜杠写两个，比如 "$\\\\frac{1}{2}$"）',
+    '## 要你写的教案（只输出 JSON，不要别的文字；字符串里公式的反斜杠写两个，比如 "$\\\\frac{1}{2}$"）',
     '{',
     '  "unit": "这节课的名字（短）",',
-    '  "goal": "这节课要学生最后能做到什么（具体到能检验，比如「看到行成比例的方阵能认出秩一，并用 tr 写出 Aⁿ」）",',
+    '  "goal": "这节课要学生最后能做到什么（具体到能检验）",',
     '  "scope": "这节课讲到哪、不讲什么、考试口径（照范围和文稿，不要超出）",',
-    '  "plan": "建议的推进顺序：先收什么旧账（记忆里的欠账、到期的复现、相关的错题），每一步让学生动脑的点、用什么组件或教具、检验题放在哪。是建议，课堂里会按学生的反应调整",',
-    '  "chunks": ["这节课要照着讲的教材、文稿条目编号（从上面挂的里挑；会全文放进资料包，别挑不用的）"],',
+    '  "route": "开课时给学生看的路线：三到六行，先做什么、再讲什么、怎么练、大概到哪结束",',
+    '  "review": [{"id": "R19", "how": "开头怎么复现这一组（一道不贴标签的新题，写清题面和考哪一点）"}],',
+    '  "methods": [{"id": "m1", "title": "怎么找谓语", "steps": "照着就能做的步骤：第一步……第二步……；判据用书上的清单和明确的标志，不用「感觉像不像」", "scope": "完整的，还是暂时清单（只够这节课的题，以后会补）", "teach": 2}],',
+    '  "sequence": [{"step": 1, "point": "这一步讲什么（一块板一个点）", "how": "怎么讲：用哪个例句 / 例子、哪个组件或教具让学生动手（揭开、拖、一步步走，不是考题）", "check": "讲完怎么轻轻确认一下（可以没有）"}],',
+    '  "problems": [{"q": "题面（数值写全，矩阵写成 [[1,2],[3,4]]）", "answer": "答案", "point": "考点", "needs": ["m1", "m2"], "after": 3, "traps": "学生可能怎么错（按记忆里的错题和弱点）", "source": "来源（教材例题编号，或「自编」）"}],',
+    '  "chunks": ["这节课要照着讲的教材、文稿条目编号（从上面挑；会全文放进资料包，别挑不用的）"],',
     '  "components": ["这节课会用到的组件名（从上面挑，三到八个）"],',
-    '  "problems": [{"q": "题面（数值写全，矩阵写成 [[1,2],[3,4]]）", "answer": "答案", "point": "考点", "source": "来源（教材例题编号，或「自编」）"}],',
+    '  "plan": "补充说明：上面没写到的推进细节、什么情况下换讲法（可以空）",',
     '  "student": "这节课特别要注意的学生情况（记忆里已经有的不用抄，只写对这节课最要紧的一两句）"',
     '}',
-    '题目：基础题检验机制、混合题对齐考试难度，按学生的规则出；答案自己先算一遍再写。',
+    '',
+    '写之前照这几条自己核一遍：',
+    '1. **先讲后练**：methods 里每条规则的 teach 是 sequence 里讲它的那一步；每道题的 needs 列出做这道题要用到的**全部**规则，after 写它放在第几步讲完之后。题目要用的规则必须都在 after 之前讲过。逐题自己做一遍，把用到的每一个判断都对一下：用到了 methods 里没有的，要么补进 methods 和 sequence，要么换一道题。',
+    '2. **规则写完整**：methods 的 steps 要让第一次学的人照着就能做，例外和容易混的情况写进去（比如「代词自己一块」「名词\'s 是前置修饰」这类题里会碰到的）；只够这节课的写明是暂时清单。',
+    '3. **一块板一个点**：sequence 每一步只讲一个点；讲解时的互动是揭开、拖、一步步走，考题放在讲完之后单独出。',
+    '4. **答案自己先算一遍**再写；基础题检验机制、混合题对齐考试难度，按学生的规则出；书上说「不用掌握」的叫法不当判分点。',
   ].filter((x) => x !== '').join('\n');
 }
 
-/** 读备课结果：字段清理、编号只留挂着的、组件只留认得的；返回 { main, problems } */
-export function parsePrep(raw, { block, chunkIds = [], components = [], today = '' } = {}) {
+/**
+ * 页面再核一遍教案的依赖（不调用 Claude）：每道题要用的规则有没有、是不是在它之前讲过；规则有没有排进讲解顺序。
+ * 返回问题列表（中文，一条一句）。课堂里的 Claude 看得到（资料包里「备课检查」），学生开课前在首页也看得到。
+ */
+export function checkPrep(main = {}, problems = {}) {
+  const methods = Array.isArray(main.methods) ? main.methods : [];
+  const seq = Array.isArray(main.sequence) ? main.sequence : [];
+  const items = Array.isArray(problems.items) ? problems.items : [];
+  const steps = new Set(seq.map((x, i) => Number(x.step) || i + 1));
+  const byId = new Map(methods.map((m) => [m.id, m]));
+  const out = [];
+  for (const m of methods) {
+    if (!m.steps) out.push(`规则 ${m.id}（${one(m.title, 20)}）没写步骤`);
+    if (!Number(m.teach)) out.push(`规则 ${m.id}（${one(m.title, 20)}）没排进讲解顺序（teach 写第几步讲）`);
+    else if (seq.length && !steps.has(Number(m.teach))) out.push(`规则 ${m.id} 的 teach=${m.teach}，讲解顺序里没有这一步`);
+  }
+  items.forEach((p, i) => {
+    const n = `第 ${i + 1} 题`;
+    const needs = list(p.needs);
+    if (!needs.length) { if (methods.length) out.push(`${n}没写要用到哪几条规则（needs）`); return; }
+    for (const id of needs) {
+      const m = byId.get(id);
+      if (!m) { out.push(`${n}要用的 ${id} 不在规则清单里：先讲清再出，或者换题`); continue; }
+      if (Number(p.after) && Number(m.teach) && Number(m.teach) > Number(p.after)) out.push(`${n}放在第 ${p.after} 步之后，但它要用的 ${id}（${one(m.title, 16)}）第 ${m.teach} 步才讲`);
+    }
+  });
+  return out;
+}
+
+/** 读备课结果：字段清理、编号只留挂着的、组件只留认得的、页面核一遍依赖；返回 { main, problems, warnings } */
+export function parsePrep(raw, { block, chunkIds = [], components = [], today = '', reviewIds = null } = {}) {
   const o = jsonOf(raw);
   const text = (v, n = 8000) => String(v ?? '').trim().slice(0, n);
   const okComp = new Set(components);
+  const arr = (v) => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []);
+  const methods = arr(o.methods).slice(0, 12).map((m, i) => ({ id: text(m.id, 12) || `m${i + 1}`, title: text(m.title, 60), steps: text(m.steps, 1500), ...(m.scope ? { scope: text(m.scope, 200) } : {}), ...(Number(m.teach) ? { teach: Number(m.teach) } : {}) }));
+  const sequence = arr(o.sequence).slice(0, 20).map((x, i) => ({ step: Number(x.step) || i + 1, point: text(x.point, 200), how: text(x.how, 800), ...(x.check ? { check: text(x.check, 300) } : {}) }));
+  const review = arr(o.review).filter((r) => !reviewIds || reviewIds.includes(String(r.id))).slice(0, 4).map((r) => ({ id: text(r.id, 12), how: text(r.how, 800) }));
   const main = {
     unit: text(o.unit, 120) || `${block?.id || ''} ${block?.title || ''}`.trim(),
-    goal: text(o.goal, 2000), scope: text(o.scope, 4000), plan: text(o.plan, 12000), student: text(o.student, 2000),
+    goal: text(o.goal, 2000), scope: text(o.scope, 4000), route: text(o.route, 1200), plan: text(o.plan, 8000), student: text(o.student, 2000),
+    ...(review.length ? { review } : {}), ...(methods.length ? { methods } : {}), ...(sequence.length ? { sequence } : {}),
     block: block?.id || null,
     chunks: list(o.chunks).filter((id) => chunkIds.includes(id)),
     components: list(o.components).filter((c) => okComp.has(c)).slice(0, 10),
     by: 'desk', at: Date.now(), ...(today ? { date: today } : {}),
   };
-  const problems = { items: (Array.isArray(o.problems) ? o.problems : []).filter((p) => p && p.q).slice(0, 20).map((p) => ({ q: text(p.q, 2000), answer: text(p.answer, 2000), point: text(p.point, 200), source: text(p.source, 200) })) };
-  if (!main.goal && !main.plan) throw new Error('备课结果里没有目标和推进计划');
-  return { main, problems };
+  const problems = { items: (Array.isArray(o.problems) ? o.problems : []).filter((p) => p && p.q).slice(0, 20).map((p) => ({ q: text(p.q, 2000), answer: text(p.answer, 2000), point: text(p.point, 200), ...(list(p.needs).length ? { needs: list(p.needs).slice(0, 8) } : {}), ...(Number(p.after) ? { after: Number(p.after) } : {}), ...(p.traps ? { traps: text(p.traps, 400) } : {}), source: text(p.source, 200) })) };
+  if (!main.goal && !main.plan && !sequence.length) throw new Error('备课结果里没有目标和讲解顺序');
+  const warnings = checkPrep(main, problems);
+  if (warnings.length) main.prepCheck = warnings.slice(0, 12);
+  return { main, problems, warnings };
+}
+
+/** 资料包里教案的几个结构化字段写成给课堂 Claude 看的文字（prompt.js 的 packText 用） */
+export function lessonPlanText(main = {}) {
+  const out = {};
+  if (Array.isArray(main.methods) && main.methods.length) out.methods = main.methods.map((m) => `- ${m.id} ${m.title || ''}${m.teach ? `（第 ${m.teach} 步讲）` : ''}${m.scope ? `［${m.scope}］` : ''}\n  ${String(m.steps || '').replace(/\n/g, '\n  ')}`).join('\n');
+  if (Array.isArray(main.sequence) && main.sequence.length) out.sequence = main.sequence.map((x) => `${x.step}. ${x.point}${x.how ? `\n   怎么讲：${x.how}` : ''}${x.check ? `\n   确认：${x.check}` : ''}`).join('\n');
+  if (Array.isArray(main.review) && main.review.length) out.review = main.review.map((r) => `- ${r.id}：${r.how}`).join('\n');
+  if (Array.isArray(main.prepCheck) && main.prepCheck.length) out.prepCheck = main.prepCheck.map((w) => `- ${w}`).join('\n');
+  return out;
+}
+
+/** 「10-17」「10～17」「12」→ [10, 17]；写不对、空的 → null */
+export function parsePages(v) {
+  const m = String(v ?? '').trim().match(/^(\d{1,4})(?:\s*[-~～—–到]\s*(\d{1,4}))?$/);
+  if (!m) return null;
+  const a = Number(m[1]), b = Number(m[2] ?? m[1]);
+  return b >= a ? [a, b] : [b, a];
 }
 
 /** 下一节默认讲哪一块：position 的块（还没讲完就是它，讲完了是课程地图里的下一块） */

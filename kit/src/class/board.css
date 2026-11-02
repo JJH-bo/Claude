@@ -96,6 +96,11 @@
 
 /* 板上的段：比以前的课件排得紧一点，一屏才放得下 */
 .class-page-body { container: board / inline-size; }
+/* 放不下就分屏（boardview.js 的 fitScreens）：不在这一屏的块藏起来，底部一条上一屏 / 下一屏 */
+.class-page .is-off { display: none !important; }
+.class-screens { margin-top: auto; padding-top: 10px; display: flex; align-items: center; justify-content: center; gap: 14px; font-family: var(--sans); font-size: 15px; color: rgb(var(--chalk-rgb) / 0.7); }
+.class-screens .btn { min-height: 44px; min-width: 104px; }
+.class-screens .btn:disabled { opacity: .35; }
 .class-page-body > .class-seg { animation: stageIn .45s ease both; }
 .class-seg.class-pending { visibility: hidden; animation: none; }
 .class-page-body .block { margin: 16px 0; }

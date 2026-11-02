@@ -5,9 +5,10 @@
 //   error q="求 A²" mine="ααᵀββᵀ" step="第 1 步换括号" cause="把 βᵀα 当矩阵" weakness=W19 basis=q-b5
 //   pref topic=讲法 text="先看图再推公式" basis=say
 //   slip text="一次出了两道题" lesson="一块板一件事"
+//   lesson id=T-3 again="b7 又一次没讲就出题"
 //   ````
 // 一行一条。页面读懂后按三档处理（TIERS）：
-//   直接写（direct）：偏好（profile，topic 只能是「讲法」「习惯」）、它自己的失误（slips）、观察 / 提议（observations）
+//   直接写（direct）：偏好（profile，topic 只能是「讲法」「习惯」）、它自己的失误（slips）、教学守则（lessons）、观察 / 提议（observations）
 //   我确认才写（confirm）：错题（errors）、弱点（weaknesses）、复现组（reviews）、下一节从哪接（position）
 //   只能提议：掌握（mastery）、规则（rules）——写了就拒绝，告诉它写成 propose
 // 每一条先变成一张改动单（pending）。直接写的马上执行；我确认才写的等我在页面上点「确认」（能先改再确认）或「不要」。
@@ -15,24 +16,38 @@
 // 我在页面上自己改（偏好、错题标已解决、复现组暂停）也走同一条路（tier: me），一样能撤销。
 import { COLLECTIONS, UNDO_DAYS, assertWrite, applyChange, nextTier, toDate, daysBetween, same } from './schema.js';
 import { tokenize } from '../tokens.js';
-import { courseOf, prefixOf, positionId, spaceOfId } from './space.js';
+import { courseOf, prefixOf, positionId, spaceOfId, sharedFor } from './space.js';
 
 export const MEMO_KINDS = {
   pref: { tier: 'direct', coll: 'profile', label: '偏好' },
   slip: { tier: 'direct', coll: 'slips', label: '失误' },
+  lesson: { tier: 'direct', coll: 'lessons', label: '守则' },
   note: { tier: 'direct', coll: 'observations', label: '观察' },
   propose: { tier: 'direct', coll: 'observations', label: '提议' },
   error: { tier: 'confirm', coll: 'errors', label: '错题' },
   weakness: { tier: 'confirm', coll: 'weaknesses', label: '弱点' },
   review: { tier: 'confirm', coll: 'reviews', label: '复现组' },
   position: { tier: 'confirm', coll: 'position', label: '下一节' },
+  // 这节课改讲别的块（学生临时改了计划）：页面改 sessions 和之后证据挂的块，不进改动单（classroom.js 先拿出来，blockSwitch 查）
+  block: { tier: 'page', coll: 'sessions', label: '这节课的块' },
 };
 // 只能提议的：拒绝时告诉它怎么写
 const PROPOSE_ONLY = { mastery: '掌握状态', rule: '规则', rules: '规则' };
 export const PREF_TOPICS = ['讲法', '习惯'];
 // 要写依据的几种（偏好、提议、错题、弱点、复现组）：依据是证据，结论才站得住
 const NEED_BASIS = new Set(['pref', 'propose', 'error', 'weakness', 'review']);
-const LIST_KEYS = new Set(['basis', 'about', 'errors', 'blocks', 'weaknesses', 'debts', 'first']);
+const LIST_KEYS = new Set(['basis', 'about', 'errors', 'blocks', 'weaknesses', 'debts', 'first', 'slips']);
+// 一科最多几条守则（没退役的）：再多就要先合并，守则不会越积越多
+export const LESSONS_MAX = 20;
+// 板放不下页面量得出来、会自动分屏，不用课堂 Claude 记成失误（2026-11-02 一节课 27 条失误里 20 条是这个，把真正的教学失误挤掉了）
+const LAYOUT_SLIP = /超出一屏|一屏(?:放|装)不下|放不下一屏|上下滚|要滚动|往下滚/;
+/** 这条失误只是在说板放不下（去掉讲放不下的那几句，剩下的没什么了） */
+export function layoutOnly(text) {
+  const rest = String(text || '').split(/[。；;，,\n]/).filter((c) => !LAYOUT_SLIP.test(c) && !/高约|约\s*\d{3,4}|一屏/.test(c)).join('');
+  return LAYOUT_SLIP.test(String(text || '')) && rest.replace(/[\s\p{P}\p{S}a-z0-9]/giu, '').length < 12;
+}
+// 守则「又犯一次」记最近几次的经过
+const RECENT_MAX = 3;
 
 const cut = (s, n) => { const t = String(s ?? '').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
 const newId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
@@ -98,6 +113,34 @@ export function resolveBasis(tokens, { evidence = [], mem = {} } = {}) {
   return { ids: [...new Set(ids)].slice(0, 20), missing };
 }
 
+/**
+ * 下课时要归纳的失误：这一科（和不分科）还没归纳进守则、没作废的，全部（最早的在前，最多 max 条）。
+ * 返回一段文字，放进 closingPrompt；没有就是空串
+ */
+export function slipsToFold(mem = {}, space = '', { max = 40 } = {}) {
+  const gone = voidedIds(mem);
+  const absorbed = absorbedSlips(mem.lessons);
+  const left = sharedFor(mem.slips, space).filter((x) => x && x.id && !x.corrects && !gone.has(`slips/${x.id}`) && !absorbed.has(String(x.id)))
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+  if (!left.length) return '';
+  const rows = left.slice(-max).map((x) => `- ${x.id}（${x.date || ''}）${cut(x.text, 220)}${x.lesson ? ` → ${cut(x.lesson, 120)}` : ''}`);
+  return `【还没归纳进守则的教学失误（${left.length} 条${left.length > max ? `，这里列最近的 ${max} 条` : ''}）】\n${rows.join('\n')}`;
+}
+
+/**
+ * 这节课改讲别的块：memo 的 block id=EN-L1.1.1。查一下课程地图里有没有、是不是同一科。
+ * 返回 { block } 或 { error }。2026-11-02 学生临时要从头学，整节课的作答都记在了原来那块（第三章）下面
+ */
+export function blockSwitch(entry, { mem = {}, block = '' } = {}) {
+  const id = String(entry?.attrs?.id || entry?.attrs?.block || '').trim();
+  if (!id) return { error: '写 block id=块的编号（课程地图里的，比如 EN-L1.1.1）' };
+  if (id === block) return { error: `这节课已经是 ${id} 了` };
+  const cur = Array.isArray(mem.curriculum) ? mem.curriculum : [];
+  if (cur.length && !cur.some((d) => String(d.id) === id)) return { error: `课程地图里没有 ${id}：从记忆目录的「课程地图」里挑编号` };
+  if (block && spaceOfId(block) !== spaceOfId(id)) return { error: `${id} 不是这一科的` };
+  return { block: id };
+}
+
 /* ---------------- 编号 ---------------- */
 
 const lectureOf = (block) => /^(?:[A-Z]{2}-)?L(\d+)/.exec(String(block || ''))?.[1] || '';
@@ -112,6 +155,31 @@ export function nextErrorId(errors, block) {
 }
 export const nextWeaknessId = (ws) => `W${maxNum((ws || []).map((w) => w.id), /^W(\d+)$/) + 1}`;
 export const nextReviewId = (rs) => `R${maxNum((rs || []).map((r) => r.id), /^R(\d+)$/) + 1}`;
+export const nextLessonId = (ls) => `T-${maxNum((ls || []).map((l) => l.id), /^T-(\d+)$/) + 1}`;
+
+/**
+ * 两段中文像不像：去掉标点空白后两个字一组，算重合的比例（Jaccard）。新守则和已有的一条太像时拒绝，
+ * 让它改写那一条或者记「又犯一次」，不然同一件事会换个说法记好几遍
+ */
+export function similarity(a, b) {
+  const grams = (t) => { const s = String(t || '').toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, ''); const g = new Set(); for (let i = 0; i < s.length - 1; i++) g.add(s.slice(i, i + 2)); return g; };
+  const A = grams(a), B = grams(b);
+  if (!A.size || !B.size) return 0;
+  let n = 0;
+  for (const x of A) if (B.has(x)) n++;
+  return n / (A.size + B.size - n);
+}
+export const SIMILAR = 0.45; // 只拦几乎照抄的；换个说法的重复靠下课时合并和条数上限
+
+/** 一科里还在用的守则（没退役、没作废的） */
+export const activeLessons = (lessons, space) => (lessons || []).filter((l) => l && (l.status || 'active') === 'active' && (!space || !l.space || l.space === space));
+
+/** 已经归纳进守则的失误编号（守则的 slips，退役了的守则也算：它们被并进了别的守则） */
+export function absorbedSlips(lessons) {
+  const out = new Set();
+  for (const l of lessons || []) if (l && l.status !== 'void') for (const x of Array.isArray(l.slips) ? l.slips : []) out.add(String(x));
+  return out;
+}
 /** 失误的编号：S-日期-节-第几条（S-20261027-1-2），和课堂工具 slip_note 一样 */
 export function nextSlipId(slips, session, date) {
   const pre = `S-${String(session || date || '').replace(/^c-/, '')}-`;
@@ -150,7 +218,53 @@ export function planEntry(entry, ctx = {}) {
     }
     case 'slip': {
       if (!a.text) return { error: '失误要写 text' };
+      if (layoutOnly(a.text)) return { error: '板放不下页面量得出来，会自动分成几屏，不用记成失误（讲法、出题、判分上的失误照记）' };
       return { ...base, op: 'add', target: nextSlipId(get('slips'), sid, date), data: { by: 'class', date, text: cut(a.text, 1000), ...(a.lesson ? { lesson: cut(a.lesson, 500) } : {}), session: sid, ...(basis.length ? { basis } : {}) } };
+    }
+    case 'lesson': {
+      // 守则：新的一条（text），改写已有的一条（id + text / slips），又犯一次（id + again），并掉（id + status=retired into=…）
+      const space = spaceOfId(ctx.block || '') || null;
+      const slips = a.slips || [];
+      for (const x of slips) if (!find('slips', x)) return { error: `slips 里的 ${x} 在教学失误里没有（写「还没归纳的失误」里列着的编号）` };
+      const old = a.id ? find('lessons', a.id) : null;
+      if (a.id && !old) return { error: `教学守则里没有 ${a.id}：新的一条不写 id（页面自动编号）` };
+      if (old) {
+        if ((old.status || 'active') !== 'active') return { error: `${old.id} 已经${old.status === 'retired' ? `并进了 ${old.into || '别的守则'}` : '作废了'}，改那一条` };
+        const patch = {};
+        if (a.status) {
+          if (a.status !== 'retired') return { error: 'status 只能写 retired（并进别的守则、或者不用了）' };
+          if (a.into) {
+            const to = find('lessons', a.into);
+            if (!to || a.into === old.id || (to.status || 'active') !== 'active') return { error: `into=${a.into} 要写一条还在用的别的守则` };
+            patch.into = a.into;
+          } else if (!a.why) return { error: '退役一条守则要写 into=（并进哪一条）或者 why=（为什么不用了）' };
+          patch.status = 'retired';
+          if (a.why) patch.retiredWhy = cut(a.why, 200);
+          return { ...base, op: 'update', target: old.id, patch };
+        }
+        if (a.text) {
+          const t = cut(a.text, 400);
+          if (t !== old.text) patch.text = t;
+        }
+        if (a.why) patch.why = cut(a.why, 200);
+        if (a.topic) patch.topic = cut(a.topic, 20);
+        const addS = slips.filter((x) => !(old.slips || []).includes(x));
+        if (addS.length) patch.slips = [...(old.slips || []), ...addS];
+        const again = a.again ? cut(a.again, 160) : '';
+        const more = addS.length + (again ? 1 : 0);
+        if (more) patch.hits = (Number(old.hits) || 1) + more;
+        if (again) patch.recent = [...(Array.isArray(old.recent) ? old.recent : []), `${date.slice(5)} ${again}`].slice(-RECENT_MAX);
+        if (!Object.keys(patch).length) return { error: `${old.id} 没有要改的：又犯了写 again="…"，改写写 text="…"，归纳失误写 slips=…` };
+        patch.last = date;
+        return { ...base, op: 'update', target: old.id, patch };
+      }
+      if (!a.text) return { error: '新守则要写 text（下次照着就能做的动作）' };
+      if (a.again || a.status) return { error: 'again、status 要写 id=（哪一条守则）' };
+      const act = activeLessons(get('lessons'), space);
+      const near = act.map((l) => ({ l, s: similarity(a.text, l.text) })).sort((x, y) => y.s - x.s)[0];
+      if (near && near.s >= SIMILAR) return { error: `和 ${near.l.id}（${cut(near.l.text, 40)}）说的是同一件事：改写那一条（lesson id=${near.l.id} text="…" slips=…），或者记又犯一次（again="…"），不新加` };
+      if (act.length >= LESSONS_MAX) return { error: `这一科的守则已经有 ${act.length} 条（最多 ${LESSONS_MAX}）：先把意思重复的合并（lesson id=… status=retired into=…），再加新的` };
+      return { ...base, op: 'add', target: nextLessonId(get('lessons')), data: { text: cut(a.text, 400), ...(a.why ? { why: cut(a.why, 200) } : {}), ...(a.topic ? { topic: cut(a.topic, 20) } : {}), slips, hits: Math.max(1, slips.length), since: date, last: date, status: 'active', by: 'class', source: `课堂 ${sid || ''}`.trim(), ...(space ? { space } : {}) } };
     }
     case 'note':
     case 'propose': {
@@ -361,7 +475,7 @@ function voidCorrection(coll, orig, all, { date, pd }) {
 /** 被作废的条目（status: void，或者有一条 void 的更正指向它）：摘要、页面列表都不再当真 */
 export function voidedIds(mem = {}) {
   const out = new Set();
-  for (const c of ['errors', 'slips', 'observations', 'profile', 'weaknesses', 'reviews']) {
+  for (const c of ['errors', 'slips', 'observations', 'profile', 'weaknesses', 'reviews', 'lessons']) {
     for (const d of mem[c] || []) {
       if (!d) continue;
       if (d.status === 'void') out.add(`${c}/${d.id}`);
@@ -387,6 +501,15 @@ export function meChange(what, mem = {}, args = {}) {
     if (!text) throw new Error('写点什么');
     if (text === p.text) throw new Error('和原来一样');
     return pendingRecord({ kind: 'pref', tier: 'me', coll: 'profile', op: 'update', target: p.id, patch: { text: cut(text, 600) }, label: '偏好', reason: '我改的' }, { by: 'me' });
+  }
+  if (what === 'lesson' || what === 'lesson-retire') {
+    const l = get('lessons').find((d) => d.id === args.id);
+    if (!l) throw new Error(`没有 ${args.id}`);
+    if (what === 'lesson-retire') return pendingRecord({ kind: 'lesson', tier: 'me', coll: 'lessons', op: 'update', target: l.id, patch: { status: 'retired', retiredWhy: '我说不用了' }, label: '守则', reason: '我改的' }, { by: 'me' });
+    const text = String(args.text || '').trim();
+    if (!text) throw new Error('写点什么');
+    if (text === l.text) throw new Error('和原来一样');
+    return pendingRecord({ kind: 'lesson', tier: 'me', coll: 'lessons', op: 'update', target: l.id, patch: { text: cut(text, 400) }, label: '守则', reason: '我改的' }, { by: 'me' });
   }
   if (what === 'resolve') {
     const e = get('errors').find((d) => d.id === args.id);
@@ -418,6 +541,7 @@ export function pendingTitle(pd) {
   const what = {
     pref: () => `${d.topic ? `［${d.topic}］` : ''}${d.text || p.text || ''}`,
     slip: () => d.text,
+    lesson: () => (pd.op === 'add' ? d.text : p.status === 'retired' ? `${pd.target} ${p.into ? `并进 ${p.into}` : '不用了'}` : p.text ? `${pd.target} 改写：${p.text}` : p.recent ? `${pd.target} 又犯一次：${String(p.recent.at(-1)).slice(6)}` : `${pd.target} 归纳了 ${(p.slips || []).length} 条失误`),
     note: () => d.text,
     propose: () => d.text,
     error: () => (d.resolved ? `${d.corrects} 已解决` : `${pd.target}：${d.cause || d.q || ''}`),
@@ -425,7 +549,7 @@ export function pendingTitle(pd) {
     review: () => (pd.op === 'add' ? `${pd.target} ${d.title}` : `${pd.target} ${p.status ? (p.status === 'paused' ? '暂停' : '恢复') : p.result ? `${p.result}，下次 ${p.tier} 天后` : p.content ? `加题：${p.content.at(-1)}` : '改了'}`),
     position: () => p.next || d.next || (p.block ? `学到 ${p.block}` : '改了'),
   }[pd.kind];
-  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${pd.op === 'update' && pd.kind !== 'weakness' && pd.kind !== 'review' ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
+  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${pd.op === 'update' && !['weakness', 'review', 'lesson'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
 }
 
 /** 这一轮记了什么（板顶那句话下面的小字）：「记下了：偏好 1 条；待你确认：错题 1 条」 */

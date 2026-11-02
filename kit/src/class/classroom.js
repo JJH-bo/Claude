@@ -36,6 +36,8 @@ import { shouldNudge, stuckText, STUCK_MS } from './stuck.js';
 import { fromEvidence, sayEvidence, draftEvidence, observationRecord, slipRecord, memoryRead } from '../memory/session.js';
 import { callCost, usageOf, usageText } from './usage.js';
 import { reportText } from '../memory/report.js';
+import { slipsToFold, blockSwitch } from '../memory/memo.js';
+import { spaceOfId } from '../memory/space.js';
 import { textbookForClass, readChunks, searchChunks } from '../books/textbook.js';
 
 export const MODEL = 'claude-opus-5-5';
@@ -424,7 +426,19 @@ export async function renderClass(root, meta, desk = null) {
   }
 
   // 执行一轮里的 memo 块：直接写的马上写，等确认的记成改动单；没记成的告诉课堂 Claude（不多跑一轮：跟着下一轮的提醒）
-  async function runMemo(entries, seq, pageN) {
+  async function runMemo(entries0, seq, pageN) {
+    // 改讲别的块：页面自己改（sessions 记下来，之后的证据、记忆摘要都按新的块），不进改动单
+    const switches = entries0.filter((e) => e.kind === 'block');
+    const entries = entries0.filter((e) => e.kind !== 'block');
+    for (const e of switches) {
+      const r = blockSwitch(e, { mem: desk.mem, block: desk.block });
+      if (r.error) { addTurn({ role: 'system', kind: 'note', text: `[系统] memo 里「${e.line}」没生效：${r.error}` }); continue; }
+      const was = desk.block;
+      desk.block = r.block;
+      desk.blocks = [...new Set([...(desk.blocks || [was].filter(Boolean)), r.block])];
+      desk.updateSession({ block: r.block, blocks: desk.blocks });
+    }
+    if (!entries.length) return { pds: [], rejected: [] };
     try {
       const r = await desk.memo.ops.applyMemo(entries, { session: desk.sid, block: desk.block, turn: seq });
       const p = pages.get(pageN);
@@ -710,7 +724,7 @@ export async function renderClass(root, meta, desk = null) {
       cur: bv.cur,
       view: bv.view,
       screen: { w: vw, h: vh, landscape: vw > vh, board: bv.fit ? { w: bv.fit.w, h: bv.fit.avail } : null },
-      fit: bv.fit && pages.has(bv.cur) ? { fits: bv.fit.fits, need: bv.fit.need, avail: bv.fit.avail } : null,
+      fit: bv.fit && pages.has(bv.cur) ? { fits: bv.fit.fits, need: bv.fit.need, avail: bv.fit.avail, ...(bv.fit.screens ? { screens: bv.fit.screens } : {}) } : null,
     };
   }
 
@@ -1393,7 +1407,7 @@ export async function renderClass(root, meta, desk = null) {
         },
       }, {
         name: 'memory_read',
-        description: '查学习台的记忆库（只读）。collection 写集合名：rules、profile、curriculum、errors、weaknesses、mastery、reviews、position、slips、observations、sessions、evidence。ids 写编号数组，一次取好几条的全文（比如 collection errors、ids ["L2-07","L2-31"]；同一类的放一起取）；id 取一条。sessions 写课的编号，给那节课的要点、课后报告和小结。不写 id / ids 时列出这一类（可以写 block 只要挨着这一块的）。evidence 按 block 或 session（这节课是 ' + desk.sid + '）查最近的 30 条。每调用一次你要多等一整轮：照记忆里的目录挑准了编号，一次取够。',
+        description: '查学习台的记忆库（只读）。collection 写集合名：rules、profile、curriculum、errors、weaknesses、mastery、reviews、position、slips、lessons、observations、sessions、evidence。ids 写编号数组，一次取好几条的全文（比如 collection errors、ids ["L2-07","L2-31"]；同一类的放一起取）；id 取一条。sessions 写课的编号，给那节课的要点、课后报告和小结。不写 id / ids 时列出这一类（可以写 block 只要挨着这一块的）。evidence 按 block 或 session（这节课是 ' + desk.sid + '）查最近的 30 条。每调用一次你要多等一整轮：照记忆里的目录挑准了编号，一次取够。',
         inputSchema: { type: 'object', properties: { collection: { type: 'string' }, ids: { type: 'array', items: { type: 'string' } }, id: { type: 'string' }, block: { type: 'string' }, session: { type: 'string' } }, required: ['collection'] },
         async execute(input) {
           const q = { collection: String(input?.collection ?? '').trim(), ids: Array.isArray(input?.ids) ? input.ids.map(String) : undefined, id: input?.id, block: input?.block, session: input?.session };
@@ -1428,13 +1442,14 @@ export async function renderClass(root, meta, desk = null) {
       },
       ...(desk?.books?.chunks?.length ? [{
         name: 'textbook_read',
-        description: '取教材、文稿、讲义里几条的全文（学习台的资料，按条目编号，比如 B1-23.1；资料包里的「教材目录」有编号）。ids 写编号数组，一次取好几条。每调用一次你要多等一整轮。',
-        inputSchema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' } } }, required: ['ids'] },
+        description: '取教材、文稿、讲义的全文（学习台的资料；资料包里的「教材目录」有编号）。ids 写条目编号数组（B1-23.1），连着的一串写范围「B1-10.1~B1-17.3」；或者 pages 写书页「10-17」（book 写哪本，不写就是全部）。**一次取够一整节**：每调用一次你要多等一整轮、整份说明再读一遍，一条一条取很贵。',
+        inputSchema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' } }, pages: { type: 'string' }, book: { type: 'string' } } },
         async execute(input) {
           const ids = Array.isArray(input?.ids) ? input.ids.map(String) : String(input?.ids ?? '').split(/[,，\s]+/).filter(Boolean);
-          staged.calls.push({ name: 'textbook_read', input: { ids } });
-          if (!ids.length) throw new Error('要写 ids（条目编号）');
-          const r = readChunks(desk.books.chunks, desk.books.books, ids);
+          const pages = String(input?.pages ?? '').trim();
+          staged.calls.push({ name: 'textbook_read', input: { ids, ...(pages ? { pages } : {}) } });
+          if (!ids.length && !pages) throw new Error('要写 ids（条目编号或范围）或者 pages（书页）');
+          const r = readChunks(desk.books.chunks, desk.books.books, ids, { pages, book: String(input?.book ?? '') });
           return { text: r.text || '（一条都没找到）', ...(r.missing.length ? { missing: r.missing } : {}), ...(r.more.length ? { more: r.more, note: '一次放不下，剩下的再取一次' } : {}) };
         },
       }, {
@@ -1516,7 +1531,7 @@ export async function renderClass(root, meta, desk = null) {
       // 学习台里：先用代码算一份课后报告放进这次的输入，小结和整理单同一次写（docs/desk-plan.md 4.2，不多调用一次）
       const report = desk?.makeReport ? await desk.makeReport({ turns: history, steps: steps() }).then(reportText, () => '') : '';
       const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(false), board: boardState(), subject: session.subject, memory: memoryArg() });
-      const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review }) }], maxBytes: promptLimit(), stub: teacher.tools });
+      const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review, slips: desk ? slipsToFold(desk.mem, spaceOfId(desk.block || '')) : '' }) }], maxBytes: promptLimit(), stub: teacher.tools });
       const cost = (why) => callCost({ bytes: fit.bytes, why });
       let res;
       try {
