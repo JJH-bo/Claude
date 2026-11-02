@@ -160,4 +160,17 @@ $\begin{pmatrix} A^{-1} & O \\ O & B^{-1} \end{pmatrix}$
 副对角的呢：$\begin{pmatrix} O & A \\ B & O \end{pmatrix}^{-1}$ 右上角那块是 $B^{-1}$，左下角那块是 {{A^-1|A⁻¹|A^(-1)}}（写 A^-1 或 B^-1）。
 > 注意位置换了：$\begin{pmatrix} O & A \\ B & O \end{pmatrix}^{-1} = \begin{pmatrix} O & B^{-1} \\ A^{-1} & O \end{pmatrix}$。
 ````
+
+## 7. 自己一行行推：derive 的 mode: do
+
+```derive
+id: dd-1
+mode: do
+title: 推 A²
+q: $A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$（$\boldsymbol\alpha,\boldsymbol\beta$ 是 3 维列向量）。从 $A^2$ 出发，一行一行推到只含 $\operatorname{tr}A$ 和 $A$ 的式子。写 a、b 或 α、β 都行，转置写 '。
+vars: a=vec(3) b=vec(3)
+let A = a*b'
+start: A^2
+goal: tr(A)*A
+```
 </script>

@@ -487,6 +487,27 @@ A^2 = (\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})(\boldsymbol\alpha\boldsymb
 - 一开始只写第一行，我点「下一行」往下写（「全部写出来」一次写完）。`auto: 1.5`：出现在屏幕上以后每 1.5 秒自动写一行；`start: all`：一开始就全写出来。
 - 新的一行从左往右「写」出来。课堂里：`figure target=d-a2 play step 1 4 4s`（4 秒里写完 4 行，跟着你说的话写）、`set step=3`（写到第 3 行）、`highlight 2`（第 2 行闪一下）、`board mark target=d-a2 item=2`（圈第 2 行）。
 - 字段：`id`、`title`、`q`、`note`、`auto`、`start`、`link`（绑定 `steps`：揭开第 k 步时至少写到第 k 行）。
+- 要我自己一行行推、页面逐行判：`mode: do`（写法在下面「更多写法」）。
+
+<!-- 完整写法 -->
+
+**`mode: do`：我自己一行行往下推。**你给出发的式子（`start:`），我在输入框里一行一行写（`a(b'a)b'`、`αβᵀαβᵀ`、`tr(A)A` 都认：省略乘号、`'` / `ᵀ` 转置、希腊字母、上标），页面查每一行和上一行是不是相等；不相等就告诉我「取哪组数时上一行等于什么、这一行等于什么」，我改。写到 `goal:` 那个样子就推完了（没写 `goal:` 就由我点「推完了」）。
+
+```derive
+id: dd-a2
+mode: do
+title: 推 A²
+q: $A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$（3 维列向量），从 $A^2$ 推到只含 $\operatorname{tr}A$ 和 $A$ 的式子
+vars: a=vec(3) b=vec(3)
+let A = a*b'
+start: A^2
+goal: tr(A)*A
+```
+
+- `vars:`：一般的式子要随机取几组数来比（只拿一组数，碰巧相等的错式子也会判对）：`vec(3)` 随机整数列向量、`mat(2,3)`、`int(1,5)`、`num`，空格隔开。默认比 4 组（`samples:` 改）。不写 `vars:` 就用 `let` 和整节课的量，只比一组（具体数字的计算）。
+- `let 名字 = 式子`：每组数接着算。式子写法和组件里的表达式一样（`a*b'`、`tr(A)`、`det`、`inv`）。
+- 只能判「相等」：矩阵、向量、数的恒等变形、计算。证明、文字推理照旧手写。
+- 记录里有每一行写的什么、和上一行相不相等、不等时两边各等于什么、每行试了几次；最后一条是推完了还是想不出来。
 
 ### sketch：当场画的示意图（SVG）
 

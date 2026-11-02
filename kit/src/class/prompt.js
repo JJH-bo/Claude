@@ -892,6 +892,11 @@ function recordText(a, type) {
       const why = a.misread ? `；页面看出来：${short(a.misread, 60)}` : '';
       return `[作答] ${where(a, a.engine || '演示')}：${at}${q}${tail(what + why, duration(a.ms))}`;
     }
+    case 'derive': {
+      // 学生自己一行行推（derive mode: do）：每写一行页面查它和上一行相不相等，不等时写着取哪组数两边各等于什么
+      if (a.final) return `[作答] ${where(a, 'derive')}：${a.giveup ? `推到一半想不出来${a.value ? `，写到了 ${short(a.value, 200)}` : ''}` : `推完了（一共改了 ${Math.max(0, (Number(a.attempts) || 0))} 次里${a.ok ? '' : '没'}推到）：${short(a.value, 300)}`}`;
+      return `[作答] ${where(a, 'derive')}：${a.detail ? `${short(a.detail, 20)}` : ''}写了 ${short(a.value, 200)}${a.ok ? '（和上一行相等）' : `（和上一行不相等${a.check ? `：${short(a.check, 200)}` : ''}）`}${a.attempts > 1 ? `，这一行第 ${a.attempts} 次` : ''}`;
+    }
     case 'ask':
       return `[动作] 问了：「${short(a.question ?? a.text ?? a.q, 200)}」`;
     default:

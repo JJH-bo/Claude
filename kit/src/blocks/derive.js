@@ -6,10 +6,13 @@ import { session } from '../session.js';
 import { link } from '../link.js';
 import { widget, mdToHtml, tex2html, calcProblems } from './common.js';
 import { figureControls } from '../plot.js';
+import { deriveDo } from './derivedo.js';
 
 const reduceMotion = () => { try { return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 
 export function derive(el, src) {
+  // mode: do：学生自己一行行往下写，页面逐行判（blocks/derivedo.js）
+  if (/^\s*mode\s*[:：]\s*do\s*$/mi.test(src)) return deriveDo(el, src);
   const { fields, lines, start, auto } = parseDerive(src);
   for (const msg of calcProblems([fields.title, fields.q, fields.note, ...lines.map((l) => l.tex), ...lines.map((l) => l.note)])) session.problem(el, 'derive', msg);
   const n = lines.length;
