@@ -141,7 +141,8 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - 攻上限（`docs/learning-plan.md`）：
   - 掌握 `mastery.js`（纯函数）：页面按证据算（两道不同的题一次对、没标没把握 → 基础题过；隔够档位再一次对 → 复现通过；过了以后失手 → 掉了），从记忆里现有的状态出发，出改动单（`kind: mastery`、`by: page`），我确认才写（`mastery` 的写入方有 `me`）。首页 `desk.js` 的 `proposeMastery` 每次自检后算一遍。
   - 练一练 `drills.js`（纯函数）+ `drillrun.js`：下课写报告时（`desk.js` 的 `harvestSession`）把页面判得了分的组件连同 `let` 块抄进题库 `drills`（以前的课首页补抄，`sessions.drills` 记抄了几道）；首页「练一练」挑题（到期复现组、掉了的块、错过的，挨着的不同块）开一节 `kind: drill` 的课，一次一道、不调用 Claude；做完出复现组结果的改动单，没过的能带着开课（`createClass`）。
-  - 课堂计划块：`protocol.js` 认 `board plan`（学生看不到，≤ 200 字）；`prompt.js` 的 `latestPlan` 从整段历史里取最新一份放进「黑板现状」前面，`stripPlan` 把历史里的 plan 块去掉；`features.js` 的 `plan` 开关。
+  - 课堂计划块：`protocol.js` 认 `board plan`（学生看不到，≤ 200 字）；`prompt.js` 的 `latestPlan` 从整段历史里取最新一份放进「黑板现状」前面，`stripPlan` 把历史里的 plan 块去掉；`features.js` 的 `plan` 开关**现在关着**（教学尺子量下来没看出好处，`evals/teaching/results.md`）。
+  - 教法里三门课共用的几条（误解要早探、确认题要换数……）在 `prompt.js` 的 `TEACH_PROBE`，来自教学尺子的评卷。
 - 浏览器里看：`kit/examples/desk-demo.html?dev`（「填入示例记忆」→「开新课」，输入框打「测试:整理」：模拟老师写一个 memo 块，三档各几条、再故意写两条不对的；下课时模拟小结后面带整理单。打「测试:记忆」：模拟老师真的调用 `memory_read`、`lesson_note`、`slip_note`，写一段标了 `point=tr` 的题；点「下课」后回首页看「上一节」、补记、导出备份）。
 
 ## 硬性规定（我明确要求过的，不要改）

@@ -217,7 +217,7 @@ function apply(st, text) {
     else if (op.op === 'add') { if (!st.pages.length) { st.cur = 1; st.pages.push({ n: 1, title: op.title || '', talk: '' }); } st.segs.push({ id: op.id, page: st.cur, title: op.title || '', md: sg.body }); check(sg.body, op.id); }
     else if (op.op === 'replace') { const s = seg(op.id); if (s) { s.md = sg.body; if (op.title) s.title = op.title; for (const f of fencesOf(sg.body)) { delete st.progress[f.id]; delete st.results[f.id]; } check(sg.body, op.id); } else notes.push(`[系统] replace 的 ${op.id} 不在黑板上`); }
     else if (op.op === 'hide') { const s = seg(op.id); if (s) s.hidden = true; }
-    else if (op.op === 'pin') { st.segs.push({ id: op.id, place: 'pin', title: op.title || '', md: sg.body }); }
+    else if (op.op === 'pin') { const s = seg(op.id); if (s) { s.md = sg.body; s.hidden = false; if (op.title) s.title = op.title; } else st.segs.push({ id: op.id, place: 'pin', title: op.title || '', md: sg.body }); }
     else if (op.op === 'unpin') { const s = seg(op.id); if (s) s.hidden = true; }
     st.ops.push(op.op || 'unknown');
   }
