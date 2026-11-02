@@ -124,9 +124,18 @@ export const COLLECTIONS = {
     label: '每节课', kind: 'state', writers: ['page', 'chat'],
     id: { re: /^c-[A-Za-z0-9_-]+$/, eg: 'c-20261028-2（当天第几节）' },
     required: ['date'],
-    enums: { space: ['math', 'cs', 'en'], kind: ['class', 'live', 'unit'], status: ['open', 'closed'] },
+    enums: { space: ['math', 'cs', 'en'], kind: ['class', 'live', 'unit', 'drill'], status: ['open', 'closed'] },
     dates: ['date'],
     refs: { block: 'curriculum' },
+    tracked: [],
+  },
+  // 题库（docs/learning-plan.md 第 3 节）：以前课上页面判得了分的组件，抄一份给练习用（drills.js）。页面写（下课写报告时抄），
+  // 对话里的 Claude 备课时也能写；我能把坏了的、不想再练的标作废（status: void）。课堂里的 Claude 每一轮不带它
+  drills: {
+    label: '题库', kind: 'state', writers: ['page', 'chat', 'me'],
+    id: { re: /^d-[A-Za-z0-9_-]+$/, eg: 'd-20261027-1-q3（页面按「课 + 组件」编）' },
+    required: ['md'],
+    enums: { status: ['active', 'void'], space: ['math', 'cs', 'en'] },
     tracked: [],
   },
   // 改动单（docs/desk-plan.md 4.1）：课堂里的 Claude 每一条要改记忆的（memo 块），和我在页面上自己改的，都先记一条。

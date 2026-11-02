@@ -244,3 +244,13 @@
 .dk-prep .btn { min-height: 44px; }
 .dk-prep-msg { font-size: 14px; }
 .dk-next { width: 100%; }
+/* 练一练（drills.js、drillrun.js）：首页的卡片、练习页一次一道 */
+.dk-drill-why { margin: 6px 0 12px; padding-left: 1.2em; font: 15px/1.6 var(--sans); }
+.dk-drill .btn, .dr-acts .btn, .dr-nav .btn { min-height: 44px; }
+.dr-stage, .dr-done { max-width: 860px; margin: 0 auto; padding: 8px 20px 40px; }
+.dr-lead { font: 14.5px/1.6 var(--sans); }
+.dr-where { margin: 10px 0 0; font: 15px/1.5 var(--sans); color: var(--yellow); }
+.dr-nav { display: flex; justify-content: flex-end; margin-top: 14px; }
+.dr-done .dk-row em.dr-ok { color: var(--ok); }
+.dr-done .dk-row em.dr-bad { color: var(--bad); }
+.dr-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }

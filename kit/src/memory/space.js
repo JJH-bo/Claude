@@ -53,6 +53,7 @@ export function spaceOfDoc(coll, d, mem = {}) {
   const byBlocks = (bs) => { const b = list(bs)[0]; return b ? spaceOfId(b) : null; };
   switch (coll) {
     case 'curriculum': case 'mastery': return spaceOfId(d.id);
+    case 'drills': return d.block ? spaceOfId(d.block) : null;
     case 'errors': return spaceOfId(d.block || d.id);
     case 'position': return spaceOfPosition(d.id);
     case 'weaknesses': return byBlocks(d.blocks) || byBlocks(list(d.errors).map((e) => (mem.errors || []).find((x) => String(x.id) === e)?.block || e)) || DEFAULT_SPACE;
