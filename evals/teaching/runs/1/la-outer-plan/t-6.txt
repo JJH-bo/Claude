@@ -1,0 +1,25 @@
+````board plan
+目标：学生自己推出 A²=(βᵀα)A、Aⁿ=(βᵀα)ⁿ⁻¹A，再用 tr A=βᵀα 做 3 维真题
+猜：形状都认对了（1×2、2×1），但把 βᵀα 和 αβᵀ 的乘积形状弄混，以为 (1×2)(2×1) 是 2×2——缺「外面两个数决定形状」这条知识
+证实：讲清形状规则后用 3 维的 uᵀv / uvᵀ 选一个数；对了再回去算 βᵀα=5
+````
+
+你的两个形状都对，错在最后一步：乘积的形状看**外面**两个数，里面两个数相等、乘完就消掉。看板上这两行对比：
+
+````board new id=b5 title="乘积是什么形状"
+$$\underbrace{\boldsymbol\beta^{\mathrm T}}_{1\times\chalk{pink}{2}}\;\underbrace{\boldsymbol\alpha}_{\chalk{pink}{2}\times 1}\;\longrightarrow\;\chalk{yellow}{1\times1}\ \text{（一个数）}$$
+
+$$\underbrace{\boldsymbol\alpha}_{2\times\chalk{pink}{1}}\;\underbrace{\boldsymbol\beta^{\mathrm T}}_{\chalk{pink}{1}\times 2}\;\longrightarrow\;\chalk{yellow}{2\times2}\ \text{（就是 }A\text{）}$$
+
+规则：$(m\times \chalk{pink}{n})(\chalk{pink}{n}\times p)$ 得 $\chalk{yellow}{m\times p}$。
+
+```quiz
+id: q-b5
+q: 设 $\mathbf u$、$\mathbf v$ 都是 3 维列向量。下面哪一个是**一个数**？
+- [x] $\mathbf u^{\mathrm T}\mathbf v$
+- [ ] $\mathbf u\mathbf v^{\mathrm T}$
+explain: $\mathbf u^{\mathrm T}\mathbf v$ 是 $(1\times3)(3\times1)=1\times1$；$\mathbf u\mathbf v^{\mathrm T}$ 是 $(3\times1)(1\times3)=3\times3$ 的矩阵。
+```
+````
+
+选的时候，先在心里写出两个形状再看外面的数。

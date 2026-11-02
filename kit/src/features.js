@@ -7,4 +7,9 @@ export const FEATURES = {
   handwriting: false,
   // 截图作答、粘贴框、把图拖进来（组件里的、课堂输入框里的）
   photo: true,
+  // 作答以后问一句「有把握吗」（confidence.js）：只在作答会记下来的地方（课堂、实时黑板、学习台）出现
+  confidence: true,
+  // 课堂老师的教学计划（board plan，学生看不到；docs/learning-plan.md 第 5 节）。教学尺子第一轮（2026-11-02，线代、408 各一对）
+  // 量下来看不出比不写好（evals/teaching/results.md），每轮还多带约 1 KB 说明，所以先关着；代码留着，以后再量一次
+  plan: false,
 };

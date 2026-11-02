@@ -84,10 +84,11 @@ export const COLLECTIONS = {
     tracked: ['level', 'scope', 'status'],
   },
   mastery: {
-    label: '掌握状态', kind: 'state', writers: ['chat'],
+    // me：页面按证据算出来的提议（mastery.js，改动单 by: page），我点了「确认」才写；课堂里的 Claude 照旧不能写（红线）
+    label: '掌握状态', kind: 'state', writers: ['chat', 'me'],
     id: { re: /^(?:[A-Z]{2}-)?L\d+(?:\.\d+){0,2}(?:#[A-Za-z0-9_-]+)?$/, eg: 'L2.2.1（一块）、L2.2.1#tr（块里的一个知识点）、EN-L1.1.1#past' },
     required: ['state'],
-    enums: { state: ['未学', '讲过', '基础题过', '复现通过', '掉了'] },
+    enums: { state: ['未学', '讲过', '基础题过', '复现通过', '掉了'], status: ['active', 'void'] },
     // 所在的块（block，不写就是编号 # 前面那段）在 check.js 里单独查
     tracked: ['state', 'tier'],
   },
@@ -135,9 +136,18 @@ export const COLLECTIONS = {
     label: '每节课', kind: 'state', writers: ['page', 'chat'],
     id: { re: /^c-[A-Za-z0-9_-]+$/, eg: 'c-20261028-2（当天第几节）' },
     required: ['date'],
-    enums: { space: ['math', 'cs', 'en'], kind: ['class', 'live', 'unit'], status: ['open', 'closed'] },
+    enums: { space: ['math', 'cs', 'en'], kind: ['class', 'live', 'unit', 'drill'], status: ['open', 'closed'] },
     dates: ['date'],
     refs: { block: 'curriculum' },
+    tracked: [],
+  },
+  // 题库（docs/learning-plan.md 第 3 节）：以前课上页面判得了分的组件，抄一份给练习用（drills.js）。页面写（下课写报告时抄），
+  // 对话里的 Claude 备课时也能写；我能把坏了的、不想再练的标作废（status: void）。课堂里的 Claude 每一轮不带它
+  drills: {
+    label: '题库', kind: 'state', writers: ['page', 'chat', 'me'],
+    id: { re: /^d-[A-Za-z0-9_-]+$/, eg: 'd-20261027-1-q3（页面按「课 + 组件」编）' },
+    required: ['md'],
+    enums: { status: ['active', 'void'], space: ['math', 'cs', 'en'] },
     tracked: [],
   },
   // 改动单（docs/desk-plan.md 4.1）：课堂里的 Claude 每一条要改记忆的（memo 块），和我在页面上自己改的，都先记一条。
@@ -147,7 +157,8 @@ export const COLLECTIONS = {
     label: '改动单', kind: 'state', writers: ['class', 'page', 'me'],
     id: { re: /^pd-[A-Za-z0-9_-]+$/, eg: '页面自动编号' },
     required: ['kind', 'coll', 'op', 'status', 'at'],
-    enums: { op: ['add', 'update'], status: ['open', 'done', 'rejected', 'undone'], tier: ['direct', 'confirm', 'me'], by: ['class', 'me'] },
+    // by: page 是页面自己按证据算的提议（掌握、练习后的复现组结果），一样等我确认
+    enums: { op: ['add', 'update'], status: ['open', 'done', 'rejected', 'undone'], tier: ['direct', 'confirm', 'me'], by: ['class', 'me', 'page'] },
     refs: { session: 'sessions' },
     tracked: ['status'],
   },

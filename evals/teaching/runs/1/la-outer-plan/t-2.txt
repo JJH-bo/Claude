@@ -1,0 +1,15 @@
+算对了。把你的 $A^2$ 和 $A$ 摆在一起看，有什么关系？
+
+````board add id=b2 title="A² 和 A 比一比"
+$A=\calc{A}\qquad A^2=\calc{A^2}$
+
+```answer
+id: q-b2
+title: A² 是 A 的几倍
+q: 你算出的 $A^2$ 能写成 $k\,A$ 吗？$k$ 是多少？
+answer: 5
+before: A^2 =
+after: \,A
+hint: 每个位置都拿 $A^2$ 的数除以 $A$ 的数，比如 $(1,1)$ 位：$10\div 2$。
+```
+````

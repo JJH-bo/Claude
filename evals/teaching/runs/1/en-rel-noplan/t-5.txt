@@ -1,0 +1,27 @@
+B 对，理由也是你自己说出来的。My brother, that lives in Beijing 确实是错的，要写成 My brother, who lives in Beijing。现在放进一个长句里认一认。
+
+````board new id=b5 title="长句里认出来"
+```steps
+id: ex-b5
+title: 拆一个长句
+q: Darwin's theory of evolution, which was first published in 1859, challenged the belief that every species had been created separately.
+
+step: 先找主句的谓语
+ask: 整句话的主句谓语动词是哪个？
+choices: was published | challenged | had been created
+answer: challenged
+show: 主干：Darwin's theory of evolution … **challenged** the belief。was published 在逗号里的从句里，had been created 在 belief 后面的 that 从句里。
+
+step: 逗号里那段补充谁
+ask: which was first published in 1859 是在补充说明哪个词？
+choices: Darwin | Darwin's theory of evolution | 1859
+answer: Darwin's theory of evolution
+show: which 指物，指前面的 theory（达尔文的进化论只有一个），逗号隔开，是非限制性定语从句，只是补充「1859 年首次发表」。
+
+step: which 能不能换成 that
+ask: 把这里的 which 换成 that，行不行？
+choices: 行 | 不行
+answer: 不行
+show: 逗号后面的非限制性定语从句不能用 that。
+```
+````

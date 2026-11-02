@@ -1,0 +1,20 @@
+你选的 (a) 是对的，理由也说准了：没逗号的从句在几个兄弟里**挑出**住上海的那个。页面判成错，是我这道题的选项写法出了问题，不是你的错。我把这条规律记到旁边。
+
+````board pin id=k1 title="两种定语从句"
+- 没逗号＝限制性（restrictive）：**挑出**是哪一个，去掉意思就变
+- 有逗号＝非限制性（non-restrictive）：只**补充**一句，去掉主句意思不变
+````
+
+````board new id=b2 title="逗号后面填什么"
+Shanghai, \_\_\_\_\_ is the largest city in China, has a population of over 24 million.
+
+```quiz
+id: q-b2
+q: 空里能填哪个词？（可以多选）
+- [x] which
+- [ ] that
+explain: 逗号后面的非限制性定语从句只能用 which（指物）/ who（指人），**不能用 that**。
+```
+````
+
+先凭语感选，选完说一句你为什么这么选。

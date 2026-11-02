@@ -373,7 +373,7 @@ export function pendingRecord(change, { session = null, turn = null, by = 'class
   };
 }
 
-const logMeta = (pd, date, note) => ({ date, by: pd.by === 'me' ? 'me' : 'class', basis: (pd.basis || []).filter(Boolean), note });
+const logMeta = (pd, date, note) => ({ date, by: pd.by === 'me' ? 'me' : pd.by === 'page' ? 'page' : 'class', basis: (pd.basis || []).filter(Boolean), note });
 
 /**
  * 执行一张改动单（直接写的那档马上执行；我确认才写的，我点「确认」时执行）。
@@ -388,7 +388,7 @@ export function applyPending(pd, mem = {}, { date = toDate(Date.now()), edits = 
   if (pd.coll === 'profile' && pd.tier === 'direct' && !PREF_TOPICS.includes(pd.data?.topic)) throw new Error('课堂里的 Claude 只能写「讲法」「习惯」');
   const docs = Array.isArray(mem[pd.coll]) ? mem[pd.coll] : [];
   const old = docs.find((d) => String(d.id) === String(pd.target));
-  const note = pd.tier === 'confirm' ? `我确认于 ${date}` : pd.tier === 'me' ? '我在学习台上改的' : `课堂 ${pd.session || ''}`.trim();
+  const note = pd.tier === 'confirm' ? `${pd.by === 'page' ? '页面按证据算的，' : ''}我确认于 ${date}` : pd.tier === 'me' ? '我在学习台上改的' : `课堂 ${pd.session || ''}`.trim();
   const isState = COLLECTIONS[pd.coll].kind === 'state';
   let doc, applied;
   if (pd.op === 'add') {
@@ -475,7 +475,7 @@ function voidCorrection(coll, orig, all, { date, pd }) {
 /** 被作废的条目（status: void，或者有一条 void 的更正指向它）：摘要、页面列表都不再当真 */
 export function voidedIds(mem = {}) {
   const out = new Set();
-  for (const c of ['errors', 'slips', 'observations', 'profile', 'weaknesses', 'reviews', 'lessons']) {
+  for (const c of ['errors', 'slips', 'observations', 'profile', 'weaknesses', 'reviews', 'lessons', 'mastery']) {
     for (const d of mem[c] || []) {
       if (!d) continue;
       if (d.status === 'void') out.add(`${c}/${d.id}`);
@@ -548,8 +548,9 @@ export function pendingTitle(pd) {
     weakness: () => (pd.op === 'add' ? `${pd.target} ${d.title}（${d.scope}，${d.level}）` : `${pd.target} ${Object.entries(p).filter(([k]) => k !== 'last').map(([k, v]) => `${k} → ${Array.isArray(v) ? v.join('、') : v}`).join('，')}`),
     review: () => (pd.op === 'add' ? `${pd.target} ${d.title}` : `${pd.target} ${p.status ? (p.status === 'paused' ? '暂停' : '恢复') : p.result ? `${p.result}，下次 ${p.tier} 天后` : p.content ? `加题：${p.content.at(-1)}` : '改了'}`),
     position: () => p.next || d.next || (p.block ? `学到 ${p.block}` : '改了'),
+    mastery: () => { const st = p.state || d.state; const t = p.tier ?? d.tier; return `${pd.target} → ${st}${st === '复现通过' && t ? `（第 ${t} 天那档）` : ''}`; },
   }[pd.kind];
-  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${pd.op === 'update' && !['weakness', 'review', 'lesson'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
+  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${pd.op === 'update' && !['weakness', 'review', 'lesson', 'mastery'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
 }
 
 /** 这一轮记了什么（板顶那句话下面的小字）：「记下了：偏好 1 条；待你确认：错题 1 条」 */

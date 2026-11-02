@@ -8,6 +8,7 @@
 - **一个学习台（所有东西在一处）：`docs/hub-plan.md`**；记忆分两层（全文 + 目录）、省额度不丢信息：`docs/memory-plan.md`；教材板块（入库、按需读）和学习台自己备课：`docs/textbook-plan.md`；学习台的记录、交互、内部 Claude 改记忆：`docs/desk-plan.md`（记录能力、交互、内部 Claude 改记忆；外内协作的分工；分批和验收）。新对话做学习台先读它。
 - 下一步的总计划（线代和 408 一起做到优秀：验收尺子、外壳升级、线代六章、408 加深）和进度：`docs/quality-plan.md`
 - 教学方向的升级（教学守则：失误归纳成守则不再累加；学习台备课出教案；板放不下自动分屏等不花额度的修复）：`docs/teach-plan.md`
+- 攻学习台的上限（学得会、学得牢：信心标定、按证据算掌握、页面自己跑的练习和混练、教学尺子、课堂计划块、学生逐行推导）和进度：`docs/learning-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
 ## 分支
@@ -39,6 +40,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - 页面检查脚本：`node tools/check-lesson.mjs 文件…`（课件 `.md`、示例页 `.html`、实时黑板 `.board.json`（可带 `ops` 教具指令、`talk` 板顶的话，有指令时按 seq 和段一条条写进去，没执行的指令报成错；例子 `kit/examples/live-tools.board.json`）、课堂输出 `.class.json`）在两种 iPad 尺寸下渲染、把演示走一遍，报写法错误、控制台报错、冲出版面、一屏放不下，课堂用的 `figure set step` 每个演示组件连着跳两次；`--shots 目录` 存截图。`npm run check:pages` 查全部示例页（改了组件要跑）。
 - 组件画廊：`npm run gallery -- --out 目录 kit/examples/408-demo.html`：每个组件单独截一张（演示组件停在最后一步），五种风格各一张，拼成联系表 `sheet-*.png`（一行一个组件），视觉统一一眼看完；`--themes paper,white`、`--only id1,id2`、`--width 1180`。
 - 验收（扮演老师写真题课，量一次写对率）：`evals/`（说明在 `evals/README.md`，结果在 `evals/results.md`）。
+- 教学尺子（模拟学生带着设定好的误解上课，量老师教得好不好）：`evals/teaching/`（说明在 `evals/teaching/README.md`，结果在 `evals/teaching/results.md`）；一节模拟课的「页面」是 `tools/teach-sim.mjs`（真的 `buildSystem`、`protocol.js`、`actionText`）。
 
 ## 架构
 
@@ -60,6 +62,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - 判分：`check.js`、`mathinput.js`；`anscheck.js`（`answer` 的 `check:` 按条件判、格子里的根号 `1/√2`，纯函数）；精确分数和行化简：`linalg.js`。
 - 含 n 的式子作答（`answer` / `steps` 的 `formula: n`）：`formula.js`（读懂学生的写法、写成公式预览、代几组 n 比较、指出哪个 n 对不上、不许直接写 A^n，纯函数）+ `formulainput.js`（输入框和符号小键盘；Apple Pencil 点进去用系统的随手写）。
 - `practice` 的自定义题型（`type: custom`）：`practicespec.js`（模板解析、随机取数 `pick` / `let` / `where`、先取十几组数自检，纯函数），出题和判分照常走 `answerWidget`。
+- `derive` 的学生版（`mode: do`）：`derivedo.js`（纯函数：读懂学生写的式子、随机取几组数和上一行比、不等时说出两边各等于什么）+ `blocks/derivedo.js`（输入框、预览、逐行打勾）。
 - 表达空间：`sketch`（当场写的 SVG 示意图；`svgsafe.js` 白名单清理、调色板配色，纯函数）、`derive`（分拍板书：一行行写、等号对齐；`derivespec.js` 纯函数；写到第几行是变量 `step`，接 `figureControls`）、`image`（讲义原图：资料包 `images` 按名字找，课堂工具 `view_image` 让课堂 Claude 自己看）。
 - 科目：`subject.js`（front matter 的 `subject:`；`CLAUDE-PROJECT.md` 第三节小节下的 `<!-- 科目：… -->` 标记，课堂只带「通用 + 这门课」的组件说明，`prompt.js` 的 `defaultRules` 按科目换教法）。计算机课要的表达式（`0x1F`、`mod`、位运算、`bin` / `hex`）在 `expr.js` 和 `exact.js` 两边都有。
 - 英语（考研英语一的语法）：`entext.js`（纯函数：英文答案的规范化和比对（大小写、弯引号、缩写、句末标点）、填空模板 `{{a|b}}`、切词、改错定位、成分标注的括号写法 `[S … [RC …]]` 和判分、操练题）+ `blocks/english.js`（`cloze` 填空、`errfind` 点词改错、`parse` 句子成分（能套从句，`mode: show` 只展示）、`drill` 句型操练）。说明书第三节里标「科目：英语」；英语的教法 `prompt.js` 的 `TEACH_EN`；示例页 `kit/examples/en-demo.html`。
@@ -73,6 +76,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - 浏览器里看全部演示：`kit/examples/408-demo.html`。
 - 页面里调用 Claude：`ai.js`（`window.claude.use('sample')`，旧接口 `window.claude.complete`）。
 - 手写：`ink/`（整页板书 overlay、手写板 pad）；截图作答：`photo.js`。
+- `confidence.js`：信心标定。作答组件第一次判出对错以后问一句「有把握吗」（挂在 `session.hooks` 上，组件不用改），点了记一条动作 `sure`（`detail.key` 是报告里那道题的键 `itemKey`）；课堂里「答对了但没把握」马上告诉课堂 Claude（红线 5），别的跟着下一条。`features.js` 的 `confidence` 开关。
 - `drafts.js`：草稿。会让学生作答的组件用 `markDraft` 登记「现在写着什么、还没交」（`answer` 系列、理由框 `thinkbox`、`conjecture`、`quiz`、`findbug`、`predict`），课堂模式发下一轮时一起告诉课堂 Claude，学生不点检查它也看得到。新写会作答的组件也要登记。
 - `features.js`：功能开关。截图粘贴开着；页面上的手写板（手写识别）暂时关着，入口都不出现，代码保留。
 - `flatten.js`：截图 / 手写图转白底 PNG（透明底的浅色笔迹先压暗）。
@@ -138,6 +142,11 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - 备课出教案（`docs/teach-plan.md`）：`plan.js` 的 `prepPrompt` 要路线 `route`、开头复现 `review`（到期的组按从没复现 > 没过 > 过期久给它挑）、可执行规则 `methods`（`teach` 第几步讲）、讲解顺序 `sequence`、题的 `needs` / `after` / `traps`，带教学守则；`checkPrep` 核依赖写进 `prepCheck`；`lessonPlanText` 把它们写成文字（`prompt.js` 的 `packText` 用）；首页备课可写教材页范围（`parsePages`）。`textbook_read` 能取编号范围、书页（`readChunks`）。
 - 教材板块和自己备课（`kit/src/books/`，`docs/textbook-plan.md`）：`zip.js`（解 zip，用浏览器的 DecompressionStream）、`office.js`（docx 段落、pptx 每页的字和图）、`ingest.js`（看图转写的提示词和读回、拼条目 `assembleChunks`、文稿切条，纯函数）、`textbook.js`（目录、搜索、按编号取、课堂里的教材 `textbookForClass`，纯函数）、`plan.js`（挂课程地图、备课的提示词和读回，纯函数）、`pdf.js`（取 `pdf/` 下的 pdf.js、画页、文字层）、`importer.js`（入库流程：存原页图 → 几页一次看图转写 → 拼条目，停了能接着转）、`bookview.js`（学习台「教材」页 `#books`）、`planview.js`（挂课程地图、首页的备课）、`devmock.js`（`?dev` 的模拟 Claude）。数据在 `books/{B1}`、`books/{B1}/pages/{页}`、`books/{B1}/chunks/{B1-23.1}`。课堂（`classroom.js`）：资料包点名的条目全文并进「教材原文」、目录一节，工具 `textbook_read` / `textbook_search` / `textbook_page`，`image` 组件写条目编号贴原页（`session.chunkImage`）。
 - 分科（数学 / 408 / 英语，`space.js`，纯函数）：一个学习台三个空间。课程编号带门课前缀（线代不带；`DS-` `OS-` `CO-` `CN-` `EN-`，`courseOf` / `spaceOfId` / `subjectOf`），错题跟着前缀编号；弱点、复现组按挂的块 / 错题认（或写 `space`）；`position` 每科一条（`now`、`now-cs`、`now-en`，`positionId`），资料包每科一份（`pack/main`、`main-cs`、`main-en`，`packIds`）。首页顶上切换（`desk.js` 的 `setSpace`，这台设备记着），首页各卡、页面、待确认都只看这一科（`filterSpace`）；「关于我」、规则、失误、自检、备份全科共用。开课时 `sessions` 记 `space`、`subject`，`enterClass` 把 `session.subject` 设成这一块的门课，课堂按它带组件说明和教法；记忆摘要也只带这一科。
+- 攻上限（`docs/learning-plan.md`）：
+  - 掌握 `mastery.js`（纯函数）：页面按证据算（两道不同的题一次对、没标没把握 → 基础题过；隔够档位再一次对 → 复现通过；过了以后失手 → 掉了），从记忆里现有的状态出发，出改动单（`kind: mastery`、`by: page`），我确认才写（`mastery` 的写入方有 `me`）。首页 `desk.js` 的 `proposeMastery` 每次自检后算一遍。
+  - 练一练 `drills.js`（纯函数）+ `drillrun.js`：下课写报告时（`desk.js` 的 `harvestSession`）把页面判得了分的组件连同 `let` 块抄进题库 `drills`（以前的课首页补抄，`sessions.drills` 记抄了几道）；首页「练一练」挑题（到期复现组、掉了的块、错过的，挨着的不同块）开一节 `kind: drill` 的课，一次一道、不调用 Claude；做完出复现组结果的改动单，没过的能带着开课（`createClass`）。
+  - 课堂计划块：`protocol.js` 认 `board plan`（学生看不到，≤ 200 字）；`prompt.js` 的 `latestPlan` 从整段历史里取最新一份放进「黑板现状」前面，`stripPlan` 把历史里的 plan 块去掉；`features.js` 的 `plan` 开关**现在关着**（教学尺子量下来没看出好处，`evals/teaching/results.md`）。
+  - 教法里三门课共用的几条（误解要早探、确认题要换数……）在 `prompt.js` 的 `TEACH_PROBE`，来自教学尺子的评卷。
 - 浏览器里看：`kit/examples/desk-demo.html?dev`（「填入示例记忆」→「开新课」，输入框打「测试:整理」：模拟老师写一个 memo 块，三档各几条、再故意写两条不对的；下课时模拟小结后面带整理单。打「测试:记忆」：模拟老师真的调用 `memory_read`、`lesson_note`、`slip_note`，写一段标了 `point=tr` 的题；点「下课」后回首页看「上一节」、补记、导出备份）。
 
 ## 硬性规定（我明确要求过的，不要改）

@@ -24,7 +24,7 @@ const ROLE = doc`
    - 缺思路（知识都有，但不知道从哪下手）：给提示，不给答案。提示一轮比一轮具体：先指方向，再把问题缩小，再在图上指出来。
 4. 同一个点提示了三轮还不通，就不要再绕：把这一步完整讲清楚，然后换一道同类的题，让学生自己再走一遍。
 5. 学生说「没把握」「蒙的」「大概是」，按没过处理：和答错一样，追问理由或换一道题检验，不要因为结果碰巧对了就往下走。
-6. 不要宣布学生「已经掌握」「完全懂了」。答对了，只说这一题对在哪里；掌握没掌握，课后由项目对话里的 Claude 看整节课的记录来判断。
+6. 不要宣布学生「已经掌握」「完全懂了」。答对了，只说这一题对在哪里；掌握没掌握，课后由学习台按证据算、学生确认（或项目对话里的 Claude 判断）。学生点了「没把握」的题，答对了也按没过处理（见第 5 条）。
 7. 资料包里没有的教材内容不讲。学生问到资料包以外的定义、定理、例题、考试范围，就说「这个课后问对话里的 Claude」，然后回到这节课。资料包里的定义、记号、数字照原样用，不换成别的教材的说法。
 8. 话要短。每一轮说一两句就够，主要内容写在黑板上（用黑板指令画出来）；不在说的话里写长推导，也不把黑板上的内容再念一遍。一块板只讲一件事，一屏要放得下。
 9. 能让学生拖、点、选、预测的，就不要让学生写长段文字。要学生说想法时，问得具体，一句话能答。`;
@@ -68,8 +68,16 @@ const TEACH_EN = doc`
 - 语气平实，像坐在旁边的家教；不用夸张的表扬。
 `;
 
+// 三门课都用的：怎么探误解、怎么确认（2026-11-02 教学尺子第一轮评卷人看出来的，evals/teaching/runs/1/judge-*.md）
+const TEACH_PROBE = doc`
+- 误解要早探：心里一有「学生可能卡在哪」的猜测，就在头一两轮出一个能把两种想法分开的小问题去验（问形状、几行几列、刚访问过的页算不算新、逗号后面填什么），不要等推导走到那一步才碰上。
+- 用来摸清学生想法的那道题，单独用 ˋquizˋ 或 ˋanswerˋ 问；不要放在 ˋstepsˋ 里（学生一答错页面就把这一步揭开了，没法再让学生想一次）。
+- 学生按错的想法答了：换一道新的、能把两种做法分开的题来讲，不在已经揭晓答案的原题上一格一格对。「一次只推进一件事」按概念算，不按格子算。
+- 学生标了「没把握」：先问是哪一点不踏实，再决定补什么。
+- 讲完一个误解后的确认题：换一组数，而且按错的想法做会得出一个看得出不同的答案（不出二选一）；关键的那一步让学生用一句话说出理由，不要替学生写完。
+`;
 /** 这门课的「角色与红线 + 教法」：计算机四门用计算机的教法，英语用英语的，其余（线代、没写科目）用线代的 */
-const teachFor = (subject) => (isCS(subject) ? TEACH_CS : isEN(subject) ? TEACH_EN : TEACH_LA);
+const teachFor = (subject) => `${isCS(subject) ? TEACH_CS : isEN(subject) ? TEACH_EN : TEACH_LA}\n${TEACH_PROBE}`;
 export function defaultRules(subject) {
   return `${ROLE}\n\n教法：\n\n${teachFor(subject)}`;
 }
@@ -124,6 +132,24 @@ ${MEMO_DOC}
 `;
 // 记忆摘要最多占多少（规则 + 摘要合起来）；剩下的给资料包
 export const MEMORY_BUDGET = 32 * 1024; // docs/memory-plan.md：规则（给课堂的）全文 + 和这节课直接有关的全文 + 其余的目录；省额度靠只带这一科、给课堂的，和对话里省略旧段原文
+
+// —— 教学计划（docs/learning-plan.md 第 5 节）：老师写给自己看的几行，学生看不到。
+// 一节课几十轮、中间还会压缩对话，「我要带学生到哪、我猜卡在哪、怎么证实」很容易断。页面只把最新的一份放进下一轮的说明，
+// 对话历史里把 plan 块去掉（不重复付钱）；只在判断变了时改写，平时不写（每写一次多等几秒）。
+export const PLAN_DOC = doc`
+### plan：你的教学计划（学生看不到）
+
+ˋˋˋˋboard plan
+目标：学生自己说出 $A^n$ 为什么等于 $(\operatorname{tr}A)^{n-1}A$
+猜：把 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 当成矩阵（上一题选了 3×3）
+证实：让学生说 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 几行几列；对了就推 $A^2$
+ˋˋˋˋ
+
+- 写给你自己的：这节课要到哪（目标），你现在猜学生卡在哪种误解（猜），下一步拿什么来证实或推翻（证实）。三四行就够，最多 200 个字。
+- 页面不显示它，只把**你最近写的那一份**放进下一轮说明的「黑板现状」前面；对话历史里的 plan 块页面会去掉。
+- 猜到了就马上验：「证实」写的是下一两轮就出的那道小题（能把两种想法分开的），不是等讲到那里再说。
+- **只在判断变了时写**：开课时写一份；学生的作答让你改了猜测、目标达到了要换目标时再写。没变就不写（每写一次学生要多等几秒）。
+`;
 
 // —— 2. 黑板指令协议（需求 2.1 / 2.2）。写法要和 protocol.js 的解析一致 ——
 export const PROTOCOL_DOC = doc`
@@ -659,7 +685,7 @@ export function docLookup(componentDocs, subject, name) {
  * memory（学习台里上课时才有）：{ mem: 记忆库各类的数组, block: 这节课的块, session: 这节课的编号 }。
  * 有记忆时多一节「你对学生的了解」，记忆库 rules 替换内置的红线；记忆先占（最多 MEMORY_BUDGET），资料包用剩下的
  */
-export function buildSystem({ rules, componentDocs, pack, board, packBudget = PACK_BUDGET, subject = '线代', tools = true, memory = null } = {}) {
+export function buildSystem({ rules, componentDocs, pack, board, packBudget = PACK_BUDGET, subject = '线代', tools = true, memory = null, plan = null, planDoc = true } = {}) {
   const custom = asText(rules) || asText(pack?.main?.rules);
   const { docs } = systemDocs(componentDocs, subject, packComponents(pack), { lookup: tools });
   const lookupNote = tools
@@ -670,12 +696,12 @@ export function buildSystem({ rules, componentDocs, pack, board, packBudget = PA
     const role = custom || (mem?.rules ? memoryRules(subject, mem.rules) : defaultRules(subject));
     const sections = [
       `你的角色和红线\n\n${role}`,
-      `组件写法和黑板指令\n\n## 组件说明\n\n下面的组件说明原本是学生写给项目对话里的 Claude 的，文中的「我」指学生。说到 guided 课件的关卡、小节结构的地方，课堂里不适用；课堂里的段落由你用黑板指令一段一段写。有的组件这里只写了最常用的写法（末尾写着「更多写法」）：照着写就行；${lookupNote}写错了页面会把那个组件的完整写法附在提醒里。资料包里点了名的组件，完整写法已经放在下面；点了名时，没点名的不常用组件只留了标题（要用就按名字取）。\n\n${docs || '（组件说明没有打包进来。只用最常见的组件：answer、steps、scene、predict，写法要保守。）'}\n\n## 黑板指令\n\n${PROTOCOL_DOC}`,
+      `组件写法和黑板指令\n\n## 组件说明\n\n下面的组件说明原本是学生写给项目对话里的 Claude 的，文中的「我」指学生。说到 guided 课件的关卡、小节结构的地方，课堂里不适用；课堂里的段落由你用黑板指令一段一段写。有的组件这里只写了最常用的写法（末尾写着「更多写法」）：照着写就行；${lookupNote}写错了页面会把那个组件的完整写法附在提醒里。资料包里点了名的组件，完整写法已经放在下面；点了名时，没点名的不常用组件只留了标题（要用就按名字取）。\n\n${docs || '（组件说明没有打包进来。只用最常见的组件：answer、steps、scene、predict，写法要保守。）'}\n\n## 黑板指令\n\n${PROTOCOL_DOC}${planDoc ? `\n\n${PLAN_DOC}` : ''}`,
       // 顺序按「一节课里多久变一次」排：组件说明、资料包几乎不变，记忆（等确认的改动）偶尔变，黑板现状每轮都变。
       // 每一轮整份重发；平台要是对重复的开头打折，不变的放前面最省
       `这节课的资料包\n\n课前由项目对话里的 Claude 准备，课中也可能更新。${memory ? '在学习台里，资料包是这节课的额外安排（推进建议、备好的题），学生的情况看后面的记忆。' : ''}\n\n${packBody}`,
       ...(memory ? [`你对学生的了解（学习台的记忆库）\n\n${mem?.text || ''}\n\n${desk}`] : []),
-      `黑板现状\n\n${boardStateText(board)}`,
+      `黑板现状\n\n${planDoc ? `${planText(plan)}\n\n` : ''}${boardStateText(board)}`,
     ];
     const NUM = ['一', '二', '三', '四', '五', '六'];
     return [
@@ -694,6 +720,37 @@ export function buildSystem({ rules, componentDocs, pack, board, packBudget = PA
   const { text: packBody } = packText(pack, Math.max(16 * 1024, Math.min(packBudget, SYSTEM_MAX - rest - 3 * 1024)));
   return parts(packBody, mem);
 }
+/** 「你上一轮写的教学计划」那一段：plan 是 latestPlan 的结果（或者直接是文字） */
+export function planText(plan) {
+  const t = typeof plan === 'string' ? plan : plan?.text || '';
+  if (!t.trim()) return '## 你的教学计划\n\n（还没写。开课时用 ˋboard planˋ 写一份：目标、你猜学生卡在哪、拿什么证实。）'.replace(/ˋ/g, '`');
+  return `## 你的教学计划（你${plan?.seq ? `第 ${plan.seq} 轮` : '之前'}写的，学生看不到；判断变了就重写一份）\n\n${t.trim()}`;
+}
+
+/**
+ * 这节课最近一份教学计划：从后往前找 Claude 写过的 plan 块（作废的轮不算）。
+ * 看整段历史（不只是压缩后剩下的），压缩了也不丢。返回 { text, seq } 或 null
+ */
+export function latestPlan(history) {
+  const said = (history || []).filter((h) => h && !h.discarded && h.role === 'claude' && h.kind !== 'closing');
+  for (let i = said.length - 1; i >= 0; i--) {
+    const { segments } = parseOutput(String(said[i].text ?? ''), { final: true });
+    const p = segments.filter((sg) => sg.type === 'board' && sg.op?.op === 'plan' && sg.op.text).at(-1);
+    if (p) return { text: p.op.text, seq: said[i].seq ?? null };
+  }
+  return null;
+}
+
+/** 对话历史里去掉 plan 块（最新的一份已经在说明里，不重复付钱） */
+export function stripPlan(text) {
+  const src = String(text ?? '');
+  if (!/board[ \t]+plan/i.test(src)) return src;
+  const { segments } = parseOutput(src, { final: true });
+  if (!segments.some((sg) => sg.type === 'board' && sg.op?.op === 'plan')) return src;
+  return segments.filter((sg) => !(sg.type === 'board' && sg.op?.op === 'plan'))
+    .map((sg) => (sg.type === 'board' ? `\`\`\`\`board ${sg.header}\n${sg.body}\n\`\`\`\`` : sg.text)).join('\n\n');
+}
+
 // 每一轮的整份说明的上限（给对话留地方；CLAUDE.md 里写的 160 KiB）
 export const SYSTEM_MAX = 160 * 1024;
 
@@ -858,6 +915,11 @@ function recordText(a, type) {
       const why = a.misread ? `；页面看出来：${short(a.misread, 60)}` : '';
       return `[作答] ${where(a, a.engine || '演示')}：${at}${q}${tail(what + why, duration(a.ms))}`;
     }
+    case 'derive': {
+      // 学生自己一行行推（derive mode: do）：每写一行页面查它和上一行相不相等，不等时写着取哪组数两边各等于什么
+      if (a.final) return `[作答] ${where(a, 'derive')}：${a.giveup ? `推到一半想不出来${a.value ? `，写到了 ${short(a.value, 200)}` : ''}` : `推完了（一共改了 ${Math.max(0, (Number(a.attempts) || 0))} 次里${a.ok ? '' : '没'}推到）：${short(a.value, 300)}`}`;
+      return `[作答] ${where(a, 'derive')}：${a.detail ? `${short(a.detail, 20)}` : ''}写了 ${short(a.value, 200)}${a.ok ? '（和上一行相等）' : `（和上一行不相等${a.check ? `：${short(a.check, 200)}` : ''}）`}${a.attempts > 1 ? `，这一行第 ${a.attempts} 次` : ''}`;
+    }
     case 'ask':
       return `[动作] 问了：「${short(a.question ?? a.text ?? a.q, 200)}」`;
     default:
@@ -879,6 +941,10 @@ function eventText(a, type) {
       // 演示、分拍板书的 step：走到第几步
       if (get('name') === 'step' && get('beat') !== undefined) return `[动作] ${where(a, '演示', { title: false })}：走到第 ${val(get('value'))} 步（共 ${val(get('beat'))} 步）`;
       return `[动作] ${where(a, '图', { title: false })}：把 ${get('name') ?? '点'} 拖到 ${val(get('value'))}`;
+    case 'sure': {
+      const sure = get('sure'), ok = get('ok');
+      return `[动作] ${where(a, '组件', { title: false })}${subText}：学生标了「${sure ? '有把握' : '没把握'}」${sure === false && ok === true ? '——这题答对了，但没把握，按没过处理（红线 5）' : sure === true && ok === false ? '——答错了却有把握：多半是一个误解，先弄清学生是怎么想的' : ''}`;
+    }
     case 'done': return `[动作] 点了 ${typeof a.step === 'string' ? a.step : '这一段'}${stepTitle ? `「${short(stepTitle, 30)}」` : ''}的「这段做完了」`;
     case 'ask': return `[动作] 问了：「${short(get('question'), 200)}」`;
     case 'open': return '[动作] 打开了课堂页面';
@@ -958,6 +1024,7 @@ export function buildTurns({ system, history = [], maxBytes = 262144, keepRecent
     const role = h.role === 'claude' ? 'assistant' : h.role === 'student' || h.role === 'system' ? 'user' : null;
     if (!role) continue;
     let content = String(h.text ?? '').trim();
+    if (h.role === 'claude') content = stripPlan(content).trim();
     if (old.has(h)) content = stubBoardText(content).trim();
     if (!content) continue; // sample 不收空的 content
     if (h.role === 'system' && !content.startsWith('[系统]')) content = `[系统] ${content}`;
@@ -1054,7 +1121,7 @@ export function summaryTurn(text) {
 
 // —— 下课小结（存进 class_notes，给项目对话里的 Claude 课后看）——
 // 学习台里（report：页面算好的课后报告，memory/report.js 的 reportText）：同一次调用里接着写整理单（memo 块），不多调用一次（docs/desk-plan.md 4.2）
-export function closingPrompt({ report = '', review = '', slips = '' } = {}) {
+export function closingPrompt({ report = '', review = '', slips = '', plan = null } = {}) {
   const base = doc`
 下课了。请写这节课的小结，给项目对话里的 Claude 课后看：它会据此判断学生掌握得怎么样、下一节从哪里接。
 
@@ -1067,8 +1134,14 @@ export function closingPrompt({ report = '', review = '', slips = '' } = {}) {
 
 不写黑板指令，不对学生说话，不要说学生「已经掌握」。提到学生时写「学生」，不用「他」「她」。
 `;
-  if (!report) return base;
-  return `${base}\n\n${doc`
+  const pt = typeof plan === 'string' ? plan : plan?.text || '';
+  const withPlan = pt.trim() ? `${base}
+
+你最后写的教学计划（对照它写第 2、4 点：目标到了没有，猜的误解证实了没有）：
+
+${pt.trim()}` : base;
+  if (!report) return withPlan;
+  return `${withPlan}\n\n${doc`
 这节课在学习台里上。下面是页面按证据算好的课后报告（每道题的对错、没做完的、没交的草稿、学生说的话）。
 
 小结写完以后，接着写一个 ˋmemoˋ 块当**整理单**（写法和上课时一样，见「在学习台里上课」）：这节课新出现的错题（ˋerrorˋ）、弱点该怎么变（ˋweaknessˋ）、复现组怎么调（ˋreviewˋ）、下一节从哪接（ˋpositionˋ，一定写）。每条都写 ˋbasis=ˋ（下面报告里的组件 id 或证据 id）。
@@ -1087,12 +1160,15 @@ ${report}
 
 const typeOf = (a) => String(a?.type ?? a?.kind ?? '').replace(/-try$/, '');
 
+const sureOf = (a) => (typeof a?.sure === 'boolean' ? a.sure : typeof a?.detail?.sure === 'boolean' ? a.detail.sure : null);
+const okOf = (a) => (typeof a?.ok === 'boolean' ? a.ok : typeof a?.detail?.ok === 'boolean' ? a.detail.ok : null);
+
 // 学生在黑板上的一个动作要不要告诉课堂 Claude。
 // 同一道题的「最终结果」只在看了答案、放弃时说（每次尝试已经说过了）；提问、提示这类不是作答
 export function reportable(a) {
   if (!a || typeof a !== 'object') return false;
   const type = typeOf(a);
-  if (a.source === 'event') return type === 'reveal' || type === 'drag';
+  if (a.source === 'event') return type === 'reveal' || type === 'drag' || type === 'sure';
   if (type === 'ask' || type === 'findbug-hint') return false;
   if (a.final && !a.revealed && !a.giveup) return false;
   return true;
@@ -1110,6 +1186,8 @@ export function actionTrigger(a, { lastStep = false } = {}) {
   if (urgent) return 'now';
   if (a.source === 'event' && typeOf(a) === 'reveal' && !lastStep) return 'later';
   if (a.source === 'event' && typeOf(a) === 'drag') return 'later';
+  // 有没有把握：答对了却说没把握，老师要马上知道（红线 5，按没过处理）；别的跟着下一条一起说，不单独调用
+  if (a.source === 'event' && typeOf(a) === 'sure') return sureOf(a) === false && okOf(a) === true ? 'soon' : 'later';
   return 'soon';
 }
 

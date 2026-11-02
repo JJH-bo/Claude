@@ -26,6 +26,9 @@ import { reviewPack, handoffText, deskBrief, briefId } from './views.js';
 import { readOnlyDb } from './session.js';
 import { SPACES, SPACE_KEYS, DEFAULT_SPACE, filterSpace, spaceOfDoc, spaceOfId, subjectOf, positionId, packIds } from './space.js';
 import { dueList } from './schema.js';
+import { masteryProposals, masteryPendingWrites } from './mastery.js';
+import { pickDrills, harvestDrills, drillLine, DRILL_N } from './drills.js';
+import { enterDrill } from './drillrun.js';
 
 // 正在看哪一科（这台设备记着；分科见 space.js）
 const SPACE_KEY = 'la-desk-space';
@@ -45,7 +48,8 @@ import { sampleMemory, sampleSpaces } from './sample.js';
 
 const CHECK_DELAY = 800; // 一次 batch 写进来好几类：停一下再查，不要每到一类查一遍
 // 课堂每一轮要带的记忆（证据条数多、按需查，不订阅）。sessions 要带：记忆摘要里有「以前学这一块的课」、目录里有以前的课
-const MEMORY_FOR_CLASS = MEMORY_COLLECTIONS.filter((c) => c !== 'evidence');
+// 题库（drills）课堂里用不上，不订阅
+const MEMORY_FOR_CLASS = MEMORY_COLLECTIONS.filter((c) => c !== 'evidence' && c !== 'drills');
 
 /** 地址后面的 #c-20261027-1：进这节课（刷新也还在这节课里） */
 export const classHash = () => { const h = decodeURIComponent(String(location.hash || '').slice(1)); return isSessionId(h) ? h : ''; };
@@ -79,7 +83,8 @@ export async function renderDesk(root, meta) {
     <div class="dk-col">
     <section class="dk-card dk-class" hidden><h2 class="dk-h">上课</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-today" hidden><h2 class="dk-h">今天</h2><div class="dk-body"></div></section>
-    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">课堂里的 Claude 提的错题、弱点、复现组、下一节：点「确认」才写进记忆库。写进去的 7 天内能撤销。</p><div class="dk-popen"></div><div class="dk-memo-sub" role="heading" aria-level="3">最近写进去的</div><div class="dk-pdone"></div></section>
+    <section class="dk-card dk-drill" hidden><h2 class="dk-h">练一练</h2><p class="dk-sub muted">页面从以前课上的题里挑几道，不同块混着做，页面判分，不调用 Claude。</p><div class="dk-body"></div></section>
+    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">课堂里的 Claude 提的错题、弱点、复现组、下一节，页面按证据算的掌握、练习后的复现结果：点「确认」才写进记忆库。写进去的 7 天内能撤销。</p><div class="dk-popen"></div><div class="dk-memo-sub" role="heading" aria-level="3">最近写进去的</div><div class="dk-pdone"></div></section>
     <section class="dk-card dk-manual" hidden><h2 class="dk-h">补记</h2><p class="dk-sub muted">在学习台外面做的（纸上、Notability、对话里）：写一句、贴张截图，下一节课的课后报告会列出来。</p><div class="dk-body"></div><div class="dk-mlist"></div></section>
     </div>
     <div class="dk-col dk-col-side">
@@ -145,7 +150,8 @@ export async function renderDesk(root, meta) {
       loaded.add(c);
       failed.delete(c);
       if (c === 'sessions' || c === 'position') paintClass();
-      if (c === 'sessions') fixReports();
+      if (c === 'sessions') { fixReports(); if (loaded.has('drills') && loaded.has('errors')) fixDrills(); }
+      if (c === 'drills' && loaded.has('sessions')) fixDrills();
       if (c === 'evidence') paintManual();
       if (c === 'curriculum') manualForm?.refreshBlocks();
       schedule();
@@ -168,6 +174,7 @@ export async function renderDesk(root, meta) {
     for (const c of failed) res.problems.unshift({ coll: c, id: '', msg: `读不到 ${c}（${COLLECTIONS[c].label}），这一次的自检不全` });
     paint(res, today);
     writeBriefs(today);
+    if (!failed.size) proposeMastery();
     const rec = memcheckRecord(res, { kit: VERSION, today });
     const json = JSON.stringify(rec);
     if (json !== lastCheck) {
@@ -182,6 +189,18 @@ export async function renderDesk(root, meta) {
         put('meta', 'ledger', { ...res.ledger, at: Date.now() }).catch(() => {});
       }
     }
+  }
+
+  // 掌握：页面按证据算（mastery.js），有变化就出一张改动单（by: page），在「待确认」里等我点。
+  // 刚写的改动单订阅还没回来时，下一次算出同样的结论别再写一张：先记在手上
+  const myPd = new Map(); // 改动单 id → 刚写的那份
+  function proposeMastery() {
+    const pend = [...data.pending.filter((p) => !myPd.has(p.id)), ...myPd.values()];
+    for (const w of masteryPendingWrites(masteryProposals({ ...data, pending: pend }), pend)) {
+      myPd.set(w.id, { id: w.id, ...w.doc });
+      put('pending', w.id, w.doc).catch(() => myPd.delete(w.id));
+    }
+    for (const id of [...myPd.keys()]) if (data.pending.some((p) => p.id === id && JSON.stringify(p.patch || p.data) === JSON.stringify(myPd.get(id).patch || myPd.get(id).data))) myPd.delete(id);
   }
 
   // 给对话里的 Claude 的开场简报（views.js 的 deskBrief）：每科一份，内容变了才写
@@ -206,6 +225,7 @@ export async function renderDesk(root, meta) {
     paintBackup();
     paintPending();
     paintMine();
+    paintDrill(today);
     const total = Object.values(res.counts).reduce((a, b) => a + b, 0);
     // 今天（这一科）：过期、今天到期的复现组，下一节从哪接、欠账；别的科有到期的提一句
     const mine = sv();
@@ -300,6 +320,39 @@ export async function renderDesk(root, meta) {
       paintClass();
     });
     box.querySelector('.dk-new').addEventListener('click', (e) => { e.currentTarget.disabled = true; newClass(block).catch((err) => { toast(`没开成：${err?.message || err}`); e.currentTarget.disabled = false; }); });
+  }
+
+  // —— 练一练（drills.js）：页面挑题、开一节 kind: drill 的练习 ——
+  function paintDrill(today) {
+    const box = $('.dk-drill');
+    box.hidden = false;
+    const pick = pickDrills(data, { space, today });
+    const n = data.drills.filter((d) => d.status !== 'void' && !d.broken && (!d.space || d.space === space)).length;
+    box.querySelector('.dk-body').innerHTML = !pick.items.length
+      ? `<p class="muted">${n ? '题库里的题最近都做对过，过一两天再来。' : '题库还是空的：上过的课下课时，页面会把课上判得了分的题抄进来（以前的课也会补抄）。'}</p>`
+      : `<p>挑好了 ${pick.items.length} 道（题库里一共 ${n} 道）${pick.reviews.length ? `，练到到期的复现组 ${pick.reviews.map(escapeHtml).join('、')}` : ''}：</p>
+        <ul class="dk-drill-why">${pick.items.slice(0, 4).map((x) => `<li>${escapeHtml(x.block)}<span class="muted">　${escapeHtml(x.why)}</span></li>`).join('')}${pick.items.length > 4 ? '<li class="muted">……</li>' : ''}</ul>
+        <button type="button" class="btn btn-primary dk-drill-go">开始（${pick.items.length} 道）</button>`;
+    box.querySelector('.dk-drill-go')?.addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true;
+      try {
+        const sid = sessionId(today, data.sessions.map((x) => x.id));
+        assertWrite('page', 'sessions');
+        await db.doc(`sessions/${sid}`).set({ kind: 'drill', date: today, block: null, space, title: '练习', status: 'open', startedAt: Date.now(), items: pick.items.map((x) => x.id), reviews: pick.reviews, why: Object.fromEntries(pick.items.map((x) => [x.id, x.why])) });
+        goto(sid);
+      } catch (err) { toast(`没开成：${err?.message || err}`); e.currentTarget.disabled = false; }
+    });
+  }
+
+  // —— 以前的课还没抄进题库的（这一版之前下的课）：补抄，一次最多 3 节 ——
+  const harvesting = new Set();
+  function fixDrills() {
+    const todo = data.sessions.filter((x) => x.status === 'closed' && x.report && x.drills === undefined && kindOf(x) !== 'drill' && !harvesting.has(x.id)).slice(0, 3);
+    for (const x of todo) {
+      harvesting.add(x.id);
+      const { id, ...doc } = x;
+      harvestSession(db, id, { doc, update: (patch) => db.doc(`sessions/${id}`).set({ ...doc, ...patch }) }).catch((e) => console.warn('题没抄进题库', id, e));
+    }
   }
 
   // —— 下了课却没有课后报告的（下课时没写成、旧版下的课）：补写，一次最多 3 节 ——
@@ -458,21 +511,9 @@ export async function renderDesk(root, meta) {
   // 开一节新课：sessions/{编号}，资料包抄一份进 sessions/{编号}/pack（以后对话里的 Claude 备下一节、改 pack/main，不影响这一节）
   // use：复现课用页面自己拼的资料包（views.js 的 reviewPack），不用 pack/main
   async function newClass(block, use = null) {
-    const today = toDate(Date.now());
-    const sid = sessionId(today, data.sessions.map((x) => x.id));
-    assertWrite('page', 'sessions');
     const main = use ? use.main : pack.main || null;
     const problems = use ? use.problems : pack.problems;
-    // 这节课是哪一科、哪门课：按块看（没有块就是现在看着的这一科），课堂按它带组件说明和教法
-    const sp = block ? spaceOfId(block) : space;
-    await db.doc(`sessions/${sid}`).set({
-      date: today, block: block || null, title: String(main?.unit || unit), status: 'open', startedAt: Date.now(), space: sp, ...(block ? { subject: subjectOf(block) } : {}),
-      pack: main ? { unit: main.unit || '', goal: main.goal || '', updatedAt: main.updatedAt || null } : null,
-      ...(main?.review ? { review: main.review } : {}),
-    });
-    const scoped = scopeDb(db, sid);
-    if (main) await scoped.doc('pack/main').set({ ...main, block: block || main.block || null });
-    if (problems) await scoped.doc('pack/problems').set(problems);
+    const sid = await createClass(db, { block, main, problems, space, unit, taken: data.sessions.map((x) => x.id) });
     goto(sid);
   }
 
@@ -590,6 +631,16 @@ async function enterClass(root, meta, sid, { readOnly = false } = {}) {
       onHome: () => goto(readOnly ? `classes/${sid}` : ''), onEnd: readOnly || doc.status === 'closed' ? null : finish,
     });
   }
+  if (kind === 'drill') {
+    return enterDrill(root, meta, {
+      db, store, sid, doc, readOnly, goto,
+      openClass: async (blk, use) => {
+        const taken = (await db.collection('sessions').get().catch(() => null))?.docs.map((d) => d.id) || [];
+        goto(await createClass(db, { block: blk, main: use.main, problems: use.problems, space: doc.space || 'math', unit: use.main.unit, taken }));
+      },
+      writeReport: (d) => writeReport(db, sid, { doc: d, update: (patch) => db.doc(`sessions/${sid}`).set({ ...d, ...patch }) }),
+    });
+  }
   if (kind === 'unit') return enterUnit(root, meta, { db, store, sid, doc, block, title, readOnly, finish });
   // 教材（books/）：这一科的书和条目，开课时读一次。资料包点名的条目全文放进资料包，别的课堂里按需取
   const books = await loadBooks(db, doc.space || spaceOfId(block)).catch(() => ({ books: [], chunks: [] }));
@@ -638,6 +689,47 @@ async function enterUnit(root, meta, { db, store, sid, doc, block, title, readOn
 }
 
 /**
+ * 开一节课堂：sessions/{编号}，资料包抄一份进去。首页「开新课」「开复现课」、练习做完「带着没过的开课」共用。
+ * main / problems：这节课的资料包；space：没有块时算哪一科；taken：已经有的课的编号（不撞号）。返回新课的编号
+ */
+export async function createClass(db, { block = null, main = null, problems = null, space = 'math', unit = '学习台', taken = [] } = {}) {
+  const today = toDate(Date.now());
+  const sid = sessionId(today, taken);
+  assertWrite('page', 'sessions');
+  // 这节课是哪一科、哪门课：按块看（没有块就是现在看着的这一科），课堂按它带组件说明和教法
+  const sp = block ? spaceOfId(block) : space;
+  await db.doc(`sessions/${sid}`).set({
+    date: today, block: block || null, title: String(main?.unit || unit), status: 'open', startedAt: Date.now(), space: sp, ...(block ? { subject: subjectOf(block) } : {}),
+    pack: main ? { unit: main.unit || '', goal: main.goal || '', updatedAt: main.updatedAt || null } : null,
+    ...(main?.review ? { review: main.review } : {}),
+  });
+  const scoped = scopeDb(db, sid);
+  if (main) await scoped.doc('pack/main').set({ ...main, block: block || main.block || null });
+  if (problems) await scoped.doc('pack/problems').set(problems);
+  return sid;
+}
+
+/**
+ * 一节课的题抄进题库（drills.js 的 harvestDrills）：页面判得了分的组件连同 let 块。下课写报告时抄；以前的课首页补抄。
+ * sessions/{编号}.drills 记抄了几道（0 也记，免得每次打开都再抄一遍）
+ */
+export async function harvestSession(db, sid, { doc, report = null, steps = null, update }) {
+  const rows = (snap) => (snap ? snap.docs.map((d) => ({ id: d.id, ...d.data() })) : []);
+  const scoped = scopeDb(db, sid);
+  const [r, st, errors, existing] = await Promise.all([
+    report ? report : scoped.doc('report/main').get().then((x) => (x.exists ? x.data() : null), () => null),
+    steps ? steps : scoped.collection('steps').get().then(rows, () => []),
+    db.collection('errors').get().then(rows, () => []),
+    db.collection('drills').where('fromSession', '==', sid).get().then(rows, () => []),
+  ]);
+  const out = harvestDrills({ session: { ...doc, id: sid }, steps: st, report: r, mem: { errors }, existing });
+  assertWrite('page', 'drills');
+  for (const d of out) await db.doc(`drills/${d.id}`).set(d.doc);
+  await update({ drills: out.length + existing.length });
+  return out.length;
+}
+
+/**
  * 课后报告（report.js，页面代码算、不调用 Claude）写进 sessions/{编号}/report/main，要点（首页「上一节」那一行）记在 sessions/{编号}.report。
  * 读这节课的证据、观察、失误，上一节课下课以后的补记；turns、steps 下课时课堂直接给（还在排队写进数据库的也算上），补写时从数据库读。
  * update(patch)：改 sessions/{编号}（课堂里用 updateSession，免得和它手上的那份打架）
@@ -646,7 +738,10 @@ export async function writeReport(db, sid, { doc, turns = null, steps = null, up
   assertWrite('page', 'sessions');
   const report = await makeReport(db, sid, { doc, turns, steps });
   await scopeDb(db, sid).doc('report/main').set(report);
-  await update({ report: { at: report.at, line: reportLine(report), items: report.totals.items, first: report.totals.first, activeMs: report.time.activeMs } });
+  const patch = { report: { at: report.at, line: reportLine(report), items: report.totals.items, first: report.totals.first, activeMs: report.time.activeMs } };
+  await update(patch);
+  // 课上判得了分的题抄进题库（练习用，不调用 Claude）
+  if (kindOf(doc) !== 'drill') await harvestSession(db, sid, { doc: { ...doc, ...patch }, report, steps, update: (p) => update({ ...patch, ...p }) }).catch((e) => console.warn('题没抄进题库', sid, e));
   return report;
 }
 

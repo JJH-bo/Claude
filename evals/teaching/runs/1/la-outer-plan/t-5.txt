@@ -1,0 +1,3 @@
+第 1 步你交上来的是空的。先确认一下：把 $A^2=A\cdot A$ 里的每个 $A$ 换成 $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$，就是揭开的那一行，这一步你认同吗？
+
+接着做第 2 步：选之前先想 $\boldsymbol\beta^{\mathrm T}$ 是几行几列、$\boldsymbol\alpha$ 是几行几列，在框里写一句再选。

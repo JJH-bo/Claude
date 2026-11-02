@@ -1,0 +1,402 @@
+{
+ "scenario": "en-rel",
+ "subject": "英语",
+ "plan": false,
+ "pack": {
+  "main": {
+   "unit": "非限制性定语从句：逗号 + which / who，不用 that",
+   "goal": "学生能分清限制性和非限制性定语从句，知道非限制性的（逗号后面）不能用 that，并能在长难句里认出来、填对关系词。",
+   "scope": "前置：限制性定语从句、关系代词 who / which / that。本节讲非限制性定语从句（逗号隔开、补充说明），考研英语一的语法和长难句口径。",
+   "plan": "1. 给两三个对比例句（有逗号 / 没逗号），让学生说意思有什么不同。\n2. 填空：逗号后面填关系词，暴露 that 的问题。\n3. 改错，再拆一个真题长难句。"
+  }
+ },
+ "segs": [
+  {
+   "id": "b1",
+   "page": 1,
+   "title": "只差一对逗号",
+   "md": "**(a)** My brother **who lives in Shanghai** is a doctor.\n\n**(b)** My brother**, who lives in Shanghai,** is a doctor.\n\n```quiz\nid: q-b1\nq: 哪一句暗示说话人**不止一个**兄弟？\n- [x] (a)：没有逗号的那句\n- [ ] (b)：有逗号的那句\n- [ ] 两句意思完全一样\nexplain: (a) 里 who lives in Shanghai 用来**限定**是哪一个兄弟（住上海的那个，言下之意还有别的兄弟）；(b) 里逗号隔开的部分只是**补充**一句，说话人只有一个兄弟。\n```"
+  },
+  {
+   "id": "k1",
+   "place": "pin",
+   "title": "两种定语从句",
+   "md": "- 没逗号＝限制性（restrictive）：**挑出**是哪一个，去掉意思就变\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，去掉主句意思不变"
+  },
+  {
+   "id": "b2",
+   "page": 2,
+   "title": "逗号后面填什么",
+   "md": "Shanghai, \\_\\_\\_\\_\\_ is the largest city in China, has a population of over 24 million.\n\n```quiz\nid: q-b2\nq: 空里能填哪个词？（可以多选）\n- [x] which\n- [ ] that\nexplain: 逗号后面的非限制性定语从句只能用 which（指物）/ who（指人），**不能用 that**。\n```"
+  },
+  {
+   "id": "k1",
+   "place": "pin",
+   "title": "两种定语从句",
+   "md": "- 没逗号＝限制性（restrictive）：**挑出**是哪一个，可以用 that\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，**不能用 that**，用 which / who"
+  },
+  {
+   "id": "b3",
+   "page": 3,
+   "title": "换成人试一次",
+   "md": "My mother, \\_\\_\\_\\_\\_ has taught English for thirty years, still reads a novel every week.\n\n```quiz\nid: q-b3\nq: 空里填哪个词？\n- [x] who\n- [ ] that\n- [ ] which\nexplain: 逗号隔开、先行词 my mother 是人，非限制性只能用 who；that 不能跟在逗号后面，which 指物。\n```"
+  },
+  {
+   "id": "b4",
+   "page": 4,
+   "title": "为什么 that 不行",
+   "md": "- that 的本职就是**挑出**：the brother **that** lives in Shanghai ＝ 好几个里的那一个\n- 逗号的意思是**已经知道是谁了**，只是顺便补一句：my mother**,** who … ＝ 只有一个妈妈，不用挑\n\n一个要挑，一个说不用挑，放在一起就矛盾了，所以逗号后面不跟 that。\n\n```quiz\nid: q-b4\nq: 下面哪一句**有错**？\n- [ ] The man that lives next door is a doctor.\n- [x] My father, that is a doctor, works very hard.\n- [ ] My father, who is a doctor, works very hard.\nexplain: 第二句逗号后面用了 that；只有一个父亲，不用挑出，应改成 who。第一句没逗号，是限制性的，that 没问题。\n```"
+  },
+  {
+   "id": "b5",
+   "page": 5,
+   "title": "长句里认出来",
+   "md": "```steps\nid: ex-b5\ntitle: 拆一个长句\nq: Darwin's theory of evolution, which was first published in 1859, challenged the belief that every species had been created separately.\n\nstep: 先找主句的谓语\nask: 整句话的主句谓语动词是哪个？\nchoices: was published | challenged | had been created\nanswer: challenged\nshow: 主干：Darwin's theory of evolution … **challenged** the belief。was published 在逗号里的从句里，had been created 在 belief 后面的 that 从句里。\n\nstep: 逗号里那段补充谁\nask: which was first published in 1859 是在补充说明哪个词？\nchoices: Darwin | Darwin's theory of evolution | 1859\nanswer: Darwin's theory of evolution\nshow: which 指物，指前面的 theory（达尔文的进化论只有一个），逗号隔开，是非限制性定语从句，只是补充「1859 年首次发表」。\n\nstep: which 能不能换成 that\nask: 把这里的 which 换成 that，行不行？\nchoices: 行 | 不行\nanswer: 不行\nshow: 逗号后面的非限制性定语从句不能用 that。\n```"
+  }
+ ],
+ "pages": [
+  {
+   "n": 1,
+   "title": "只差一对逗号",
+   "talk": "好，先不讲规则。看这两句，只差一对逗号，你判断一下意思差在哪。\n\n选好了我们接着说为什么。"
+  },
+  {
+   "n": 2,
+   "title": "逗号后面填什么",
+   "talk": "你选的 (a) 是对的，理由也说准了：没逗号的从句在几个兄弟里**挑出**住上海的那个。页面判成错，是我这道题的选项写法出了问题，不是你的错。我把这条规律记到旁边。\n\n先凭语感选，选完说一句你为什么这么选。"
+  },
+  {
+   "n": 3,
+   "title": "换成人试一次",
+   "talk": "that 在**没逗号**的从句里确实很常用，但它有一个限制：只能引导限制性定语从句。逗号一出现，就只能用 which（指物）/ who（指人）。所以上一题只有 which 对。"
+  },
+  {
+   "n": 4,
+   "title": "为什么 that 不行",
+   "talk": "who 是对的（页面又判错了，是题目设置的问题）。你问为什么 that 不行，这个问得好，看下面这两行，再做一道检验。"
+  },
+  {
+   "n": 5,
+   "title": "长句里认出来",
+   "talk": "B 对，理由也是你自己说出来的。My brother, that lives in Beijing 确实是错的，要写成 My brother, who lives in Beijing。现在放进一个长句里认一认。"
+  }
+ ],
+ "cur": 5,
+ "progress": {},
+ "tries": {
+  "q-b1": 1,
+  "q-b2": 1,
+  "q-b3": 1,
+  "q-b4": 1
+ },
+ "results": {
+  "q-b1": [
+   {
+    "source": "record",
+    "block": "q-b1",
+    "step": "b1",
+    "type": "quiz",
+    "q": "哪一句暗示说话人**不止一个**兄弟？",
+    "ok": false,
+    "attempts": 1,
+    "wrong": [
+     "A. (a)：没有逗号的那句"
+    ],
+    "final": false
+   }
+  ],
+  "q-b2": [
+   {
+    "source": "record",
+    "block": "q-b2",
+    "step": "b2",
+    "type": "quiz",
+    "q": "空里能填哪个词？（可以多选）",
+    "ok": false,
+    "attempts": 1,
+    "wrong": [
+     "A. which；B. that"
+    ],
+    "final": false
+   }
+  ],
+  "q-b3": [
+   {
+    "source": "record",
+    "block": "q-b3",
+    "step": "b3",
+    "type": "quiz",
+    "q": "空里填哪个词？",
+    "ok": false,
+    "attempts": 1,
+    "wrong": [
+     "A. who"
+    ],
+    "final": false
+   }
+  ],
+  "q-b4": [
+   {
+    "source": "record",
+    "block": "q-b4",
+    "step": "b4",
+    "type": "quiz",
+    "q": "下面哪一句**有错**？",
+    "ok": false,
+    "attempts": 1,
+    "wrong": [
+     "B. My father, that is a doctor, works very hard."
+    ],
+    "final": false
+   }
+  ]
+ },
+ "compAt": {
+  "q-b1": {
+   "seg": {
+    "id": "b1"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-b1\nq: 哪一句暗示说话人**不止一个**兄弟？\n- [x] (a)：没有逗号的那句\n- [ ] (b)：有逗号的那句\n- [ ] 两句意思完全一样\nexplain: (a) 里 who lives in Shanghai 用来**限定**是哪一个兄弟（住上海的那个，言下之意还有别的兄弟）；(b) 里逗号隔开的部分只是**补充**一句，说话人只有一个兄弟。",
+    "id": "q-b1",
+    "raw": "```quiz\nid: q-b1\nq: 哪一句暗示说话人**不止一个**兄弟？\n- [x] (a)：没有逗号的那句\n- [ ] (b)：有逗号的那句\n- [ ] 两句意思完全一样\nexplain: (a) 里 who lives in Shanghai 用来**限定**是哪一个兄弟（住上海的那个，言下之意还有别的兄弟）；(b) 里逗号隔开的部分只是**补充**一句，说话人只有一个兄弟。\n```",
+    "at": 120
+   }
+  },
+  "q-b2": {
+   "seg": {
+    "id": "b2"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-b2\nq: 空里能填哪个词？（可以多选）\n- [x] which\n- [ ] that\nexplain: 逗号后面的非限制性定语从句只能用 which（指物）/ who（指人），**不能用 that**。",
+    "id": "q-b2",
+    "raw": "```quiz\nid: q-b2\nq: 空里能填哪个词？（可以多选）\n- [x] which\n- [ ] that\nexplain: 逗号后面的非限制性定语从句只能用 which（指物）/ who（指人），**不能用 that**。\n```",
+    "at": 89
+   }
+  },
+  "q-b3": {
+   "seg": {
+    "id": "b3"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-b3\nq: 空里填哪个词？\n- [x] who\n- [ ] that\n- [ ] which\nexplain: 逗号隔开、先行词 my mother 是人，非限制性只能用 who；that 不能跟在逗号后面，which 指物。",
+    "id": "q-b3",
+    "raw": "```quiz\nid: q-b3\nq: 空里填哪个词？\n- [x] who\n- [ ] that\n- [ ] which\nexplain: 逗号隔开、先行词 my mother 是人，非限制性只能用 who；that 不能跟在逗号后面，which 指物。\n```",
+    "at": 92
+   }
+  },
+  "q-b4": {
+   "seg": {
+    "id": "b4"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-b4\nq: 下面哪一句**有错**？\n- [ ] The man that lives next door is a doctor.\n- [x] My father, that is a doctor, works very hard.\n- [ ] My father, who is a doctor, works very hard.\nexplain: 第二句逗号后面用了 that；只有一个父亲，不用挑出，应改成 who。第一句没逗号，是限制性的，that 没问题。",
+    "id": "q-b4",
+    "raw": "```quiz\nid: q-b4\nq: 下面哪一句**有错**？\n- [ ] The man that lives next door is a doctor.\n- [x] My father, that is a doctor, works very hard.\n- [ ] My father, who is a doctor, works very hard.\nexplain: 第二句逗号后面用了 that；只有一个父亲，不用挑出，应改成 who。第一句没逗号，是限制性的，that 没问题。\n```",
+    "at": 169
+   }
+  },
+  "ex-b5": {
+   "seg": {
+    "id": "b5"
+   },
+   "f": {
+    "lang": "steps",
+    "body": "id: ex-b5\ntitle: 拆一个长句\nq: Darwin's theory of evolution, which was first published in 1859, challenged the belief that every species had been created separately.\n\nstep: 先找主句的谓语\nask: 整句话的主句谓语动词是哪个？\nchoices: was published | challenged | had been created\nanswer: challenged\nshow: 主干：Darwin's theory of evolution … **challenged** the belief。was published 在逗号里的从句里，had been created 在 belief 后面的 that 从句里。\n\nstep: 逗号里那段补充谁\nask: which was first published in 1859 是在补充说明哪个词？\nchoices: Darwin | Darwin's theory of evolution | 1859\nanswer: Darwin's theory of evolution\nshow: which 指物，指前面的 theory（达尔文的进化论只有一个），逗号隔开，是非限制性定语从句，只是补充「1859 年首次发表」。\n\nstep: which 能不能换成 that\nask: 把这里的 which 换成 that，行不行？\nchoices: 行 | 不行\nanswer: 不行\nshow: 逗号后面的非限制性定语从句不能用 that。",
+    "id": "ex-b5",
+    "raw": "```steps\nid: ex-b5\ntitle: 拆一个长句\nq: Darwin's theory of evolution, which was first published in 1859, challenged the belief that every species had been created separately.\n\nstep: 先找主句的谓语\nask: 整句话的主句谓语动词是哪个？\nchoices: was published | challenged | had been created\nanswer: challenged\nshow: 主干：Darwin's theory of evolution … **challenged** the belief。was published 在逗号里的从句里，had been created 在 belief 后面的 that 从句里。\n\nstep: 逗号里那段补充谁\nask: which was first published in 1859 是在补充说明哪个词？\nchoices: Darwin | Darwin's theory of evolution | 1859\nanswer: Darwin's theory of evolution\nshow: which 指物，指前面的 theory（达尔文的进化论只有一个），逗号隔开，是非限制性定语从句，只是补充「1859 年首次发表」。\n\nstep: which 能不能换成 that\nask: 把这里的 which 换成 that，行不行？\nchoices: 行 | 不行\nanswer: 不行\nshow: 逗号后面的非限制性定语从句不能用 that。\n```",
+    "at": 0
+   }
+  }
+ },
+ "ops": [],
+ "history": [
+  {
+   "role": "claude",
+   "seq": 1,
+   "text": "好，先不讲规则。看这两句，只差一对逗号，你判断一下意思差在哪。\n\n````board new id=b1 title=\"只差一对逗号\"\n**(a)** My brother **who lives in Shanghai** is a doctor.\n\n**(b)** My brother**, who lives in Shanghai,** is a doctor.\n\n```quiz\nid: q-b1\nq: 哪一句暗示说话人**不止一个**兄弟？\n- [x] (a)：没有逗号的那句\n- [ ] (b)：有逗号的那句\n- [ ] 两句意思完全一样\nexplain: (a) 里 who lives in Shanghai 用来**限定**是哪一个兄弟（住上海的那个，言下之意还有别的兄弟）；(b) 里逗号隔开的部分只是**补充**一句，说话人只有一个兄弟。\n```\n````\n\n选好了我们接着说为什么。\n"
+  },
+  {
+   "role": "student",
+   "seq": 2,
+   "text": "A吧，没逗号那句是在好几个兄弟里指住上海的那个\n[作答] b1 里的 quiz q-b1：「哪一句暗示说话人**不止一个**兄弟？」没做对，看了解析（共 1 次），选错过：「A. (a)：没有逗号的那句」\n[动作] b1 里的组件 q-b1：学生标了「有把握」——答错了却有把握：多半是一个误解，先弄清学生是怎么想的"
+  },
+  {
+   "role": "claude",
+   "seq": 3,
+   "text": "你选的 (a) 是对的，理由也说准了：没逗号的从句在几个兄弟里**挑出**住上海的那个。页面判成错，是我这道题的选项写法出了问题，不是你的错。我把这条规律记到旁边。\n\n````board pin id=k1 title=\"两种定语从句\"\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，去掉意思就变\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，去掉主句意思不变\n````\n\n````board new id=b2 title=\"逗号后面填什么\"\nShanghai, \\_\\_\\_\\_\\_ is the largest city in China, has a population of over 24 million.\n\n```quiz\nid: q-b2\nq: 空里能填哪个词？（可以多选）\n- [x] which\n- [ ] that\nexplain: 逗号后面的非限制性定语从句只能用 which（指物）/ who（指人），**不能用 that**。\n```\n````\n\n先凭语感选，选完说一句你为什么这么选。\n"
+  },
+  {
+   "role": "student",
+   "seq": 4,
+   "text": "两个都行吧，which 和 that 不都能指物吗，that 万能\n[作答] b2 里的 quiz q-b2：「空里能填哪个词？（可以多选）」没做对，看了解析（共 1 次），选错过：「A. which；B. that」\n[动作] b2 里的组件 q-b2：学生标了「有把握」——答错了却有把握：多半是一个误解，先弄清学生是怎么想的"
+  },
+  {
+   "role": "claude",
+   "seq": 5,
+   "text": "that 在**没逗号**的从句里确实很常用，但它有一个限制：只能引导限制性定语从句。逗号一出现，就只能用 which（指物）/ who（指人）。所以上一题只有 which 对。\n\n````board pin id=k1 title=\"两种定语从句\"\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，可以用 that\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，**不能用 that**，用 which / who\n````\n\n````board new id=b3 title=\"换成人试一次\"\nMy mother, \\_\\_\\_\\_\\_ has taught English for thirty years, still reads a novel every week.\n\n```quiz\nid: q-b3\nq: 空里填哪个词？\n- [x] who\n- [ ] that\n- [ ] which\nexplain: 逗号隔开、先行词 my mother 是人，非限制性只能用 who；that 不能跟在逗号后面，which 指物。\n```\n````\n"
+  },
+  {
+   "role": "student",
+   "seq": 6,
+   "text": "who？老师说逗号后面不能用that，指人就用who。但我还是有点不明白为什么that不行\n[作答] b3 里的 quiz q-b3：「空里填哪个词？」没做对，看了解析（共 1 次），选错过：「A. who」\n[动作] b3 里的组件 q-b3：学生标了「没把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 7,
+   "text": "who 是对的（页面又判错了，是题目设置的问题）。你问为什么 that 不行，这个问得好，看下面这两行，再做一道检验。\n\n````board new id=b4 title=\"为什么 that 不行\"\n- that 的本职就是**挑出**：the brother **that** lives in Shanghai ＝ 好几个里的那一个\n- 逗号的意思是**已经知道是谁了**，只是顺便补一句：my mother**,** who … ＝ 只有一个妈妈，不用挑\n\n一个要挑，一个说不用挑，放在一起就矛盾了，所以逗号后面不跟 that。\n\n```quiz\nid: q-b4\nq: 下面哪一句**有错**？\n- [ ] The man that lives next door is a doctor.\n- [x] My father, that is a doctor, works very hard.\n- [ ] My father, who is a doctor, works very hard.\nexplain: 第二句逗号后面用了 that；只有一个父亲，不用挑出，应改成 who。第一句没逗号，是限制性的，that 没问题。\n```\n````\n"
+  },
+  {
+   "role": "student",
+   "seq": 8,
+   "text": "B。逗号表示已经知道是谁了，不用再挑，that 是用来挑的，所以放一起矛盾。我以前 My brother, that lives in Beijing 这种写法好像就是错的？\n[作答] b4 里的 quiz q-b4：「下面哪一句**有错**？」没做对，看了解析（共 1 次），选错过：「B. My father, that is a doctor, works ve…」\n[动作] b4 里的组件 q-b4：学生标了「有把握」——答错了却有把握：多半是一个误解，先弄清学生是怎么想的"
+  },
+  {
+   "role": "claude",
+   "seq": 9,
+   "text": "B 对，理由也是你自己说出来的。My brother, that lives in Beijing 确实是错的，要写成 My brother, who lives in Beijing。现在放进一个长句里认一认。\n\n````board new id=b5 title=\"长句里认出来\"\n```steps\nid: ex-b5\ntitle: 拆一个长句\nq: Darwin's theory of evolution, which was first published in 1859, challenged the belief that every species had been created separately.\n\nstep: 先找主句的谓语\nask: 整句话的主句谓语动词是哪个？\nchoices: was published | challenged | had been created\nanswer: challenged\nshow: 主干：Darwin's theory of evolution … **challenged** the belief。was published 在逗号里的从句里，had been created 在 belief 后面的 that 从句里。\n\nstep: 逗号里那段补充谁\nask: which was first published in 1859 是在补充说明哪个词？\nchoices: Darwin | Darwin's theory of evolution | 1859\nanswer: Darwin's theory of evolution\nshow: which 指物，指前面的 theory（达尔文的进化论只有一个），逗号隔开，是非限制性定语从句，只是补充「1859 年首次发表」。\n\nstep: which 能不能换成 that\nask: 把这里的 which 换成 that，行不行？\nchoices: 行 | 不行\nanswer: 不行\nshow: 逗号后面的非限制性定语从句不能用 that。\n```\n````\n"
+  }
+ ],
+ "turns": [
+  {
+   "seq": 1,
+   "role": "teacher",
+   "bytes": 692,
+   "talk": "好，先不讲规则。看这两句，只差一对逗号，你判断一下意思差在哪。\n\n选好了我们接着说为什么。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 1 块板「只差一对逗号」\n\n老师写在板顶的话：好，先不讲规则。看这两句，只差一对逗号，你判断一下意思差在哪。\n\n选好了我们接着说为什么。\n\n## 只差一对逗号\n**(a)** My brother **who lives in Shanghai** is a doctor.\n\n**(b)** My brother**, who lives in Shanghai,** is a doctor.\n\n【选择题 q-b1】\n  哪一句暗示说话人**不止一个**兄弟？\n  A. (a)：没有逗号的那句\n  B. (b)：有逗号的那句\n  C. 两句意思完全一样\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 2,
+   "role": "student",
+   "say": "A吧，没逗号那句是在好几个兄弟里指住上海的那个",
+   "acts": [
+    {
+     "comp": "q-b1",
+     "ok": false,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-b1",
+     "ok": false,
+     "type": "sure"
+    }
+   ],
+   "msg": "A吧，没逗号那句是在好几个兄弟里指住上海的那个\n[作答] b1 里的 quiz q-b1：「哪一句暗示说话人**不止一个**兄弟？」没做对，看了解析（共 1 次），选错过：「A. (a)：没有逗号的那句」\n[动作] b1 里的组件 q-b1：学生标了「有把握」——答错了却有把握：多半是一个误解，先弄清学生是怎么想的"
+  },
+  {
+   "seq": 3,
+   "role": "teacher",
+   "bytes": 877,
+   "talk": "你选的 (a) 是对的，理由也说准了：没逗号的从句在几个兄弟里**挑出**住上海的那个。页面判成错，是我这道题的选项写法出了问题，不是你的错。我把这条规律记到旁边。\n\n先凭语感选，选完说一句你为什么这么选。",
+   "ops": [
+    "pin",
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 2 块板「逗号后面填什么」\n\n老师写在板顶的话：你选的 (a) 是对的，理由也说准了：没逗号的从句在几个兄弟里**挑出**住上海的那个。页面判成错，是我这道题的选项写法出了问题，不是你的错。我把这条规律记到旁边。\n\n先凭语感选，选完说一句你为什么这么选。\n\n## 逗号后面填什么\nShanghai, \\_\\_\\_\\_\\_ is the largest city in China, has a population of over 24 million.\n\n【选择题 q-b2】\n  空里能填哪个词？（可以多选）\n  A. which\n  B. that\n\n# 常驻栏\n## 两种定语从句\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，去掉意思就变\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，去掉主句意思不变\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 4,
+   "role": "student",
+   "say": "两个都行吧，which 和 that 不都能指物吗，that 万能",
+   "acts": [
+    {
+     "comp": "q-b2",
+     "ok": false,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-b2",
+     "ok": false,
+     "type": "sure"
+    }
+   ],
+   "msg": "两个都行吧，which 和 that 不都能指物吗，that 万能\n[作答] b2 里的 quiz q-b2：「空里能填哪个词？（可以多选）」没做对，看了解析（共 1 次），选错过：「A. which；B. that」\n[动作] b2 里的组件 q-b2：学生标了「有把握」——答错了却有把握：多半是一个误解，先弄清学生是怎么想的"
+  },
+  {
+   "seq": 5,
+   "role": "teacher",
+   "bytes": 812,
+   "talk": "that 在**没逗号**的从句里确实很常用，但它有一个限制：只能引导限制性定语从句。逗号一出现，就只能用 which（指物）/ who（指人）。所以上一题只有 which 对。",
+   "ops": [
+    "pin",
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 3 块板「换成人试一次」\n\n老师写在板顶的话：that 在**没逗号**的从句里确实很常用，但它有一个限制：只能引导限制性定语从句。逗号一出现，就只能用 which（指物）/ who（指人）。所以上一题只有 which 对。\n\n## 换成人试一次\nMy mother, \\_\\_\\_\\_\\_ has taught English for thirty years, still reads a novel every week.\n\n【选择题 q-b3】\n  空里填哪个词？\n  A. who\n  B. that\n  C. which\n\n# 常驻栏\n## 两种定语从句\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，去掉意思就变\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，去掉主句意思不变\n## 两种定语从句\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，可以用 that\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，**不能用 that**，用 which / who\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 6,
+   "role": "student",
+   "say": "who？老师说逗号后面不能用that，指人就用who。但我还是有点不明白为什么that不行",
+   "acts": [
+    {
+     "comp": "q-b3",
+     "ok": false,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-b3",
+     "ok": false,
+     "type": "sure"
+    }
+   ],
+   "msg": "who？老师说逗号后面不能用that，指人就用who。但我还是有点不明白为什么that不行\n[作答] b3 里的 quiz q-b3：「空里填哪个词？」没做对，看了解析（共 1 次），选错过：「A. who」\n[动作] b3 里的组件 q-b3：学生标了「没把握」"
+  },
+  {
+   "seq": 7,
+   "role": "teacher",
+   "bytes": 902,
+   "talk": "who 是对的（页面又判错了，是题目设置的问题）。你问为什么 that 不行，这个问得好，看下面这两行，再做一道检验。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 4 块板「为什么 that 不行」\n\n老师写在板顶的话：who 是对的（页面又判错了，是题目设置的问题）。你问为什么 that 不行，这个问得好，看下面这两行，再做一道检验。\n\n## 为什么 that 不行\n- that 的本职就是**挑出**：the brother **that** lives in Shanghai ＝ 好几个里的那一个\n- 逗号的意思是**已经知道是谁了**，只是顺便补一句：my mother**,** who … ＝ 只有一个妈妈，不用挑\n\n一个要挑，一个说不用挑，放在一起就矛盾了，所以逗号后面不跟 that。\n\n【选择题 q-b4】\n  下面哪一句**有错**？\n  A. The man that lives next door is a doctor.\n  B. My father, that is a doctor, works very hard.\n  C. My father, who is a doctor, works very hard.\n\n# 常驻栏\n## 两种定语从句\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，去掉意思就变\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，去掉主句意思不变\n## 两种定语从句\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，可以用 that\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，**不能用 that**，用 which / who\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 8,
+   "role": "student",
+   "say": "B。逗号表示已经知道是谁了，不用再挑，that 是用来挑的，所以放一起矛盾。我以前 My brother, that lives in Beijing 这种写法好像就是错的？",
+   "acts": [
+    {
+     "comp": "q-b4",
+     "ok": false,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-b4",
+     "ok": false,
+     "type": "sure"
+    }
+   ],
+   "msg": "B。逗号表示已经知道是谁了，不用再挑，that 是用来挑的，所以放一起矛盾。我以前 My brother, that lives in Beijing 这种写法好像就是错的？\n[作答] b4 里的 quiz q-b4：「下面哪一句**有错**？」没做对，看了解析（共 1 次），选错过：「B. My father, that is a doctor, works ve…」\n[动作] b4 里的组件 q-b4：学生标了「有把握」——答错了却有把握：多半是一个误解，先弄清学生是怎么想的"
+  },
+  {
+   "seq": 9,
+   "role": "teacher",
+   "bytes": 1289,
+   "talk": "B 对，理由也是你自己说出来的。My brother, that lives in Beijing 确实是错的，要写成 My brother, who lives in Beijing。现在放进一个长句里认一认。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 5 块板「长句里认出来」\n\n老师写在板顶的话：B 对，理由也是你自己说出来的。My brother, that lives in Beijing 确实是错的，要写成 My brother, who lives in Beijing。现在放进一个长句里认一认。\n\n## 长句里认出来\n【分步例题 ex-b5】拆一个长句\n  Darwin's theory of evolution, which was first published in 1859, challenged the belief that every species had been created separately.\n  第 1 步 先找主句的谓语：整句话的主句谓语动词是哪个？\n  选项：was published / challenged / had been created\n\n# 常驻栏\n## 两种定语从句\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，去掉意思就变\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，去掉主句意思不变\n## 两种定语从句\n- 没逗号＝限制性（restrictive）：**挑出**是哪一个，可以用 that\n- 有逗号＝非限制性（non-restrictive）：只**补充**一句，**不能用 that**，用 which / who\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  }
+ ],
+ "seq": 9,
+ "pendingNotes": []
+}

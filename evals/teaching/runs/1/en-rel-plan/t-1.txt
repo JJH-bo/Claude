@@ -1,0 +1,24 @@
+好，先不讲规则。看板上两句话，只差两个逗号，想一想意思差在哪。
+
+````board plan
+目标：学生分清限制性 / 非限制性定语从句（逗号 = 补充说明），知道逗号后不能用 that，能在长难句里认出、填对 which / who
+猜：学生把逗号当成可有可无的停顿，看不出「有几个哥哥」这种意思差别；之后可能会在逗号后填 that
+证实：先用对比句 quiz 问「哪句说明不止一个哥哥」；对了再让学生自己说逗号的作用，然后用 quiz 填空暴露 that
+````
+
+````board new id=b1 title="差两个逗号"
+**A.** My brother who lives in Beijing is a doctor.
+
+**B.** My brother, who lives in Beijing, is a doctor.
+
+```quiz
+id: q-b1
+q: 哪一句暗示「我」**不止一个**哥哥（brother）？
+- [x] A（没有逗号）
+- [ ] B（有逗号）
+- [ ] 两句意思一样，逗号只是停顿
+explain: A 里 who lives in Beijing 用来**限定**是哪一个哥哥——住北京的那个，言下之意还有别的哥哥。B 里逗号隔开的部分只是**补充**一句：我（唯一的）哥哥住在北京。
+```
+````
+
+选好了页面会告诉我。

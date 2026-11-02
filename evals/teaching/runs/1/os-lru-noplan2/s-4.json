@@ -1,0 +1,1 @@
+{"say": "FIFO看哪页最先进来，LRU看哪页最后一次用到的时间最早，应该是这样吧。", "acts": [{"comp": "ex-b3", "value": "1"}], "sure": {"ex-b3": true}}

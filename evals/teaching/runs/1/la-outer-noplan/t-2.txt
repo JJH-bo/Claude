@@ -1,0 +1,15 @@
+算对了。「大了点」可以说得更准：每个数都大了同样的倍数吗？
+
+````board add id=b2 title="大了多少"
+把 $A^2=\calc{A^2}$ 和 $A=\calc{A}$ 一格一格对着看。
+
+```answer
+id: q-k
+title: A² 是 A 的几倍
+q: 如果 $A^2=kA$，$k$ 是多少？
+answer: b'*a
+before: A^2 = 
+after: A
+hint: 拿同一个位置的两个数比一比，比如 $(1,1)$ 位。
+```
+````

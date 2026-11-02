@@ -1,6 +1,6 @@
 # 学习台 · 给 Claude 的教学说明
 
-> **版本：2026-11-02**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
+> **版本：2026-11-02b**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
 >
 > 这份说明的**最新版**一直放在**学习台** artifact 里（文件 `CLAUDE-PROJECT.md`）。每个新对话里，第一次做和学习有关的事（写黑板、备课、读课堂记录、改记忆）之前，先用 `Artifact` 工具读它：`action: "read"`，`url` 是上面的学习台地址，`path: "CLAUDE-PROJECT.md"`。
 > - 读到的版本比你手上这份新：以读到的为准，这份里和它不一样的地方全部作废。回复里顺便告诉我「项目指令里的说明是旧版（版本号），学习台里是新版（版本号）」。
@@ -531,12 +531,13 @@ b = [1, 1, -2]
 | `observations` | 课堂里的 Claude 当堂的观察、提议、下课小结 | 课堂里的 Claude（页面替它写进来） |
 | `errors` | 错题档案 | 你，只增不改；课堂里的 Claude 提的，我在学习台上点「确认」才写；我能标「已解决」（加一条更正） |
 | `weaknesses` | 弱点表 | 你；课堂里的 Claude 提的新弱点、证据级变化，我点「确认」才写 |
-| `mastery` | 每一块、每个知识点的掌握状态 | 你（**课堂不能宣布掌握**，只能提议） |
+| `mastery` | 每一块、每个知识点的掌握状态 | 你；页面按证据算的提议，我点了确认也写进来（`by: page`）。**课堂不能宣布掌握**，只能提议 |
 | `reviews` | 复现组 | 你写结果和档位；课堂里的 Claude 提的（判结果、加题、新组）我点「确认」才写；我能暂停；到期日页面算 |
 | `position` | 当前位置：学到哪、欠账、下一节从哪接 | 你，每节课后；课堂里的 Claude 下课时提的，我点「确认」才写 |
 | `slips` | 两个 Claude 的教学失误（一次次的经过） | 你记你的和从课堂记录里看出的；课堂里的 Claude 记它自己的 |
 | `lessons` | 教学守则：失误归纳出来的「下次照着做」，一件事一条，可以改写、合并 | 课堂里的 Claude（上课时记「又犯一次」，下课时把这节课的失误并进来）；你（整理时）；我能改 |
 | `sessions` | 每节课（课堂、实时黑板、自学单元）：日期、哪一种、哪一块、开课时的资料包、核验了几轮、小结 | 课堂：页面（我点「开新课」时开，上课、下课时更新）；实时黑板、自学单元：你开、你写「用完了」（我点「用完了」时页面写） |
+| `drills` | 题库：以前课上页面判得了分的题，练一练用（见下文「练一练和题库」） | 页面（下课时抄）；你备课时也可以写；我能标作废 |
 | `pending` | 改动单：课堂里的 Claude 每一条要改记忆的、我在学习台上自己改的，都先记一张（见下文「改动单」） | 页面（替课堂里的 Claude 和我写），你只读 |
 
 - **历史类只增不改**（`evidence`、`errors`、`observations`、`slips`）：写错了就追加一条更正（新编号，`corrects` 指向原条），原条不改、不删。页面记着每条的指纹，改了、删了会在自检里报。
@@ -650,7 +651,7 @@ b = [1, 1, -2]
 - **`sessions`**：编号 `c-20261027-1`（日期 - 当天第几节，三种课共用一套编号）。`kind`：`class` 课堂（页面开，不写就是它）、`live` 实时黑板、`unit` 自学单元（这两种由你开，第五节、第一节）。`date`、`block`（这节课的块）、`space`、`title`、`status`（`open` 还在上 / `closed` 下课了、用完了）、`startedAt`、`endedAt`、`pack`（开课时资料包的 `unit`、`goal`）、`verify`（核验了几轮、作废了几轮）、`summary`（下课小结那条观察的 id）、`usage`（这节课调用 Claude 花了多少，见第六节「课后：读课堂记录」的 `cost`）、`report`（课后报告的要点：`line` 一行字、`items` 做了几题、`first` 一次对几题、`at`）。这节课的东西都在 `sessions/{编号}/` 下面（课堂：`steps`、`class_turns`、`class_pages`、`pack`；实时黑板：`steps`、`talk`、`ops`、`ops_done`、`meta`、`lint`、`uploads`；自学单元：`unit`；三种都有课后报告 `report`）。
 - **`evidence`**：编号 `ev-…`，页面自动编。每条都有 `session`、`block`（这节课的块）、`tags`（知识点标签：`["L2.2.1", "L2.2.1#tr"]`，后一个来自课堂里的 Claude 给那一段标的 `point=`）、`kind`、`src`、`at`：
   - `src: "record"`：一次作答。`kind` 是组件（`answer`、`practice`、`quiz`、`predict`、`steps`、`conjecture`……），`comp` 是组件的 id，`step` 是黑板上的段，`q` 题面，`text` / `value` 我写的、选的，`ok` 程序判的对错（判不了是 null），`attempts` 第几次，`ms` 用时，`giveup` 想不出来，`final` 这道题的最终结果，`images` 手写原图，`transcript` 转写。
-  - `src: "event"`：一个动作。`kind` 是 `reveal`（揭开一步）、`giveup`、`drag`（拖动，`detail` 里是变量和松手时的值）、`open`（打开）、`end`（下课）等。
+  - `src: "event"`：一个动作。`kind` 是 `reveal`（揭开一步）、`giveup`、`drag`（拖动，`detail` 里是变量和松手时的值）、`sure`（我点的「有把握 / 没把握」，`detail.sure` 是 true / false，`detail.key` 是课后报告里那道题的键，`detail.ok` 那题判的对错）、`open`（打开）、`end`（下课）等。
   - `src: "say"`：我在课堂输入框里说的话（`kind: "say"`，`text`），在实时黑板上「交截图」交的图和那句说明，附的图（`kind: "photo"`，`images` 是 asset id，用 `Artifact` 工具 `action: "read"`、`path` 填 id 看原图；`ink: 2` 表示最后 2 张是我在黑板上用 Pencil 写的板书导出的图）。`turn` 是课堂第几轮。
   - `src: "draft"`（`kind: "draft"`）：点「下课」那一刻我在黑板上写了、还没交的草稿：`comp` 组件 id、`compKind` 组件、`step` 段、`label` 第几步、`text` 写着什么。
   - `src: "manual"`（`kind: "manual"`）：我在学习台首页「补记」的，学习台外面做的（纸上、Notability、和你的对话里）：`text`、`images`（截图）、`block`（挂到哪一块，可能没有）、`verdict`：`对` / `错` / `不会`（没标就没有；`ok` 跟着是 true / false / null，`不会` 还有 `giveup: true`）。没有 `session`；下一节课的课后报告的 `manual` 里会列出来。
@@ -663,19 +664,29 @@ b = [1, 1, -2]
 
 - `time`：`wallMs` 开课到下课、`activeMs` 去掉超过 10 分钟没动静的空档后的时长、`gaps` 几段空档。
 - `totals`：`items` 做了几题，`first` 一次对、`ok` 改了几次后对、`wrong` 最后还错、`giveup` 想不出来、`revealed` 看了答案、`open` 程序判不了对错（猜想、自由写的）；`says` 说了几句、`photos` 附图几次、`drafts` 没交的草稿、`turns` 几轮。
-- `items`：每道题一条（一个组件里分步的按步分开）：`comp`、`kind`、`q` 题面（截短）、`seg` 段、`page` 第几块板、`segTitle`、`tags`、`seq` 每次的对错（`✗✗✓`）、`attempts`、`outcome`（上面那几种）、`ms` 用时、`last` 最后写的、`expected`、`images` 手写原图、`turn`、`evidence`（这道题的证据 id，看原文用）。
+- `items`：每道题一条（一个组件里分步的按步分开）：`comp`、`kind`、`q` 题面（截短）、`seg` 段、`page` 第几块板、`segTitle`、`tags`、`seq` 每次的对错（`✗✗✓`）、`attempts`、`outcome`（上面那几种）、`sure`（我点的有没有把握：true / false / null 没点；`totals.unsure` 是标了没把握的题数。**错了但有把握**多半是误解，**对了但没把握**不能算过）、`ms` 用时、`last` 最后写的、`expected`、`images` 手写原图、`turn`、`evidence`（这道题的证据 id，看原文用）。
 - `byTag`：按块、按知识点（`L2.2.1#tr`）汇总，字段同 `totals`，`ms` 是总用时。
 - `unfinished`：错了还没改对、也没看答案的题（`items` 的 `key`）；`drafts`：没交的草稿；`says`：我说的话（原文）和附的图；`manual`：上一节下课以后我补记的。
 - `notes`：课堂里的 Claude 这节课的观察、提议、小结（id、`kind`、开头一段）；`summary` 小结的 id；`slips` 它记的失误。
 - `usage`：这节课花了多少（同 `sessions/{编号}.usage`）；`verify`：核验了几轮、作废了几轮。
 - 太长时（几百道题）文字会缩短、最早的条目截掉，`more` 里写着各截掉了几条。
 
+### 练一练和题库：`drills`（页面写，你也可以写）
+
+**练一练**：学习台首页的一张卡。页面从题库里挑 6～8 道（到期的复现组挂的块和错题、掉了的块、该复现的块、最近错过的优先；刚做对过的不挑），不同块混在一起，一次一道、页面判分，**不调用 Claude**。题目上不写是哪一块（先认出该用什么方法），判出对错以后才告诉我。练习是一节 `kind: "drill"` 的课（`sessions/{编号}`：`items` 题库编号、`reviews` 练到的到期复现组、`drill` 结果的要点），作答照常进 `evidence`（`comp` 是题库编号，`block`、`tags` 是那道题的块和知识点），课后报告照常写，掌握照常算。做完以后：练到的复现组出改动单（`kind: "review"`、`by: "page"`，过了升一档、没过回到 1 天，我确认才算数）；没一次做对的几道可以「带着没过的开课」：页面把原题和我的作答拼成资料包开一节课。
+
+**`drills`**：编号 `d-{课}-{组件}`（`d-20261027-1-q3`），页面编。字段：`md`（照抄就能用的组件原文，前面带着那节课的 `let` 块，组件 `id` 换成了题库编号）、`block`、`point`（知识点）、`kind`（组件）、`q` 题面、`title`、`src`（`board` 从课上抄的 / `chat` 你写的）、`from`（`session`、`seg`、`comp`：原来在哪节课的哪个组件）、`fromSession`、`orig`（课上那次的结果，`first` / `ok` / `wrong` / `giveup` / `revealed`）、`errors`（挂的错题，按证据对上的）、`space`、`status`（`active` / `void` 不再练）、`broken`（练习时渲染出错了，页面标的，`brokenWhy`）、`at`。
+
+- 页面在每节课下课写报告时抄（课堂、实时黑板、自学单元都抄；图、猜想、代码题、示意图不抄），以前的课首页打开时补抄（`sessions/{编号}.drills` 记抄了几道）。
+- 你备课时可以写几道练习题进来（`src: "chat"`，`md` 照组件写法写一个能判分的组件，`id` 写成题库编号；`practice` 的自定义题型每次换数，最适合）。同一个 `md` 会被反复练，所以题要经得起做第二遍。
+
 ### 改动单：`pending`（页面写，你读）
 
-课堂里的 Claude 改记忆、我在学习台上改记忆，每一条都先记一张改动单。编号 `pd-…`。字段：`kind`（`pref` 偏好 / `slip` 失误 / `note` 观察 / `propose` 提议 / `error` 错题 / `weakness` 弱点 / `review` 复现组 / `position` 下一节）、`tier`（`direct` 直接写的 / `confirm` 要我确认的 / `me` 我自己改的）、`by`（`class` / `me`）、`coll`、`target`（改哪一条）、`op`（`add` 新加 / `update` 改）、`data`（新加的内容）或 `patch`（改的字段）、`reason`、`basis`（依据：证据 id、记忆里的编号）、`session`、`turn`、`status`、`at`、`log`。
+课堂里的 Claude 改记忆、我在学习台上改记忆，每一条都先记一张改动单。编号 `pd-…`。字段：`kind`（`pref` 偏好 / `slip` 失误 / `note` 观察 / `propose` 提议 / `error` 错题 / `weakness` 弱点 / `review` 复现组 / `position` 下一节 / `mastery` 掌握（页面算的提议））；练习做完页面出的复现组结果是 `kind: "review"`、`by: "page"`、`tier`（`direct` 直接写的 / `confirm` 要我确认的 / `me` 我自己改的）、`by`（`class` / `me` / `page` 页面按证据算的）、`coll`、`target`（改哪一条）、`op`（`add` 新加 / `update` 改）、`data`（新加的内容）或 `patch`（改的字段）、`reason`、`basis`（依据：证据 id、记忆里的编号）、`session`、`turn`、`status`、`at`、`log`。
 
 - `status`：`open` 等我确认、`done` 写进去了（`doneAt`；改的写在 `applied`：每个字段的 `from`、`to`；我在「改」里改过的在 `edited`）、`rejected` 我点了「不要」、`undone` 我撤销了（`undoneAt`）。
 - **撤销**：写进去 7 天内我能撤。状态类（弱点、复现组、位置、偏好）退回旧值（也记一条 `by: "me"` 的 log）；新加的偏好、弱点、复现组改成 `status: "void"`（复现组的 `status` 还有 `active` / `paused` 我暂停了 / `done` 停掉了 / `void`）。历史类（错题、失误、观察）原条不动，追加一条作废的更正：`corrects` 指向原条、`void: true`、`note` 写为什么。**读记忆时 `void` 的、被作废更正指向的都当没有**；错题有一条 `resolved: true` 的更正指向它，就是我标了已解决。
+- **掌握的提议（`kind: "mastery"`、`by: "page"`）**：页面按证据算的（不调用 Claude）：两道不同的题一次对、没标没把握 → 基础题过；之后隔够 1 / 3 / 7 / 14 / 30 天又一次对 → 复现通过到那一档；过了以后第一次就错、想不出来、看了答案 → 掉了。从记忆里现有的状态出发，只看那以后的证据。我点了确认才写进 `mastery`（log 的 `by` 是 `page`，`ref` 是改动单）。你写的掌握状态照旧直接写，页面以你写的为起点往后算。
 - `status: "open"` 的还没写进去：课后看到了，问我要不要，或者你自己判断后照规矩写（写了就告诉我去学习台点「不要」把那张单子收掉，免得重复）。你写的照旧不用经过改动单。
 
 ### 备份和恢复

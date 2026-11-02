@@ -1,0 +1,31 @@
+四次都对，第 7 次的命中也算进去了。表我走到最后了，翻回上一块能看到整张。现在换 FIFO 走同一个串，看两种规则从哪一步开始分道。
+
+````board figure target=pg-b3 set step=10
+````
+
+````board new id=b5 title="同一个串换成 FIFO"
+引用串 $7,0,1,2,0,3,0,4,2,3$，3 个物理块，这次按 **FIFO**。表停在第 5 次访问之后（和 LRU 那张到这里一样）。
+
+```paging
+id: pg-b5
+title: FIFO，3 个物理块
+refs: 7 0 1 2 0 3 0 4 2 3
+frames: 3
+algo: fifo
+```
+
+```answer
+id: q-b5
+title: FIFO 换谁
+q: 第 6 次访问页 3，缺页。按 FIFO 换出哪一页？（LRU 在这一步换的是 1）
+type: seq
+answer: 0
+hint: FIFO 只看调入的先后。内存里 2、0、1 三页，各是第几次访问时调进来的？第 5 次的命中对 FIFO 有没有影响？
+explain: 0 是第 2 次调入的，比 1（第 3 次）和 2（第 4 次）都早，FIFO 换出 0。第 5 次 0 命中，FIFO 不管，所以 0 刚用过也照样被换掉。
+```
+````
+
+````board figure target=pg-b5 set step=5
+````
+
+写一个页号就行。

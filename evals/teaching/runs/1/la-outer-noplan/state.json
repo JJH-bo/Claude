@@ -1,0 +1,589 @@
+{
+ "scenario": "la-outer",
+ "subject": "线代",
+ "plan": false,
+ "pack": {
+  "main": {
+   "unit": "秩一矩阵的幂：A = αβᵀ 时 Aⁿ = (βᵀα)ⁿ⁻¹ A",
+   "goal": "学生自己推出 A = αβᵀ（α、β 是 n 维列向量）时 A² = (βᵀα)A，进而 Aⁿ = (βᵀα)ⁿ⁻¹A，并会用 tr(A) = βᵀα 算具体的题。",
+   "scope": "前置：矩阵乘法、转置、结合律。本节只讲秩一矩阵 αβᵀ 的幂，不讲特征值。考研常考：给 α=(1,2,3)ᵀ、β=(1,−1,2)ᵀ 求 Aⁿ。",
+   "plan": "1. 先算一个具体的 2×2 例子 A=αβᵀ，让学生看出 A² 是 A 的倍数。\n2. 用结合律推一般情形：A² = α(βᵀα)βᵀ，关键是 βᵀα 是一个数。\n3. 推到 Aⁿ，再用 tr(A)=βᵀα。\n4. 练一道 3 维的真题。"
+  }
+ },
+ "segs": [
+  {
+   "id": "k1",
+   "place": "pin",
+   "title": "这节课的例子",
+   "md": "```let\na = [1, 3]\nb = [2, 1]\nA = a*b'\n```\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$"
+  },
+  {
+   "id": "b1",
+   "page": 1,
+   "title": "先算 A²",
+   "md": "$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 是一个列向量乘一个行向量（外积 outer product），这样的矩阵叫秩一矩阵（rank-one matrix）。\n\n```answer\nid: q-a2\ntitle: 算 A²\nq: 设 $A=\\calc{A}$，直接按矩阵乘法算 $A^2$。\nanswer: A^2\nbefore: A^2 =\nhint: $A^2$ 的 $(1,1)$ 位是 $A$ 的第一行 $\\calc{row(A, 1)}$ 和第一列 $\\calc{col(A, 1)}$ 的点积。\n```"
+  },
+  {
+   "id": "b2",
+   "page": 1,
+   "title": "大了多少",
+   "md": "把 $A^2=\\calc{A^2}$ 和 $A=\\calc{A}$ 一格一格对着看。\n\n```answer\nid: q-k\ntitle: A² 是 A 的几倍\nq: 如果 $A^2=kA$，$k$ 是多少？\nanswer: b'*a\nbefore: A^2 = \nafter: A\nhint: 拿同一个位置的两个数比一比，比如 $(1,1)$ 位。\n```"
+  },
+  {
+   "id": "b3",
+   "page": 2,
+   "title": "5 从哪来",
+   "md": "```steps\nid: ex-a2\ntitle: 用 α、β 写 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$。说明为什么 $A^2$ 是 $A$ 的倍数。\n\nstep: 写出 A²\nask: 先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\nshow: $A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n\nstep: 换个括号\nask: 四个因子排成一排，中间的 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 先乘，乘出来是什么形状？\nchoices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量\nanswer: 一个数\nshow: 结合律（associativity）：$A^2=\\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是 $1\\times2$ 乘 $2\\times1$，一个数。\n\nstep: 算出这个数\ndo: true\nask: 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 的数算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\nanswer: b'*a\nshow: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'*a}$，数可以提到前面：$A^2=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{b'*a}A$\n```"
+  },
+  {
+   "id": "b4",
+   "page": 2,
+   "title": "提示：看形状",
+   "md": "$$\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\;\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\;\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\;\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}$$\n\n相邻的两个乘起来，哪一对乘出来最「小」？"
+  },
+  {
+   "id": "b5",
+   "page": 2,
+   "title": "顺序一换，形状就变",
+   "md": "$(m\\times n)(n\\times p)\\to m\\times p$：中间的 $n$ 对上就消掉，留下两头。\n\n$$\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\to 2\\times2\\qquad \\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\to\\ ?$$\n\n```answer\nid: q-bta\ntitle: 用数算一下\nq: 用 $\\boldsymbol\\beta=\\calc{b}$、$\\boldsymbol\\alpha=\\calc{a}$ 算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\nanswer: b'*a\nbefore: \\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'}\\calc{a}=\n```"
+  },
+  {
+   "id": "b6",
+   "page": 3,
+   "title": "为什么能提出来",
+   "md": "```derive\nid: d-a2\ntitle: A² 一行一行化\nA^2 = (\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})\n    = \\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}   // 结合律：只换括号，四个因子的**顺序没动**\n    = \\boldsymbol\\alpha\\,\\calc{b'*a}\\,\\boldsymbol\\beta^{\\mathrm T}   // $1\\times1$ 的矩阵就是一个数\n    = \\calc{b'*a}\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}   // 数乘矩阵就是每个元素都乘它，写在前面后面都一样\n    = \\calc{b'*a}A\n```\n\n```quiz\nid: q-why\nq: 第 3 行到第 4 行，能把 $\\calc{b'*a}$ 挪到最前面，是因为：\n- [ ] 矩阵乘法可以交换顺序\n- [x] $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是一个数，数乘可以写在任何位置\n- [ ] $\\boldsymbol\\alpha$ 和 $\\boldsymbol\\beta$ 正好垂直\nexplain: 矩阵一般不能交换（$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 和 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 连形状都不同），能挪的只有数。\n```"
+  },
+  {
+   "id": "b7",
+   "page": 4,
+   "title": "换一组数",
+   "md": "```key\n$1\\times1$ 的矩阵 $[\\,5\\,]$ 和数 $5$ 当成一回事：乘别的矩阵时，就是数乘。\n```\n\n```answer\nid: q-k2\ntitle: 不乘矩阵，求倍数\nlet u = [2, -1]\nlet v = [1, 4]\nlet B = u*v'\nq: $\\boldsymbol\\alpha=\\begin{bmatrix}2\\\\-1\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}1\\\\4\\end{bmatrix}$，$B=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{B}$。不算 $B\\cdot B$，直接写出 $B^2=kB$ 里的 $k$。\nanswer: v'*u\nbefore: k =\nhint: $k$ 就是那个 $1\\times1$ 的：$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$，行乘列。\nexplain: $k=\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{v'*u}$，所以 $B^2=\\calc{v'*u}B=\\calc{B^2}$。\n```"
+  }
+ ],
+ "pages": [
+  {
+   "n": 1,
+   "title": "先算 A²",
+   "talk": "算对了。「大了点」可以说得更准：每个数都大了同样的倍数吗？"
+  },
+  {
+   "n": 2,
+   "title": "5 从哪来",
+   "talk": "2×2 的是 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（就是 $A$）。顺序反过来，形状就不一样了：乘积的形状看两头。"
+  },
+  {
+   "n": 3,
+   "title": "为什么能提出来",
+   "talk": "不是巧合，这两个 5 就是同一个数。为什么能提出来，靠两条规则，一行一行看。\n\n点「下一行」看完，再选一下。"
+  },
+  {
+   "n": 4,
+   "title": "换一组数",
+   "talk": "抱歉，是我写的那段没显示出来，已经重写了。这题是 $\\boldsymbol\\alpha=(2,-1)^{\\mathrm T}$，$\\boldsymbol\\beta=(1,4)^{\\mathrm T}$。"
+  }
+ ],
+ "cur": 4,
+ "progress": {
+  "ex-a2": 3
+ },
+ "tries": {
+  "q-a2": 1,
+  "q-k": 1,
+  "ex-a2": 0,
+  "q-bta": 1,
+  "q-why": 1,
+  "q-k2": 0
+ },
+ "results": {
+  "q-a2": [
+   {
+    "source": "record",
+    "block": "q-a2",
+    "step": "b1",
+    "type": "answer",
+    "title": "算 A²",
+    "q": "设 $A=\\calc{A}$，直接按矩阵乘法算 $A^2$。",
+    "value": "[[10,5],[30,15]]",
+    "ok": true,
+    "attempts": 1
+   }
+  ],
+  "q-k": [
+   {
+    "source": "record",
+    "block": "q-k",
+    "step": "b2",
+    "type": "answer",
+    "title": "A² 是 A 的几倍",
+    "q": "如果 $A^2=kA$，$k$ 是多少？",
+    "value": "5",
+    "ok": true,
+    "attempts": 1
+   }
+  ],
+  "ex-a2": [
+   {
+    "source": "record",
+    "block": "ex-a2",
+    "step": "b3",
+    "type": "steps",
+    "title": "用 α、β 写 A²",
+    "q": "写出 A²｜先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？",
+    "detail": "第 1 步",
+    "text": "A²=A·A=αβᵀαβᵀ",
+    "ok": null,
+    "attempts": 1
+   },
+   {
+    "source": "record",
+    "block": "ex-a2",
+    "step": "b3",
+    "type": "steps",
+    "title": "用 α、β 写 A²",
+    "q": "换个括号｜四个因子排成一排，中间的 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 先乘，乘出来是什么形状？",
+    "detail": "第 2 步",
+    "value": "一个 2×2 矩阵",
+    "ok": false,
+    "attempts": 1
+   },
+   {
+    "source": "record",
+    "block": "ex-a2",
+    "step": "b3",
+    "type": "steps",
+    "title": "用 α、β 写 A²",
+    "q": "算出这个数｜用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 的数算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。",
+    "detail": "第 3 步",
+    "text": "5",
+    "ok": true,
+    "attempts": 1
+   }
+  ],
+  "q-bta": [
+   {
+    "source": "record",
+    "block": "q-bta",
+    "step": "b5",
+    "type": "answer",
+    "title": "用数算一下",
+    "q": "用 $\\boldsymbol\\beta=\\calc{b}$、$\\boldsymbol\\alpha=\\calc{a}$ 算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。",
+    "value": "5",
+    "ok": true,
+    "attempts": 1
+   }
+  ],
+  "q-why": [
+   {
+    "source": "record",
+    "block": "q-why",
+    "step": "b6",
+    "type": "quiz",
+    "q": "第 3 行到第 4 行，能把 $\\calc{b'*a}$ 挪到最前面，是因为：",
+    "ok": true,
+    "attempts": 1,
+    "final": true
+   }
+  ]
+ },
+ "compAt": {
+  "q-a2": {
+   "seg": {
+    "id": "b1"
+   },
+   "f": {
+    "lang": "answer",
+    "body": "id: q-a2\ntitle: 算 A²\nq: 设 $A=\\calc{A}$，直接按矩阵乘法算 $A^2$。\nanswer: A^2\nbefore: A^2 =\nhint: $A^2$ 的 $(1,1)$ 位是 $A$ 的第一行 $\\calc{row(A, 1)}$ 和第一列 $\\calc{col(A, 1)}$ 的点积。",
+    "id": "q-a2",
+    "raw": "```answer\nid: q-a2\ntitle: 算 A²\nq: 设 $A=\\calc{A}$，直接按矩阵乘法算 $A^2$。\nanswer: A^2\nbefore: A^2 =\nhint: $A^2$ 的 $(1,1)$ 位是 $A$ 的第一行 $\\calc{row(A, 1)}$ 和第一列 $\\calc{col(A, 1)}$ 的点积。\n```",
+    "at": 111
+   }
+  },
+  "q-k": {
+   "seg": {
+    "id": "b2"
+   },
+   "f": {
+    "lang": "answer",
+    "body": "id: q-k\ntitle: A² 是 A 的几倍\nq: 如果 $A^2=kA$，$k$ 是多少？\nanswer: b'*a\nbefore: A^2 = \nafter: A\nhint: 拿同一个位置的两个数比一比，比如 $(1,1)$ 位。",
+    "id": "q-k",
+    "raw": "```answer\nid: q-k\ntitle: A² 是 A 的几倍\nq: 如果 $A^2=kA$，$k$ 是多少？\nanswer: b'*a\nbefore: A^2 = \nafter: A\nhint: 拿同一个位置的两个数比一比，比如 $(1,1)$ 位。\n```",
+    "at": 44
+   }
+  },
+  "ex-a2": {
+   "seg": {
+    "id": "b3"
+   },
+   "f": {
+    "lang": "steps",
+    "body": "id: ex-a2\ntitle: 用 α、β 写 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$。说明为什么 $A^2$ 是 $A$ 的倍数。\n\nstep: 写出 A²\nask: 先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\nshow: $A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n\nstep: 换个括号\nask: 四个因子排成一排，中间的 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 先乘，乘出来是什么形状？\nchoices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量\nanswer: 一个数\nshow: 结合律（associativity）：$A^2=\\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是 $1\\times2$ 乘 $2\\times1$，一个数。\n\nstep: 算出这个数\ndo: true\nask: 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 的数算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\nanswer: b'*a\nshow: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'*a}$，数可以提到前面：$A^2=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{b'*a}A$",
+    "id": "ex-a2",
+    "raw": "```steps\nid: ex-a2\ntitle: 用 α、β 写 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$。说明为什么 $A^2$ 是 $A$ 的倍数。\n\nstep: 写出 A²\nask: 先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\nshow: $A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n\nstep: 换个括号\nask: 四个因子排成一排，中间的 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 先乘，乘出来是什么形状？\nchoices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量\nanswer: 一个数\nshow: 结合律（associativity）：$A^2=\\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是 $1\\times2$ 乘 $2\\times1$，一个数。\n\nstep: 算出这个数\ndo: true\nask: 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 的数算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\nanswer: b'*a\nshow: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'*a}$，数可以提到前面：$A^2=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{b'*a}A$\n```",
+    "at": 0
+   }
+  },
+  "q-bta": {
+   "seg": {
+    "id": "b5"
+   },
+   "f": {
+    "lang": "answer",
+    "body": "id: q-bta\ntitle: 用数算一下\nq: 用 $\\boldsymbol\\beta=\\calc{b}$、$\\boldsymbol\\alpha=\\calc{a}$ 算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\nanswer: b'*a\nbefore: \\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'}\\calc{a}=",
+    "id": "q-bta",
+    "raw": "```answer\nid: q-bta\ntitle: 用数算一下\nq: 用 $\\boldsymbol\\beta=\\calc{b}$、$\\boldsymbol\\alpha=\\calc{a}$ 算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\nanswer: b'*a\nbefore: \\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'}\\calc{a}=\n```",
+    "at": 276
+   }
+  },
+  "d-a2": {
+   "seg": {
+    "id": "b6"
+   },
+   "f": {
+    "lang": "derive",
+    "body": "id: d-a2\ntitle: A² 一行一行化\nA^2 = (\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})\n    = \\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}   // 结合律：只换括号，四个因子的**顺序没动**\n    = \\boldsymbol\\alpha\\,\\calc{b'*a}\\,\\boldsymbol\\beta^{\\mathrm T}   // $1\\times1$ 的矩阵就是一个数\n    = \\calc{b'*a}\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}   // 数乘矩阵就是每个元素都乘它，写在前面后面都一样\n    = \\calc{b'*a}A",
+    "id": "d-a2",
+    "raw": "```derive\nid: d-a2\ntitle: A² 一行一行化\nA^2 = (\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})\n    = \\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}   // 结合律：只换括号，四个因子的**顺序没动**\n    = \\boldsymbol\\alpha\\,\\calc{b'*a}\\,\\boldsymbol\\beta^{\\mathrm T}   // $1\\times1$ 的矩阵就是一个数\n    = \\calc{b'*a}\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}   // 数乘矩阵就是每个元素都乘它，写在前面后面都一样\n    = \\calc{b'*a}A\n```",
+    "at": 0
+   }
+  },
+  "q-why": {
+   "seg": {
+    "id": "b6"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-why\nq: 第 3 行到第 4 行，能把 $\\calc{b'*a}$ 挪到最前面，是因为：\n- [ ] 矩阵乘法可以交换顺序\n- [x] $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是一个数，数乘可以写在任何位置\n- [ ] $\\boldsymbol\\alpha$ 和 $\\boldsymbol\\beta$ 正好垂直\nexplain: 矩阵一般不能交换（$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 和 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 连形状都不同），能挪的只有数。",
+    "id": "q-why",
+    "raw": "```quiz\nid: q-why\nq: 第 3 行到第 4 行，能把 $\\calc{b'*a}$ 挪到最前面，是因为：\n- [ ] 矩阵乘法可以交换顺序\n- [x] $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是一个数，数乘可以写在任何位置\n- [ ] $\\boldsymbol\\alpha$ 和 $\\boldsymbol\\beta$ 正好垂直\nexplain: 矩阵一般不能交换（$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 和 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 连形状都不同），能挪的只有数。\n```",
+    "at": 477
+   }
+  },
+  "q-k2": {
+   "seg": {
+    "id": "b7"
+   },
+   "f": {
+    "lang": "answer",
+    "body": "id: q-k2\ntitle: 不乘矩阵，求倍数\nlet u = [2, -1]\nlet v = [1, 4]\nlet B = u*v'\nq: $\\boldsymbol\\alpha=\\begin{bmatrix}2\\\\-1\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}1\\\\4\\end{bmatrix}$，$B=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{B}$。不算 $B\\cdot B$，直接写出 $B^2=kB$ 里的 $k$。\nanswer: v'*u\nbefore: k =\nhint: $k$ 就是那个 $1\\times1$ 的：$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$，行乘列。\nexplain: $k=\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{v'*u}$，所以 $B^2=\\calc{v'*u}B=\\calc{B^2}$。",
+    "id": "q-k2",
+    "raw": "```answer\nid: q-k2\ntitle: 不乘矩阵，求倍数\nlet u = [2, -1]\nlet v = [1, 4]\nlet B = u*v'\nq: $\\boldsymbol\\alpha=\\begin{bmatrix}2\\\\-1\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}1\\\\4\\end{bmatrix}$，$B=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{B}$。不算 $B\\cdot B$，直接写出 $B^2=kB$ 里的 $k$。\nanswer: v'*u\nbefore: k =\nhint: $k$ 就是那个 $1\\times1$ 的：$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$，行乘列。\nexplain: $k=\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{v'*u}$，所以 $B^2=\\calc{v'*u}B=\\calc{B^2}$。\n```",
+    "at": 63
+   }
+  }
+ },
+ "ops": [],
+ "history": [
+  {
+   "role": "claude",
+   "seq": 1,
+   "text": "好，我们从一个具体的矩阵开始。先动手算一下它的平方，算完留意一下结果和 $A$ 本身像不像。\n\n````board pin id=k1 title=\"这节课的例子\"\n```let\na = [1, 3]\nb = [2, 1]\nA = a*b'\n```\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$\n````\n\n````board new id=b1 title=\"先算 A²\"\n$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 是一个列向量乘一个行向量（外积 outer product），这样的矩阵叫秩一矩阵（rank-one matrix）。\n\n```answer\nid: q-a2\ntitle: 算 A²\nq: 设 $A=\\calc{A}$，直接按矩阵乘法算 $A^2$。\nanswer: A^2\nbefore: A^2 =\nhint: $A^2$ 的 $(1,1)$ 位是 $A$ 的第一行 $\\calc{row(A, 1)}$ 和第一列 $\\calc{col(A, 1)}$ 的点积。\n```\n````\n\n可以先在纸上算，再填进格子。\n"
+  },
+  {
+   "role": "student",
+   "seq": 2,
+   "text": "算出来是 [[10,5],[30,15]]，感觉和 A 有点像，每个数都大了点？\n[作答] b1 里的 answer q-a2「算 A²」：填了 [[10,5],[30,15]]（对，第 1 次）\n[动作] b1 里的组件 q-a2：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 3,
+   "text": "算对了。「大了点」可以说得更准：每个数都大了同样的倍数吗？\n\n````board add id=b2 title=\"大了多少\"\n把 $A^2=\\calc{A^2}$ 和 $A=\\calc{A}$ 一格一格对着看。\n\n```answer\nid: q-k\ntitle: A² 是 A 的几倍\nq: 如果 $A^2=kA$，$k$ 是多少？\nanswer: b'*a\nbefore: A^2 = \nafter: A\nhint: 拿同一个位置的两个数比一比，比如 $(1,1)$ 位。\n```\n````\n"
+  },
+  {
+   "role": "student",
+   "seq": 4,
+   "text": "对，每格都是 5 倍。10/2、5/1、30/6、15/3 都是 5。\n[作答] b2 里的 answer q-k「A² 是 A 的几倍」：填了 5（对，第 1 次）\n[动作] b2 里的组件 q-k：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 5,
+   "text": "对。那这个 5 是从哪来的？不用数字，用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 推一推。\n\n````board new id=b3 title=\"5 从哪来\"\n```steps\nid: ex-a2\ntitle: 用 α、β 写 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$。说明为什么 $A^2$ 是 $A$ 的倍数。\n\nstep: 写出 A²\nask: 先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\nshow: $A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n\nstep: 换个括号\nask: 四个因子排成一排，中间的 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 先乘，乘出来是什么形状？\nchoices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量\nanswer: 一个数\nshow: 结合律（associativity）：$A^2=\\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是 $1\\times2$ 乘 $2\\times1$，一个数。\n\nstep: 算出这个数\ndo: true\nask: 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 的数算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\nanswer: b'*a\nshow: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'*a}$，数可以提到前面：$A^2=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{b'*a}A$\n```\n````\n\n每一步先写你的想法，再揭开。\n"
+  },
+  {
+   "role": "student",
+   "seq": 6,
+   "text": "A² 就是 A 乘 A，所以是 αβᵀαβᵀ，后面不知道怎么往下化。\n[作答] b3 里的 steps ex-a2「用 α、β 写 A²」第 1 步（写出 A²）：填了 （第 1 次）\n[动作] b3 里的组件 ex-a2：学生标了「没把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 7,
+   "text": "第一步写对了，$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 就是 $A^2$。往下化的线索在形状上：矩阵乘法可以随便加括号，挑哪两个相邻的先乘都行。\n\n````board add id=b4 title=\"提示：看形状\"\n$$\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\;\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\;\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\;\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}$$\n\n相邻的两个乘起来，哪一对乘出来最「小」？\n````\n\n带着这个想法，把第 2 步的选项选一下。\n"
+  },
+  {
+   "role": "student",
+   "seq": 8,
+   "text": "β转置乘α……应该还是个 2×2 的矩阵吧？\n[作答] b3 里的 steps ex-a2「用 α、β 写 A²」第 2 步（换个括号）：填了 一个 2×2 矩阵（错，第 1 次）\n[动作] b3 里的组件 ex-a2：学生标了「没把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 9,
+   "text": "2×2 的是 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（就是 $A$）。顺序反过来，形状就不一样了：乘积的形状看两头。\n\n````board add id=b5 title=\"顺序一换，形状就变\"\n$(m\\times n)(n\\times p)\\to m\\times p$：中间的 $n$ 对上就消掉，留下两头。\n\n$$\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\to 2\\times2\\qquad \\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\to\\ ?$$\n\n```answer\nid: q-bta\ntitle: 用数算一下\nq: 用 $\\boldsymbol\\beta=\\calc{b}$、$\\boldsymbol\\alpha=\\calc{a}$ 算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\nanswer: b'*a\nbefore: \\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'}\\calc{a}=\n```\n````\n"
+  },
+  {
+   "role": "student",
+   "seq": 10,
+   "text": "按乘法规则算 2×1+1×3=5。和刚才的 5 一样，巧合吗？不过我还是没看懂为什么能把中间这块提出来。\n[作答] b5 里的 answer q-bta「用数算一下」：填了 5（对，第 1 次）\n[作答] b3 里的 steps ex-a2「用 α、β 写 A²」第 3 步（算出这个数）：填了 （对，第 1 次）\n[动作] b5 里的组件 q-bta：学生标了「有把握」\n[动作] b3 里的组件 ex-a2：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "role": "claude",
+   "seq": 11,
+   "text": "不是巧合，这两个 5 就是同一个数。为什么能提出来，靠两条规则，一行一行看。\n\n````board new id=b6 title=\"为什么能提出来\"\n```derive\nid: d-a2\ntitle: A² 一行一行化\nA^2 = (\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})\n    = \\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}   // 结合律：只换括号，四个因子的**顺序没动**\n    = \\boldsymbol\\alpha\\,\\calc{b'*a}\\,\\boldsymbol\\beta^{\\mathrm T}   // $1\\times1$ 的矩阵就是一个数\n    = \\calc{b'*a}\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}   // 数乘矩阵就是每个元素都乘它，写在前面后面都一样\n    = \\calc{b'*a}A\n```\n\n```quiz\nid: q-why\nq: 第 3 行到第 4 行，能把 $\\calc{b'*a}$ 挪到最前面，是因为：\n- [ ] 矩阵乘法可以交换顺序\n- [x] $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是一个数，数乘可以写在任何位置\n- [ ] $\\boldsymbol\\alpha$ 和 $\\boldsymbol\\beta$ 正好垂直\nexplain: 矩阵一般不能交换（$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 和 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 连形状都不同），能挪的只有数。\n```\n````\n\n点「下一行」看完，再选一下。\n"
+  },
+  {
+   "role": "student",
+   "seq": 12,
+   "text": "选 B，看第三行写的 1×1 就是一个数。但我之前一直以为 β转置乘α 也是个矩阵，现在有点绕。\n[作答] b6 里的 quiz q-why：「第 3 行到第 4 行，能把 $\\calc{b'*a}$ 挪到最前面，是因为：」做对了（共 1 次）\n[动作] b6 里的组件 q-why：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "role": "claude",
+   "seq": 13,
+   "text": "你以前的想法没错：$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 确实是矩阵，只不过是 $1\\times1$ 的，只有一个元素，所以当数用。换一组数，自己走一遍。\n\n````board new id=b7 title=\"换一组数\"\n```let\np = [2, -1]\nq = [1, 4]\nB = p*q'\n```\n\n```key\n$1\\times1$ 的矩阵 $[\\,5\\,]$ 和数 $5$ 当成一回事：乘别的矩阵时，就是数乘。\n```\n\n```answer\nid: q-k2\ntitle: 不乘矩阵，求倍数\nq: $\\boldsymbol\\alpha=\\calc{p}$，$\\boldsymbol\\beta=\\calc{q}$，$B=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{B}$。不算 $B\\cdot B$，直接写出 $B^2=kB$ 里的 $k$。\nanswer: q'*p\nbefore: k =\nhint: $k$ 就是那个 $1\\times1$ 的：$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$，行乘列。\nexplain: $k=\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{q'*p}$，所以 $B^2=\\calc{q'*p}B=\\calc{B^2}$。\n```\n````\n"
+  },
+  {
+   "role": "student",
+   "seq": 14,
+   "text": "老师，这题的 α、β 和 B 我这边没显示出具体数字（只看到空的），算不了 k，能再给一下吗？\n[作答] b7 里的 answer q-k2「不乘矩阵，求倍数」：填了 （空）\n[动作] b7 里的组件 q-k2：学生标了「没把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 15,
+   "text": "抱歉，是我写的那段没显示出来，已经重写了。这题是 $\\boldsymbol\\alpha=(2,-1)^{\\mathrm T}$，$\\boldsymbol\\beta=(1,4)^{\\mathrm T}$。\n\n````board replace id=b7 title=\"换一组数\"\n```key\n$1\\times1$ 的矩阵 $[\\,5\\,]$ 和数 $5$ 当成一回事：乘别的矩阵时，就是数乘。\n```\n\n```answer\nid: q-k2\ntitle: 不乘矩阵，求倍数\nlet u = [2, -1]\nlet v = [1, 4]\nlet B = u*v'\nq: $\\boldsymbol\\alpha=\\begin{bmatrix}2\\\\-1\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}1\\\\4\\end{bmatrix}$，$B=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{B}$。不算 $B\\cdot B$，直接写出 $B^2=kB$ 里的 $k$。\nanswer: v'*u\nbefore: k =\nhint: $k$ 就是那个 $1\\times1$ 的：$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$，行乘列。\nexplain: $k=\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{v'*u}$，所以 $B^2=\\calc{v'*u}B=\\calc{B^2}$。\n```\n````\n"
+  }
+ ],
+ "turns": [
+  {
+   "seq": 1,
+   "role": "teacher",
+   "bytes": 884,
+   "talk": "好，我们从一个具体的矩阵开始。先动手算一下它的平方，算完留意一下结果和 $A$ 本身像不像。\n\n可以先在纸上算，再填进格子。",
+   "ops": [
+    "pin",
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 1 块板「先算 A²」\n\n老师写在板顶的话：好，我们从一个具体的矩阵开始。先动手算一下它的平方，算完留意一下结果和 $A$ 本身像不像。\n\n可以先在纸上算，再填进格子。\n\n## 先算 A²\n$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 是一个列向量乘一个行向量（外积 outer product），这样的矩阵叫秩一矩阵（rank-one matrix）。\n\n【作答题 q-a2】算 A²\n  设 $A=\\calc{A}$，直接按矩阵乘法算 $A^2$。\n  （写出答案）\n\n# 常驻栏\n## 这节课的例子\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 2,
+   "role": "student",
+   "say": "算出来是 [[10,5],[30,15]]，感觉和 A 有点像，每个数都大了点？",
+   "acts": [
+    {
+     "comp": "q-a2",
+     "ok": true,
+     "type": "answer"
+    },
+    {
+     "comp": "q-a2",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "算出来是 [[10,5],[30,15]]，感觉和 A 有点像，每个数都大了点？\n[作答] b1 里的 answer q-a2「算 A²」：填了 [[10,5],[30,15]]（对，第 1 次）\n[动作] b1 里的组件 q-a2：学生标了「有把握」"
+  },
+  {
+   "seq": 3,
+   "role": "teacher",
+   "bytes": 393,
+   "talk": "算对了。「大了点」可以说得更准：每个数都大了同样的倍数吗？",
+   "ops": [
+    "add"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 1 块板「先算 A²」\n\n老师写在板顶的话：算对了。「大了点」可以说得更准：每个数都大了同样的倍数吗？\n\n## 先算 A²\n$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 是一个列向量乘一个行向量（外积 outer product），这样的矩阵叫秩一矩阵（rank-one matrix）。\n\n【作答题 q-a2】算 A²\n  设 $A=\\calc{A}$，直接按矩阵乘法算 $A^2$。\n  （写出答案）\n\n## 大了多少\n把 $A^2=\\calc{A^2}$ 和 $A=\\calc{A}$ 一格一格对着看。\n\n【作答题 q-k】A² 是 A 的几倍\n  如果 $A^2=kA$，$k$ 是多少？\n  （写出答案）\n\n# 常驻栏\n## 这节课的例子\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 4,
+   "role": "student",
+   "say": "对，每格都是 5 倍。10/2、5/1、30/6、15/3 都是 5。",
+   "acts": [
+    {
+     "comp": "q-k",
+     "ok": true,
+     "type": "answer"
+    },
+    {
+     "comp": "q-k",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "对，每格都是 5 倍。10/2、5/1、30/6、15/3 都是 5。\n[作答] b2 里的 answer q-k「A² 是 A 的几倍」：填了 5（对，第 1 次）\n[动作] b2 里的组件 q-k：学生标了「有把握」"
+  },
+  {
+   "seq": 5,
+   "role": "teacher",
+   "bytes": 1537,
+   "talk": "对。那这个 5 是从哪来的？不用数字，用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 推一推。\n\n每一步先写你的想法，再揭开。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 2 块板「5 从哪来」\n\n老师写在板顶的话：对。那这个 5 是从哪来的？不用数字，用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 推一推。\n\n每一步先写你的想法，再揭开。\n\n## 5 从哪来\n【分步例题 ex-a2】用 α、β 写 A²\n  $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$。说明为什么 $A^2$ 是 $A$ 的倍数。\n  第 1 步 写出 A²：先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\n  （写一句你的想法）\n\n# 常驻栏\n## 这节课的例子\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 6,
+   "role": "student",
+   "say": "A² 就是 A 乘 A，所以是 αβᵀαβᵀ，后面不知道怎么往下化。",
+   "acts": [
+    {
+     "comp": "ex-a2",
+     "ok": null,
+     "type": "steps"
+    },
+    {
+     "comp": "ex-a2",
+     "ok": null,
+     "type": "sure"
+    }
+   ],
+   "msg": "A² 就是 A 乘 A，所以是 αβᵀαβᵀ，后面不知道怎么往下化。\n[作答] b3 里的 steps ex-a2「用 α、β 写 A²」第 1 步（写出 A²）：填了 （第 1 次）\n[动作] b3 里的组件 ex-a2：学生标了「没把握」"
+  },
+  {
+   "seq": 7,
+   "role": "teacher",
+   "bytes": 603,
+   "talk": "第一步写对了，$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 就是 $A^2$。往下化的线索在形状上：矩阵乘法可以随便加括号，挑哪两个相邻的先乘都行。\n\n带着这个想法，把第 2 步的选项选一下。",
+   "ops": [
+    "add"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 2 块板「5 从哪来」\n\n老师写在板顶的话：第一步写对了，$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 就是 $A^2$。往下化的线索在形状上：矩阵乘法可以随便加括号，挑哪两个相邻的先乘都行。\n\n带着这个想法，把第 2 步的选项选一下。\n\n## 5 从哪来\n【分步例题 ex-a2】用 α、β 写 A²\n  $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$。说明为什么 $A^2$ 是 $A$ 的倍数。\n  第 1 步 写出 A²：$A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n  第 2 步 换个括号：四个因子排成一排，中间的 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 先乘，乘出来是什么形状？\n  选项：一个数 / 一个 2×2 矩阵 / 一个 1×2 行向量\n\n## 提示：看形状\n$$\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\;\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\;\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\;\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}$$\n\n相邻的两个乘起来，哪一对乘出来最「小」？\n\n# 常驻栏\n## 这节课的例子\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 8,
+   "role": "student",
+   "say": "β转置乘α……应该还是个 2×2 的矩阵吧？",
+   "acts": [
+    {
+     "comp": "ex-a2",
+     "ok": false,
+     "type": "steps"
+    },
+    {
+     "comp": "ex-a2",
+     "ok": false,
+     "type": "sure"
+    }
+   ],
+   "msg": "β转置乘α……应该还是个 2×2 的矩阵吧？\n[作答] b3 里的 steps ex-a2「用 α、β 写 A²」第 2 步（换个括号）：填了 一个 2×2 矩阵（错，第 1 次）\n[动作] b3 里的组件 ex-a2：学生标了「没把握」"
+  },
+  {
+   "seq": 9,
+   "role": "teacher",
+   "bytes": 770,
+   "talk": "2×2 的是 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（就是 $A$）。顺序反过来，形状就不一样了：乘积的形状看两头。",
+   "ops": [
+    "add"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 2 块板「5 从哪来」\n\n老师写在板顶的话：2×2 的是 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（就是 $A$）。顺序反过来，形状就不一样了：乘积的形状看两头。\n\n## 5 从哪来\n【分步例题 ex-a2】用 α、β 写 A²\n  $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$。说明为什么 $A^2$ 是 $A$ 的倍数。\n  第 1 步 写出 A²：$A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n  第 2 步 换个括号：结合律（associativity）：$A^2=\\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是 $1\\times2$ 乘 $2\\times1$，一个数。\n  第 3 步 算出这个数：用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 的数算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\n  （自己写出这一步的结果）\n\n## 提示：看形状\n$$\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\;\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\;\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\;\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}$$\n\n相邻的两个乘起来，哪一对乘出来最「小」？\n\n## 顺序一换，形状就变\n$(m\\times n)(n\\times p)\\to m\\times p$：中间的 $n$ 对上就消掉，留下两头。\n\n$$\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\to 2\\times2\\qquad \\underbrace{\\boldsymbol\\beta^{\\mathrm T}}_{1\\times2}\\underbrace{\\boldsymbol\\alpha}_{2\\times1}\\to\\ ?$$\n\n【作答题 q-bta】用数算一下\n  用 $\\boldsymbol\\beta=\\calc{b}$、$\\boldsymbol\\alpha=\\calc{a}$ 算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\n  （写出答案）\n\n# 常驻栏\n## 这节课的例子\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 10,
+   "role": "student",
+   "say": "按乘法规则算 2×1+1×3=5。和刚才的 5 一样，巧合吗？不过我还是没看懂为什么能把中间这块提出来。",
+   "acts": [
+    {
+     "comp": "q-bta",
+     "ok": true,
+     "type": "answer"
+    },
+    {
+     "comp": "ex-a2",
+     "ok": true,
+     "type": "steps"
+    },
+    {
+     "comp": "q-bta",
+     "ok": true,
+     "type": "sure"
+    },
+    {
+     "comp": "ex-a2",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "按乘法规则算 2×1+1×3=5。和刚才的 5 一样，巧合吗？不过我还是没看懂为什么能把中间这块提出来。\n[作答] b5 里的 answer q-bta「用数算一下」：填了 5（对，第 1 次）\n[作答] b3 里的 steps ex-a2「用 α、β 写 A²」第 3 步（算出这个数）：填了 （对，第 1 次）\n[动作] b5 里的组件 q-bta：学生标了「有把握」\n[动作] b3 里的组件 ex-a2：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "seq": 11,
+   "role": "teacher",
+   "bytes": 1277,
+   "talk": "不是巧合，这两个 5 就是同一个数。为什么能提出来，靠两条规则，一行一行看。\n\n点「下一行」看完，再选一下。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 3 块板「为什么能提出来」\n\n老师写在板顶的话：不是巧合，这两个 5 就是同一个数。为什么能提出来，靠两条规则，一行一行看。\n\n点「下一行」看完，再选一下。\n\n## 为什么能提出来\n【derive d-a2】\n  id: d-a2\n  title: A² 一行一行化\n  A^2 = (\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})\n      = \\boldsymbol\\alpha\\,(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\beta^{\\mathrm T}   // 结合律：只换括号，四个因子的**顺序没动**\n      = \\boldsymbol\\alpha\\,\\calc{b'*a}\\,\\boldsymbol\\beta^{\\mathrm T}   // $1\\times1$ 的矩阵就是一个数\n      = \\calc{b'*a}\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}   // 数乘矩阵就是每个元素都乘它，写在前面后面都一样\n      = \\calc{b'*a}A\n\n【选择题 q-why】\n  第 3 行到第 4 行，能把 $\\calc{b'*a}$ 挪到最前面，是因为：\n  A. 矩阵乘法可以交换顺序\n  B. $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是一个数，数乘可以写在任何位置\n  C. $\\boldsymbol\\alpha$ 和 $\\boldsymbol\\beta$ 正好垂直\n\n# 常驻栏\n## 这节课的例子\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 12,
+   "role": "student",
+   "say": "选 B，看第三行写的 1×1 就是一个数。但我之前一直以为 β转置乘α 也是个矩阵，现在有点绕。",
+   "acts": [
+    {
+     "comp": "q-why",
+     "ok": true,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-why",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "选 B，看第三行写的 1×1 就是一个数。但我之前一直以为 β转置乘α 也是个矩阵，现在有点绕。\n[作答] b6 里的 quiz q-why：「第 3 行到第 4 行，能把 $\\calc{b'*a}$ 挪到最前面，是因为：」做对了（共 1 次）\n[动作] b6 里的组件 q-why：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "seq": 13,
+   "role": "teacher",
+   "bytes": 873,
+   "talk": "你以前的想法没错：$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 确实是矩阵，只不过是 $1\\times1$ 的，只有一个元素，所以当数用。换一组数，自己走一遍。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 4 块板「换一组数」\n\n老师写在板顶的话：你以前的想法没错：$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 确实是矩阵，只不过是 $1\\times1$ 的，只有一个元素，所以当数用。换一组数，自己走一遍。\n\n## 换一组数\n【key （没写 id）】\n  $1\\times1$ 的矩阵 $[\\,5\\,]$ 和数 $5$ 当成一回事：乘别的矩阵时，就是数乘。\n\n【作答题 q-k2】不乘矩阵，求倍数\n  $\\boldsymbol\\alpha=\\calc{p}$，$\\boldsymbol\\beta=\\calc{q}$，$B=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{B}$。不算 $B\\cdot B$，直接写出 $B^2=kB$ 里的 $k$。\n  （写出答案）\n\n# 常驻栏\n## 这节课的例子\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{A}$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 14,
+   "role": "student",
+   "say": "老师，这题的 α、β 和 B 我这边没显示出具体数字（只看到空的），算不了 k，能再给一下吗？",
+   "acts": [
+    {
+     "comp": "q-k2",
+     "ok": null,
+     "type": "answer"
+    },
+    {
+     "comp": "q-k2",
+     "ok": null,
+     "type": "sure"
+    }
+   ],
+   "msg": "老师，这题的 α、β 和 B 我这边没显示出具体数字（只看到空的），算不了 k，能再给一下吗？\n[作答] b7 里的 answer q-k2「不乘矩阵，求倍数」：填了 （空）\n[动作] b7 里的组件 q-k2：学生标了「没把握」"
+  },
+  {
+   "seq": 15,
+   "role": "teacher",
+   "bytes": 884,
+   "talk": "抱歉，是我写的那段没显示出来，已经重写了。这题是 $\\boldsymbol\\alpha=(2,-1)^{\\mathrm T}$，$\\boldsymbol\\beta=(1,4)^{\\mathrm T}$。",
+   "ops": [
+    "replace"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 4 块板「换一组数」\n\n老师写在板顶的话：抱歉，是我写的那段没显示出来，已经重写了。这题是 $\\boldsymbol\\alpha=(2,-1)^{\\mathrm T}$，$\\boldsymbol\\beta=(1,4)^{\\mathrm T}$。\n\n## 换一组数\n【key （没写 id）】\n  $1\\times1$ 的矩阵 $[\\,5\\,]$ 和数 $5$ 当成一回事：乘别的矩阵时，就是数乘。\n\n【作答题 q-k2】不乘矩阵，求倍数\n  $\\boldsymbol\\alpha=\\begin{bmatrix}2\\\\-1\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}1\\\\4\\end{bmatrix}$，$B=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\calc{B}$。不算 $B\\cdot B$，直接写出 $B^2=kB$ 里的 $k$。\n  （写出答案）\n\n# 常驻栏\n## 这节课的例子\n$\\boldsymbol\\alpha=\\begin{bmatrix}1\\\\3\\end{bmatrix}$，$\\boldsymbol\\beta=\\begin{bmatrix}2\\\\1\\end{bmatrix}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\begin{bmatrix}2 & 1 \\\\ 6 & 3\\end{bmatrix}$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  }
+ ],
+ "seq": 15,
+ "pendingNotes": []
+}

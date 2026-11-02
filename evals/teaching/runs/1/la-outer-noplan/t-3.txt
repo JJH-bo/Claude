@@ -1,0 +1,27 @@
+对。那这个 5 是从哪来的？不用数字，用 $\boldsymbol\alpha$、$\boldsymbol\beta$ 推一推。
+
+````board new id=b3 title="5 从哪来"
+```steps
+id: ex-a2
+title: 用 α、β 写 A²
+q: $A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$，$\boldsymbol\alpha=\calc{a}$，$\boldsymbol\beta=\calc{b}$。说明为什么 $A^2$ 是 $A$ 的倍数。
+
+step: 写出 A²
+ask: 先别算矩阵。$A^2$ 用 $\boldsymbol\alpha$、$\boldsymbol\beta$ 怎么写？
+show: $A^2=(\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})(\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$
+
+step: 换个括号
+ask: 四个因子排成一排，中间的 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 先乘，乘出来是什么形状？
+choices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量
+answer: 一个数
+show: 结合律（associativity）：$A^2=\boldsymbol\alpha\,(\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)\,\boldsymbol\beta^{\mathrm T}$，$\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 是 $1\times2$ 乘 $2\times1$，一个数。
+
+step: 算出这个数
+do: true
+ask: 用 $\boldsymbol\alpha$、$\boldsymbol\beta$ 的数算 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$。
+answer: b'*a
+show: $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=\calc{b'*a}$，数可以提到前面：$A^2=(\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)\,\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}=\calc{b'*a}A$
+```
+````
+
+每一步先写你的想法，再揭开。

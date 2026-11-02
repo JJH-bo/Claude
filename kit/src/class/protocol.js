@@ -144,7 +144,7 @@ const tidy = (s) => s.replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
 // 段指令：new / add / replace / pin 带内容（可以有标题）；hide / unpin 只要 id
 export const SEGMENT_OPS = ['new', 'add', 'replace', 'hide', 'pin', 'unpin'];
 const NO_TITLE = new Set(['hide', 'unpin']);
-const OP_LIST = 'new / add / replace / hide / pin / unpin / figure / mark / unmark / memo';
+const OP_LIST = 'new / add / replace / hide / pin / unpin / figure / mark / unmark / memo / plan';
 
 /**
  * 解析 board 后面那一行：
@@ -171,6 +171,8 @@ export function parseCommand(header) {
   }
   // 学习台里改记忆（memory/memo.js）：一行一条，写在块里
   if (name === 'memo') return { op: 'memo' };
+  // 老师自己的教学计划（学生看不到，docs/learning-plan.md 第 5 节）：块里是几行字
+  if (name === 'plan') return { op: 'plan' };
   return { error: `看不懂的指令「${m[1]}」：只认 ${OP_LIST}` };
 }
 
@@ -181,7 +183,16 @@ export function parseCommand(header) {
 export function blockCommand(header, body = '') {
   const op = parseCommand(header);
   if (op.op === 'memo') return memoOp(body);
+  if (op.op === 'plan') return planOp(body);
   return op.op === 'mark' ? markOp(op, body) : op;
+}
+
+// 教学计划最多多长：每一轮都放进说明，长了白费额度
+export const PLAN_MAX = 200;
+function planOp(body) {
+  const t = String(body ?? '').trim();
+  if (!t) return { error: 'plan 里没写内容：写这节课要到哪、你现在猜学生卡在哪、拿什么来证实、下一步' };
+  return t.length > PLAN_MAX ? { op: 'plan', text: t.slice(0, PLAN_MAX), cut: t.length } : { op: 'plan', text: t };
 }
 
 // 闭合的 memo 块：一行一条（写法见 memory/memo.js）。一条也没读懂时整块算看不懂；读懂的照常记，读不懂的行放在 errors 里

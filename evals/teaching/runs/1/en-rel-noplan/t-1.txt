@@ -1,0 +1,18 @@
+好，先不讲规则。看这两句，只差一对逗号，你判断一下意思差在哪。
+
+````board new id=b1 title="只差一对逗号"
+**(a)** My brother **who lives in Shanghai** is a doctor.
+
+**(b)** My brother**, who lives in Shanghai,** is a doctor.
+
+```quiz
+id: q-b1
+q: 哪一句暗示说话人**不止一个**兄弟？
+- [x] (a)：没有逗号的那句
+- [ ] (b)：有逗号的那句
+- [ ] 两句意思完全一样
+explain: (a) 里 who lives in Shanghai 用来**限定**是哪一个兄弟（住上海的那个，言下之意还有别的兄弟）；(b) 里逗号隔开的部分只是**补充**一句，说话人只有一个兄弟。
+```
+````
+
+选好了我们接着说为什么。

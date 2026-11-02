@@ -231,7 +231,8 @@ test('剧本 1：第一轮打招呼 + new b1（steps ex-1 和绑定它的 scene 
   const r = await L.say('老师好');
   assert.equal(r.kind, 'first');
   const bs = boards(r.text);
-  assert.deepEqual(bs.map((b) => b.header.split(' ')[0]), ['new', 'pin']);
+  // plan 是老师自己的教学计划（学生看不到，docs/learning-plan.md 第 5 节）
+  assert.deepEqual(bs.map((b) => b.header.split(' ')[0]), ['new', 'pin', 'plan']);
   assert.match(bs[0].header, /^new id=b1 title="[^"]+"$/);
   const cs = components(bs[0].body);
   assert.deepEqual(cs.map((c) => c.lang), ['steps', 'scene']);
@@ -506,6 +507,7 @@ test('一整节课：除了故意写错的那段，黑板内容都能被组件�
     if (t.role !== 'assistant') continue;
     assertTeX(speechOf(t.content), `第 ${i} 条的话`);
     for (const b of boards(t.content)) {
+      if (b.header === 'plan') { assert.ok(b.body.trim(), 'plan 写了内容'); continue; }
       const m = b.header.match(/^(new|add|replace|pin) id=(\S+)/);
       if (!m) {
         const f = b.header.match(/^figure target=(\S+) (set x=\[|play t$|highlight 3$)/);
