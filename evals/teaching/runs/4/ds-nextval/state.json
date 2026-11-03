@@ -22,6 +22,12 @@
    "page": 2,
    "title": "nextval 先按你的理解写",
    "md": "模式串 $T=$ `ababaa`，你刚求出的 next（页面判过对）：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n```kmp\nid: q-nv1\ntitle: 写出 nextval 数组\npattern: ababaa\nshow: nextval\nmode: quiz\n```"
+  },
+  {
+   "id": "b3",
+   "page": 3,
+   "title": "按 next 退，会白比吗",
+   "md": "模式串 $T=$ `ababaa`：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n匹配到 $j=3$ 时失配：主串当前这个字符 $S[i]$ **不是 a**（和 $T[3]=$ a 比没比上）。\n\n按 next，$i$ 不动，$j$ 退到 $next[3]=1$，接着拿 $S[i]$ 和 $T[1]$ 比。\n\n```quiz\nid: q-waste1\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [ ] 一定比得上\n- [x] 一定比不上\n- [ ] 要看 $S[i]$ 具体是什么字母\nexplain: $T[1]$ 也是 a，和刚失配的 $T[3]$ 是同一个字母；$S[i]$ 已经知道不是 a，再比一次必然失配，这一次是白比的。\n```"
   }
  ],
  "pages": [
@@ -34,12 +40,18 @@
    "n": 2,
    "title": "nextval 先按你的理解写",
    "talk": "next 全对。还是这个串，规则我先不讲：nextval 你按自己现在的理解写一遍，写错了没关系，我要看你是怎么想的。\n\n六个数空格隔开。交上来以后，再用一句话告诉我：你是怎么从 next 得到 nextval 的？"
+  },
+  {
+   "n": 3,
+   "title": "按 next 退，会白比吗",
+   "talk": "nextval 不是 next 的另一种写法，它是在 next 的基础上改出来的，有几格会变。为什么要改，先让你自己看出来：看一次失配后，按 next 下一步比的是什么。\n\n选好以后，在输入框里用一句话说说你为什么这么选。"
   }
  ],
- "cur": 2,
+ "cur": 3,
  "progress": {},
  "tries": {
-  "q-next1": 1
+  "q-next1": 1,
+  "q-nv1": 1
  },
  "results": {
   "q-next1": [
@@ -56,6 +68,23 @@
     "attempts": 1,
     "detail": "写出结果",
     "final": true
+   }
+  ],
+  "q-nv1": [
+   {
+    "source": "record",
+    "block": "q-nv1",
+    "step": "b2",
+    "type": "stepper",
+    "engine": "kmp",
+    "title": "写出 nextval 数组",
+    "q": "写出模式串 ababaa 的 nextval 数组（从 j = 1 开始）。",
+    "value": "0 1 1 2 3 4",
+    "ok": false,
+    "attempts": 1,
+    "detail": "写出结果",
+    "misread": "像是 nextval 没有改，照抄了 next",
+    "final": false
    }
   ]
  },
@@ -83,6 +112,18 @@
     "raw": "```kmp\nid: q-nv1\ntitle: 写出 nextval 数组\npattern: ababaa\nshow: nextval\nmode: quiz\n```",
     "at": 174
    }
+  },
+  "q-waste1": {
+   "seg": {
+    "id": "b3"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-waste1\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [ ] 一定比得上\n- [x] 一定比不上\n- [ ] 要看 $S[i]$ 具体是什么字母\nexplain: $T[1]$ 也是 a，和刚失配的 $T[3]$ 是同一个字母；$S[i]$ 已经知道不是 a，再比一次必然失配，这一次是白比的。",
+    "id": "q-waste1",
+    "raw": "```quiz\nid: q-waste1\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [ ] 一定比得上\n- [x] 一定比不上\n- [ ] 要看 $S[i]$ 具体是什么字母\nexplain: $T[1]$ 也是 a，和刚失配的 $T[3]$ 是同一个字母；$S[i]$ 已经知道不是 a，再比一次必然失配，这一次是白比的。\n```",
+    "at": 272
+   }
   }
  },
  "ops": [],
@@ -101,6 +142,16 @@
    "role": "claude",
    "seq": 3,
    "text": "next 全对。还是这个串，规则我先不讲：nextval 你按自己现在的理解写一遍，写错了没关系，我要看你是怎么想的。\n\n````board new id=b2 title=\"nextval 先按你的理解写\"\n模式串 $T=$ `ababaa`，你刚求出的 next（页面判过对）：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n```kmp\nid: q-nv1\ntitle: 写出 nextval 数组\npattern: ababaa\nshow: nextval\nmode: quiz\n```\n````\n\n六个数空格隔开。交上来以后，再用一句话告诉我：你是怎么从 next 得到 nextval 的？\n"
+  },
+  {
+   "role": "student",
+   "seq": 4,
+   "text": "我觉得 nextval 就是 next 的另一种写法，所以直接照抄 next：0 1 1 2 3 4。不太有把握。\n[作答] b2 里的 kmp q-nv1「写出 nextval 数组」：写出结果，「写出模式串 ababaa 的 nextval 数组（从 j = 1 开始）。」写了 0 1 1 2 3 4（错，第 1 次）；页面看出来：像是 nextval 没有改，照抄了 next\n[动作] b2 里的组件 q-nv1：学生标了「没把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 5,
+   "text": "nextval 不是 next 的另一种写法，它是在 next 的基础上改出来的，有几格会变。为什么要改，先让你自己看出来：看一次失配后，按 next 下一步比的是什么。\n\n````board new id=b3 title=\"按 next 退，会白比吗\"\n模式串 $T=$ `ababaa`：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n匹配到 $j=3$ 时失配：主串当前这个字符 $S[i]$ **不是 a**（和 $T[3]=$ a 比没比上）。\n\n按 next，$i$ 不动，$j$ 退到 $next[3]=1$，接着拿 $S[i]$ 和 $T[1]$ 比。\n\n```quiz\nid: q-waste1\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [ ] 一定比得上\n- [x] 一定比不上\n- [ ] 要看 $S[i]$ 具体是什么字母\nexplain: $T[1]$ 也是 a，和刚失配的 $T[3]$ 是同一个字母；$S[i]$ 已经知道不是 a，再比一次必然失配，这一次是白比的。\n```\n````\n\n选好以后，在输入框里用一句话说说你为什么这么选。\n"
   }
  ],
  "turns": [
@@ -145,8 +196,38 @@
    "notes": [],
    "plan": false,
    "view": "# 第 2 块板「nextval 先按你的理解写」\n\n老师写在板顶的话：next 全对。还是这个串，规则我先不讲：nextval 你按自己现在的理解写一遍，写错了没关系，我要看你是怎么想的。\n\n六个数空格隔开。交上来以后，再用一句话告诉我：你是怎么从 next 得到 nextval 的？\n\n## nextval 先按你的理解写\n模式串 $T=$ `ababaa`，你刚求出的 next（页面判过对）：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n【演示 kmp q-nv1】写出 nextval 数组\n  输入：pattern: ababaa\n  写出模式串 ababaa 的 nextval 数组（从 j = 1 开始）。\n  （写出结果）\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 4,
+   "role": "student",
+   "say": "我觉得 nextval 就是 next 的另一种写法，所以直接照抄 next：0 1 1 2 3 4。不太有把握。",
+   "acts": [
+    {
+     "comp": "q-nv1",
+     "ok": false,
+     "type": "stepper"
+    },
+    {
+     "comp": "q-nv1",
+     "ok": false,
+     "type": "sure"
+    }
+   ],
+   "msg": "我觉得 nextval 就是 next 的另一种写法，所以直接照抄 next：0 1 1 2 3 4。不太有把握。\n[作答] b2 里的 kmp q-nv1「写出 nextval 数组」：写出结果，「写出模式串 ababaa 的 nextval 数组（从 j = 1 开始）。」写了 0 1 1 2 3 4（错，第 1 次）；页面看出来：像是 nextval 没有改，照抄了 next\n[动作] b2 里的组件 q-nv1：学生标了「没把握」"
+  },
+  {
+   "seq": 5,
+   "role": "teacher",
+   "bytes": 1024,
+   "talk": "nextval 不是 next 的另一种写法，它是在 next 的基础上改出来的，有几格会变。为什么要改，先让你自己看出来：看一次失配后，按 next 下一步比的是什么。\n\n选好以后，在输入框里用一句话说说你为什么这么选。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 3 块板「按 next 退，会白比吗」\n\n老师写在板顶的话：nextval 不是 next 的另一种写法，它是在 next 的基础上改出来的，有几格会变。为什么要改，先让你自己看出来：看一次失配后，按 next 下一步比的是什么。\n\n选好以后，在输入框里用一句话说说你为什么这么选。\n\n## 按 next 退，会白比吗\n模式串 $T=$ `ababaa`：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n匹配到 $j=3$ 时失配：主串当前这个字符 $S[i]$ **不是 a**（和 $T[3]=$ a 比没比上）。\n\n按 next，$i$ 不动，$j$ 退到 $next[3]=1$，接着拿 $S[i]$ 和 $T[1]$ 比。\n\n【选择题 q-waste1】\n  这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n  A. 一定比得上\n  B. 一定比不上\n  C. 要看 $S[i]$ 具体是什么字母\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 3,
+ "seq": 5,
  "pendingNotes": []
 }
