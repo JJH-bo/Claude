@@ -10,15 +10,61 @@
    "plan": "1. 复习 next：短的模式串先算一遍。\n2. 用 kmp 演示组件看 nextval 怎么一格格从 next 来。\n3. 关键格（T[j] 和 T[next[j]] 相等的那一格）先让学生猜。\n4. 自己算一个完整的 nextval，再换一个串确认。"
   }
  },
- "segs": [],
- "pages": [],
- "cur": 0,
+ "segs": [
+  {
+   "id": "b1",
+   "page": 1,
+   "title": "热身：先求 next",
+   "md": "模式串 $T=$ `ababaa`，位置从 1 数。\n\n```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: ababaa\nshow: next\nmode: quiz\n```"
+  }
+ ],
+ "pages": [
+  {
+   "n": 1,
+   "title": "热身：先求 next",
+   "talk": "nextval 是从 next 来的，所以先热身：这个短串的 next 你自己写一遍，口径照王道（从 1 数，$next[1]=0$）。\n\n六个数用空格隔开写，写完交上来；拿不准的格子也先按你的想法填。"
+  }
+ ],
+ "cur": 1,
  "progress": {},
  "tries": {},
  "results": {},
- "compAt": {},
+ "compAt": {
+  "q-next1": {
+   "seg": {
+    "id": "b1"
+   },
+   "f": {
+    "lang": "kmp",
+    "body": "id: q-next1\ntitle: 写出 next 数组\npattern: ababaa\nshow: next\nmode: quiz",
+    "id": "q-next1",
+    "raw": "```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: ababaa\nshow: next\nmode: quiz\n```",
+    "at": 28
+   }
+  }
+ },
  "ops": [],
- "history": [],
- "turns": [],
- "seq": 0
+ "history": [
+  {
+   "role": "claude",
+   "seq": 1,
+   "text": "nextval 是从 next 来的，所以先热身：这个短串的 next 你自己写一遍，口径照王道（从 1 数，$next[1]=0$）。\n\n````board new id=b1 title=\"热身：先求 next\"\n模式串 $T=$ `ababaa`，位置从 1 数。\n\n```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: ababaa\nshow: next\nmode: quiz\n```\n````\n\n六个数用空格隔开写，写完交上来；拿不准的格子也先按你的想法填。\n"
+  }
+ ],
+ "turns": [
+  {
+   "seq": 1,
+   "role": "teacher",
+   "bytes": 420,
+   "talk": "nextval 是从 next 来的，所以先热身：这个短串的 next 你自己写一遍，口径照王道（从 1 数，$next[1]=0$）。\n\n六个数用空格隔开写，写完交上来；拿不准的格子也先按你的想法填。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 1 块板「热身：先求 next」\n\n老师写在板顶的话：nextval 是从 next 来的，所以先热身：这个短串的 next 你自己写一遍，口径照王道（从 1 数，$next[1]=0$）。\n\n六个数用空格隔开写，写完交上来；拿不准的格子也先按你的想法填。\n\n## 热身：先求 next\n模式串 $T=$ `ababaa`，位置从 1 数。\n\n【演示 kmp q-next1】写出 next 数组\n  输入：pattern: ababaa\n  写出模式串 ababaa 的 next 数组（从 j = 1 开始）。\n  （写出结果）\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  }
+ ],
+ "seq": 1,
+ "pendingNotes": []
 }
