@@ -44,8 +44,25 @@ export function splitProject(markdown, { kitUrl = '' } = {}) {
     index.push({ names: sec.names, file, desc, tags: sec.tags });
   }
   const how = `每个组件的写法（字段、例子、常见错法）单独放在学习台里，**要用哪个先读哪个**：\`Artifact\` 工具 \`action: "read"\`，\`url\`${kitUrl ? ` 是 ${kitUrl}` : ' 是学习台的地址'}，\`path\` 写下表里的文件（比如 \`"components/answer.md"\`）；一次可以用 \`paths\` 读好几个。没读写法就写组件，页面会报写法错误。`;
-  const table = index.map((x) => `- \`${x.names.join('` / `')}\`${x.tags ? `（${x.tags.join('、')}）` : ''}：${x.desc} → \`${x.file}\``).join('\n');
+  // 板书标注（圈、框、大括号、荧光笔……）不是组件，是教具指令 mark：外部的 Claude 照组件一览找「标注」找不到，
+  // 就以为没有这个功能（2026-11-03）。一览里写一行指过去，写法也单独放一份 components/mark.md
+  const markDoc = markSection(markdown);
+  if (markDoc) files['components/mark.md'] = `${markDoc}\n`;
+  const table = [
+    ...index.map((x) => `- \`${x.names.join('` / `')}\`${x.tags ? `（${x.tags.join('、')}）` : ''}：${x.desc} → \`${x.file}\``),
+    ...(markDoc ? ['- **板书标注**（圈、框、大括号、下划线、波浪线、着重号、荧光笔、✓ ✗、箭头；也叫 mark、tag、highlight、圈画）：不是组件，是教具指令 `mark`（课堂里写 board mark 块，实时黑板写进 `ops`），写法见第六节「教具指令：figure、mark / unmark」 → `components/mark.md`'] : []),
+  ].join('\n');
   const sec3new = [lines[s], '', keep.filter(Boolean).join('\n\n'), '', '### 组件一览（写法要单独读）', '', how, '', table, ''].join('\n');
   const main = [...lines.slice(0, s), sec3new, ...lines.slice(e)].join('\n');
   return { main, files, index };
+}
+
+/** 第六节里 mark / unmark 那一段（「**mark：指着讲」到 unmark 那一段结束）；找不到就是空串 */
+export function markSection(markdown) {
+  const src = String(markdown ?? '');
+  const a = src.indexOf('**mark：指着讲');
+  const u = src.indexOf('**unmark：撤掉标注。**', a);
+  if (a < 0 || u < 0) return '';
+  const end = src.indexOf('\n\n', u);
+  return `# 板书标注：mark / unmark（教具指令，不是组件）\n\n${src.slice(a, end < 0 ? undefined : end).trim()}`;
 }
