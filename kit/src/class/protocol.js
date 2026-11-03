@@ -7,6 +7,7 @@ import { tokenize, unquote } from '../tokens.js';
 import { parseMarkHead, parseMarkBlock, parseUnmark } from '../markspec.js';
 import { parseMemoLines } from '../memory/memo.js';
 import { parseReact } from './react.js';
+import { parseAt } from './canvas.js';
 
 // ```board add id=b7 title="…"：行首最多 3 个空格，` 或 ~ 至少 3 个，可有空格，然后是 board 和指令
 const OPEN_RE = /^([ \t]{0,3})(`{3,}|~{3,})[ \t]*board(?=\s|$)\s*(.*)$/i;
@@ -144,9 +145,10 @@ const tidy = (s) => s.replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
 
 // 段指令：new / add / replace / pin 带内容（可以有标题）；hide / unpin 只要 id
 // show：揭开预先写好、藏着的段（add … hold）
-export const SEGMENT_OPS = ['new', 'add', 'replace', 'hide', 'show', 'pin', 'unpin'];
-const NO_TITLE = new Set(['hide', 'show', 'unpin']);
-const OP_LIST = 'new / add / replace / hide / show / pin / unpin / figure / mark / unmark / react / memo / plan';
+// move：版面模式里把一段挪到别处、改大小（at=），不重画
+export const SEGMENT_OPS = ['new', 'add', 'replace', 'hide', 'show', 'move', 'pin', 'unpin'];
+const NO_TITLE = new Set(['hide', 'show', 'move', 'unpin']);
+const OP_LIST = 'new / add / replace / hide / show / move / pin / unpin / figure / mark / unmark / react / memo / plan';
 
 /**
  * 解析 board 后面那一行：
@@ -223,7 +225,7 @@ function markOp(op, body) {
 
 function segmentCommand(op, rest) {
   const toks = tokenize(rest);
-  let id, title, point, hold = false;
+  let id, title, point, at, hold = false;
   for (let k = 0; k < toks.length; k++) {
     const t = toks[k];
     if (t.key === 'id') id = t.value;
@@ -231,6 +233,8 @@ function segmentCommand(op, rest) {
     else if (!t.key && !t.quoted && t.value === 'hold') hold = true;
     // 学习台里：这一段练的是哪个知识点（mastery 编号 # 后面那段），学生在这段的作答记成它的证据
     else if (t.key === 'point') point = t.value;
+    // 版面（canvas.js）：放在第几列到第几列、第几行到第几行
+    else if (t.key === 'at') at = t.value;
     else if (t.key === 'title') {
       title = t.value;
       if (!t.quoted) {
@@ -249,6 +253,12 @@ function segmentCommand(op, rest) {
   if (!id) return { error: `${op} 缺少 id，比如 ${op} id=${eg}` };
   if (!validId(id)) return { error: `id「${id}」不合法：${ID_RULE}` };
   const out = { op, id };
+  if (at !== undefined && op !== 'hide' && op !== 'show' && op !== 'unpin') {
+    const a = parseAt(at);
+    if (a.error) return { error: a.error };
+    out.at = a;
+  }
+  if (op === 'move' && !out.at) return { error: 'move 要写挪到哪：比如 move id=b3 at=1-6/5-8' };
   if (hold) {
     if (op !== 'add') return { error: `hold 只能写在 add 上（先画好藏着，等预案揭开），${op} 不能 hold` };
     out.hold = true;

@@ -19,7 +19,8 @@ const NO_SWIPE = 'input, textarea, select, button, a, label, [contenteditable=""
  */
 // decorate(p)：每次画完一块板以后调（学习台里课堂在板顶的话下面挂改动单；实时黑板不给）
 // onBeat(n, k)：板顶的话分拍播时，学生点了「‹」「下一拍 ›」（课堂的 beatGo；实时黑板不给）
-export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy = () => false, seqOf = () => Infinity, onShow, onMeasure, decorate = null, onBeat = null } = {}) {
+// canvas：版面模式（canvas.js）：每块板的正文是一张 12 列的格子，段按 at= 摆
+export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy = () => false, seqOf = () => Infinity, onShow, onMeasure, decorate = null, onBeat = null, canvas = false } = {}) {
   // 常驻栏（横屏在右边一栏，竖屏在顶上一条）+ 黑板。黑板里一块板一个 section，只显示正在看的那块
   root.innerHTML = `
     <div class="class-app">
@@ -65,6 +66,7 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
     sec.dataset.inkGroup = '';
     sec.innerHTML = '<header class="class-page-head" hidden><h2 class="class-page-title"></h2></header><div class="class-talk" hidden></div><div class="class-page-body"></div>';
     p = { n, title: '', talk: '', lead: '', kind: '', body: '', sec, head: sec.querySelector('.class-page-head'), titleEl: sec.querySelector('.class-page-title'), talkEl: sec.querySelector('.class-talk'), bodyEl: sec.querySelector('.class-page-body') };
+    if (canvas) { p.bodyEl.classList.add('is-canvas'); sec.classList.add('is-canvas-page'); }
     // 分拍播的「‹」「下一拍 ›」
     p.talkEl.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-beat]');
