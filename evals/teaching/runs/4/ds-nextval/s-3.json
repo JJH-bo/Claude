@@ -1,0 +1,1 @@
+{"say": "选 B。S[i] 不是 a，T[1] 也是 a，所以肯定比不上。不过为什么这算白比，我还没太想明白。", "acts": [{"comp": "q-waste1", "value": "B"}], "sure": {"q-waste1": false}}
