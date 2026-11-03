@@ -891,6 +891,22 @@ export async function renderClass(root, meta, desk = null) {
     const avail = sec.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 2;
     const need = body.getBoundingClientRect().height;
     if (!(avail > 0) || !(need > 0)) return; // 藏着的段量不出来，露出来时再量
+    // 估小了、下面又空着：先往下加长（一屏以内），加长了不够再缩小
+    const want = rowsFor(need + (sec.clientHeight - avail), cvRow, cvGap);
+    const rows = seg.at.r2 - seg.at.r1 + 1;
+    if (want > rows && seg.at.r2 < CV_ROWS) {
+      const others = [...segs.values()].filter((x) => x !== seg && x.page === seg.page && x.place !== 'pin' && !x.hidden && x.at).map((x) => x.at);
+      let r2 = seg.at.r2;
+      while (r2 < Math.min(CV_ROWS, seg.at.r1 + want - 1) && !others.some((o) => o.c1 <= seg.at.c2 && seg.at.c1 <= o.c2 && o.r1 <= r2 + 1 && r2 + 1 <= o.r2)) r2++;
+      if (r2 > seg.at.r2) {
+        seg.at = { ...seg.at, r2 };
+        seg.grew = true;
+        sec.style.gridRow = `${seg.at.r1} / ${seg.at.r2 + 1}`;
+        saveSeg(seg);
+        requestAnimationFrame(() => fitSeg(seg));
+        return;
+      }
+    }
     let scale = 1;
     if (need > avail + 2) {
       scale = Math.max(0.72, avail / need);
@@ -994,7 +1010,7 @@ export async function renderClass(root, meta, desk = null) {
       const text = texText(seg.sec?.querySelector('.stage-body > p'));
       const summary = [clipTex(text, 140), seg.softNotes?.length ? `（${seg.softNotes.join('；')}）` : ''].filter(Boolean).join(' ');
       const segMarks = seg.hidden ? [] : [...marks.values()].filter((m) => m.seg === seg.id).map((m) => markText(m.id, m.spec));
-      return { id: seg.id, page: seg.page || 0, place: seg.place || 'board', title: seg.title || seg.sec?.querySelector('h2')?.textContent?.trim() || '', summary, hidden: seg.hidden, held: !!seg.held, ...(CANVAS && seg.at && seg.place !== 'pin' ? { at: atText(seg.at), fit: seg.fit } : {}), pending: !!seg.pending, failed: !!seg.failed, blocks, marks: segMarks.length ? segMarks : undefined };
+      return { id: seg.id, page: seg.page || 0, place: seg.place || 'board', title: seg.title || seg.sec?.querySelector('h2')?.textContent?.trim() || '', summary, hidden: seg.hidden, held: !!seg.held, ...(CANVAS && seg.at && seg.place !== 'pin' ? { at: atText(seg.at), fit: seg.fit, ...(seg.grew ? { grew: true } : {}) } : {}), pending: !!seg.pending, failed: !!seg.failed, blocks, marks: segMarks.length ? segMarks : undefined };
     });
     const vw = window.innerWidth, vh = window.innerHeight;
     // 这节课的量（let 块）：课堂说明被压缩成摘要以后，Claude 也知道有哪些量、值是多少

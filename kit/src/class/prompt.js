@@ -561,7 +561,7 @@ function segmentLines(seg, { maxResults = Infinity } = {}) {
   const held = seg.held ? '（藏着，学生还看不到；预案的 show= 或 board show 揭开）' : '';
   // 版面：放在哪、实际要多大（canvas.js）
   const fit = seg.fit || {};
-  const place = seg.at ? `［at=${seg.at}${fit.need ? `，内容要 ${fit.need} 行${fit.scroll ? '，缩小了还放不下，块里要滑' : fit.scale < 1 ? `，缩小到 ${Math.round(fit.scale * 100)}% 才放下` : ''}` : ''}］` : '';
+  const place = seg.at ? `［at=${seg.at}${seg.grew ? '（你给的小了，页面往下加长过）' : ''}${fit.need ? `，内容要 ${fit.need} 行${fit.scroll ? '，缩小了还放不下，块里要滑' : fit.scale < 1 ? `，缩小到 ${Math.round(fit.scale * 100)}% 才放下` : ''}` : ''}］` : '';
   lines.push(seg.summary ? `${head}${place}${held}：${oneLine(seg.summary, 160)}` : head + place + held);
   for (const b of seg.blocks || []) {
     if (!b?.id) continue;
