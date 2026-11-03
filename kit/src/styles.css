@@ -104,12 +104,15 @@
   --panel: linear-gradient(180deg, rgb(var(--glow-rgb) / 0.058), rgb(var(--glow-rgb) / 0.028));
   --panel-edge: inset 0 1px 0 rgb(var(--glow-rgb) / 0.075), inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.05);
   --lift: 0 1px 2px rgb(var(--shade-rgb) / 0.16), 0 14px 34px -14px rgb(var(--shade-rgb) / 0.6);
+  --btn-bg: rgb(var(--glow-rgb) / 0.05);    /* 普通按钮的底：深色风格是一点点亮，浅色风格（themes.css）是白的 */
+  --btn-bg-hi: rgb(var(--glow-rgb) / 0.09);
   --shine: rgb(255 255 255 / 0.28); /* 实心按钮上沿的一道高光：哪种风格都是白的 */
   /* 输入框、下拉框：压下去的一块 */
   --field: rgb(var(--shade-rgb) / calc(0.2 * var(--well-k, 1)));
   --field-edge: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.13);
 
   --hand: "Caveat", "Long Cang", "Kaiti SC", "STKaiti", "KaiTi", cursive;
+  --display: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif; /* 学习台的标题和大数字（书桌上的字），黑板上不用 */
   --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", "Microsoft YaHei", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: dark;
@@ -155,10 +158,10 @@ button { font: inherit; color: inherit; }
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
   transition: transform .1s ease, background .2s, box-shadow .2s, opacity .2s;
   /* 一块淡淡的粉笔底 + 细一点的框：按得到，但不抢；要紧的那个用 btn-primary */
-  background: rgb(var(--glow-rgb) / 0.05);
+  background: var(--btn-bg);
   --frame: rgb(var(--chalk-rgb) / calc(var(--btn-frame-a, 0.6) * 0.62));
 }
-.btn:hover { background: rgb(var(--glow-rgb) / 0.09); }
+.btn:hover { background: var(--btn-bg-hi); }
 .btn:active { transform: scale(.96); }
 .btn:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
 .btn:disabled { opacity: .35; pointer-events: none; }
@@ -1850,8 +1853,8 @@ tr.cn-best td { background: rgb(var(--green-rgb) / 0.18); color: var(--green); f
 .sv-rbt .sv-tree .sv-node.sv-rb-red.sv-cmp circle, .sv-rbt .sv-tree .sv-node.sv-rb-black.sv-cmp circle { stroke: var(--yellow); stroke-width: 4.5; }
 .sv-rbt .sv-tree .sv-node.sv-rb-red.sv-done circle, .sv-rbt .sv-tree .sv-node.sv-rb-black.sv-done circle { stroke: var(--green); stroke-width: 4.5; }
 /* 浅色风格（纸本、白板）：黑结点就是实心的墨色，字反白 */
-:root:is([data-theme="paper"], [data-theme="white"]) .sv-rbt .sv-tree .sv-node.sv-rb-black circle { fill: color-mix(in srgb, var(--chalk) 88%, rgb(var(--board-2-rgb))); }
-:root:is([data-theme="paper"], [data-theme="white"]) .sv-rbt .sv-tree .sv-node.sv-rb-black text:not(.sv-node-note) { fill: rgb(var(--board-rgb)); }
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"]) .sv-rbt .sv-tree .sv-node.sv-rb-black circle { fill: color-mix(in srgb, var(--chalk) 88%, rgb(var(--board-2-rgb))); }
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"]) .sv-rbt .sv-tree .sv-node.sv-rb-black text:not(.sv-node-note) { fill: rgb(var(--board-rgb)); }
 /* 结点旁边的小字（平衡因子、父 / 叔 / 爷）：左孩子的写在左上角，不压着连向双亲的边 */
 .sv-tree .sv-node .sv-node-note.sv-note-l { text-anchor: end; }
 /* B 树、B+ 树：一个结点是一排格子的框，孩子连在格子的缝上（B+ 树连在格子下面）；叶结点之间的绿箭头是 B+ 树的叶链 */

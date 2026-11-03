@@ -31,6 +31,7 @@ import { masteryProposals, masteryPendingWrites } from './mastery.js';
 import { pickDrills, harvestDrills, drillLine, DRILL_N } from './drills.js';
 import { enterDrill } from './drillrun.js';
 import { recallToday, spaceCounts } from './recall.js';
+import { PICKS, MORE, applyTheme } from '../theme.js';
 import { runRecall } from './recallrun.js';
 import { purgePlan, purgeText } from './purge.js';
 import { vocabRecalls } from './vocab.js';
@@ -94,19 +95,19 @@ export async function renderDesk(root, meta) {
     <div class="dk-pages" hidden></div>
     <div class="dk-bookpage" hidden></div>
     <div class="dk-home">
-    <div class="dk-glance" hidden></div>
     <div class="dk-col">
-    <section class="dk-card dk-class" hidden><h2 class="dk-h">上课</h2><div class="dk-body"></div></section>
-    <section class="dk-card dk-today" hidden><h2 class="dk-h">今天</h2><div class="dk-body"></div></section>
+    <section class="dk-card dk-class" hidden aria-label="上课"><div class="dk-body"></div></section>
+    <section class="dk-card dk-today" hidden><h2 class="dk-h">复现</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-drill" hidden><h2 class="dk-h">练一练</h2><p class="dk-sub muted">页面从以前课上的题里挑几道，不同块混着做，页面判分，不调用 Claude。</p><div class="dk-body"></div></section>
     </div>
     <div class="dk-col dk-col-side">
-    <section class="dk-card dk-recall" hidden><h2 class="dk-h">要记的</h2><p class="dk-sub muted">要背的东西一条一条排：先自己写出来，再看答案，自己说想没想起来。隔 1、3、7、14、30 天各想一遍，想不起就从头隔。不调用 Claude。</p><div class="dk-body"></div><details class="dk-fold dk-radd"><summary><span class="muted">自己加一条</span></summary><div class="dk-radd-f"></div></details></section>
+    <section class="dk-card dk-recall" hidden><h2 class="dk-h">要记的</h2><p class="dk-sub muted">先写出来，再看答案。隔 1、3、7、14、30 天各想一遍。</p><div class="dk-body"></div><details class="dk-fold dk-radd"><summary><span class="muted">自己加一条</span></summary><div class="dk-radd-f"></div></details></section>
     <section class="dk-card dk-pending" hidden><h2 class="dk-h">还没写进去的</h2><p class="dk-sub muted">以前留下的，点「全部确认」写进去，或者「全部不要」。</p><div class="dk-popen"></div></section>
     <section class="dk-card dk-manual" hidden><details class="dk-fold"><summary><h2 class="dk-h">补记</h2><span class="muted">在学习台外面做的题，写一句或贴张图</span></summary><div class="dk-body"></div><div class="dk-mlist"></div></details></section>
     </div>
     </div>
     <div class="dk-manage" hidden>
+    <section class="dk-card dk-look"><h2 class="dk-h">样子</h2><p class="dk-sub muted">学习台和课堂都换成这个样子，这台设备记着。</p><div class="dk-body"></div></section>
     <section class="dk-card dk-recent"><h2 class="dk-h">最近记下的</h2><p class="dk-sub muted">课堂里的 Claude 和页面直接写进记忆的，不对就撤销（7 天内）。</p><div class="dk-pdone"></div></section>
     <section class="dk-card dk-mine" hidden><h2 class="dk-h">我改记忆</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-backup" hidden><h2 class="dk-h">备份</h2><div class="dk-body"></div></section>
@@ -289,10 +290,8 @@ export async function renderDesk(root, meta) {
         ${g.rest.length ? `<details class="dk-soft"><summary>排着的 ${g.rest.length} 组（这几组做完再轮到）</summary>${g.rest.map(oneRow).join('')}</details>` : ''}
       </div>`;
     $('.dk-today .dk-body').innerHTML = !total ? '<p class="muted">记忆库还是空的。</p>' : `
-      <div class="dk-due">${allDue ? `<p class="dk-sub muted">各科一共 ${allDue} 组到期。每门课先做排在前面的 ${REVIEW_MAX} 组：从没复现过的、上次没过的、过期久的在前；出新题，不说是哪一组。</p>${groups.map(groupHtml).join('')}` : '<p class="muted">今天没有要复现的。</p>'}
-        ${soon.length ? `<p class="dk-soon muted">${SPACES[space].label}接下来：${soon.map((d) => `${inline(d.title)}（${escapeHtml(d.due.slice(5).replace('-', '/'))}）`).join('、')}</p>` : ''}</div>
-      ${pos ? `<div class="dk-pos"><div><span class="dk-k">下一节</span>${inline(pos.next)}</div>${pos.block ? `<div><span class="dk-k">学到</span>${blockTitle(pos.block) || escapeHtml(pos.block)}</div>` : ''}${listOf(pos.debts).length ? `<div><span class="dk-k">欠账</span>${listOf(pos.debts).map((x) => inline(x)).join('；')}</div>` : ''}</div>` : ''}`;
-    paintGlance(today, { allDue, groups, pos });
+      <div class="dk-due">${allDue ? groups.map(groupHtml).join('') : '<p class="dk-empty">今天没有要复现的。</p>'}
+        ${soon.length ? `<p class="dk-soon muted">${SPACES[space].label}接下来：${soon.map((d) => `${inline(d.title)}（${escapeHtml(d.due.slice(5).replace('-', '/'))}）`).join('、')}</p>` : ''}</div>`;
     // 自检
     const hard = res.problems.filter((p) => !p.soft);
     const soft = res.problems.filter((p) => p.soft);
@@ -310,22 +309,6 @@ export async function renderDesk(root, meta) {
       return `<div class="dk-crow" title="${escapeHtml(s.writers.map((r) => ROLE_TEXT[r]).join('、'))}写"><span class="dk-cname">${escapeHtml(s.label)}<code>${c}</code></span><span class="dk-n">${res.counts[c]}</span><span class="dk-who">${s.writers.map((r) => ROLE_TEXT[r]).join('、')}写</span></div>`;
     }).join('')}</div>`;
   }
-
-  // —— 今天一览：首页最上面一排三块（到期的复现、今天要想的记忆点、这一科学到哪），点一下跳到那张卡 ——
-  function paintGlance(today, { allDue, groups, pos }) {
-    const box = $('.dk-glance');
-    const t = recallToday(data.recall, { today });
-    const live = data.recall.filter((d) => (d.status || 'active') === 'active').length;
-    if (!allDue && !live && !pos) { box.hidden = true; return; }
-    box.hidden = false;
-    const top = groups.slice(0, 2).map((g) => `${g.subject} ${g.total}`).join(' · ');
-    const blk = pos?.block ? data.curriculum.find((c) => String(c.id) === String(pos.block))?.title || pos.block : '';
-    box.innerHTML = `
-      <button type="button" class="dk-gl is-review${allDue ? '' : ' is-zero'}" data-go=".dk-today"><span class="dk-gl-k">复现</span><span class="dk-gl-n">${allDue}<small>组到期</small></span><span class="dk-gl-s">${escapeHtml(top || '今天没有到期的')}</span></button>
-      <button type="button" class="dk-gl is-recall${t.total ? '' : ' is-zero'}" data-go=".dk-recall"><span class="dk-gl-k">要记的</span><span class="dk-gl-n">${t.total}<small>条要想</small></span><span class="dk-gl-s">${escapeHtml(t.total ? spaceCounts(t.bySpace) : live ? `在记 ${live} 条` : '上课时会记进来')}</span></button>
-      <button type="button" class="dk-gl is-where" data-go=".dk-class"><span class="dk-gl-k">${escapeHtml(SPACES[space].label)} 学到</span><span class="dk-gl-t">${blk ? inline(blk) : '还没开始'}</span><span class="dk-gl-s">${pos?.next ? escapeHtml(String(pos.next)) : '在「上课」里选一块开课'}</span></button>`;
-  }
-  $('.dk-glance').addEventListener('click', (e) => { const b = e.target.closest('.dk-gl'); const to = b && $(b.dataset.go); if (to) to.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 
   // —— 上课：接着上没下课的那节，或者开一节新的；没备课就在这里让 Claude 备（books/planview.js）——
   let prepBusy = false;
@@ -349,14 +332,39 @@ export async function renderDesk(root, meta) {
     // 等我确认的改动单；上一节还没整理完（它的整理单里还有没点的）
     const openPd = (mine.pending || []).filter((p) => p.status === 'open');
     const blocksHere = mine.curriculum.filter((b) => (b.level || (String(b.id).replace(/^[A-Z]{2}-/, '').split('.').length === 3 ? 'block' : '')) === 'block').sort((a, b) => cmpId(a.id, b.id));
+    // 主角（hero）：这一科现在到哪、下一节讲什么，一个大按钮；下面一行三个数（复现、要记的、上一节）。
+    // 备课的表单收起来（还没备好的时候展开）：首页一打开不该是一张表单
+    const pos = mine.position.find((d) => d.id === positionId(space));
+    const today = toDate(Date.now());
+    const heroT = main?.unit || (block ? data.curriculum.find((c) => String(c.id) === String(block))?.title || block : '') || '选一块开始';
+    const heroS = main?.goal || pos?.next || '';
+    const debts = listOf(pos?.debts).slice(0, 3);
+    const dueN = todayReviews(data, { today }).reduce((n, g) => n + g.total, 0);
+    const rc = recallToday(data.recall, { today });
+    const stat = (cls, go, n, unit, k) => `<button type="button" class="dk-stat ${cls}" data-go="${go}"><span class="dk-stat-n">${n}</span><span class="dk-stat-u">${unit}</span><span class="dk-stat-k">${k}</span></button>`;
+    const others = opens.filter((x) => x !== open);
     box.querySelector('.dk-body').innerHTML = `
       ${openPd.length ? `<p><a class="dk-link dk-to-pending" href="#">还有 ${openPd.length} 条以前留下的没写进去 ↓</a></p>` : ''}
-      ${last ? `<p class="dk-last"><span class="dk-k">上一节</span>${escapeHtml(String(last.date || '').slice(5).replace('-', '/'))}${last.block ? ` ${blockTitle(last.block)}` : ''}${lastLine ? `<span class="muted">：${escapeHtml(lastLine)}</span>` : ''} <a class="dk-link" href="#classes/${escapeHtml(last.id)}">看报告</a></p>${lastNext.length ? `<p class="dk-last muted"><span class="dk-k">下次先测</span>${lastNext.map((x) => inline(x.name)).join('；')}</p>` : ''}` : ''}
-      ${opens.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || blockTitle(x.block) || x.id)}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button><button type="button" class="btn btn-sm btn-danger dk-purge" data-sid="${escapeHtml(x.id)}" title="测试开的、不要的课：连黑板和记录一起删掉">删掉</button></div>`; }).join('')}
-      <div class="dk-next">${main ? `<p><span class="dk-k">备好的课</span>${inline(main.unit || blockTitle(block) || '（没写标题）')}${main.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>${main.goal ? `<p class="dk-goal muted" title="点一下看全文">${inline(main.goal)}</p>` : ''}`
-        : `<p class="muted">${SPACES[space].label}还没有备好的课：在下面选一块，让 Claude 备课（也可以直接开课：课堂里的 Claude 带着记忆，但没有这节课的安排）。</p>`}
-        ${blocksHere.length ? planner.prepHtml({ suggested: main?.block || suggestBlock(blocksHere, mine.position.find((d) => d.id === positionId(space))), blocks: blocksHere, main, busy: prepBusy, msg: prepMsg }) : ''}
-        <button type="button" class="btn ${open || !main ? '' : 'btn-primary'} dk-new"${prepBusy ? ' disabled' : ''}>开新课</button></div>`;
+      <div class="dk-hero">
+        <p class="dk-eyebrow">${escapeHtml(SPACES[space].label)} · ${open ? '这节课还没下课' : main ? '备好的下一节' : '下一节'}${main?.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>
+        <h2 class="dk-hero-t">${inline(open ? (open.title && open.title !== unit ? open.title : (open.block && data.curriculum.find((c) => String(c.id) === String(open.block))?.title) || heroT) : heroT)}</h2>
+        ${heroS ? `<p class="dk-hero-s dk-goal" title="点一下看全文">${inline(heroS)}</p>` : ''}
+        ${debts.length ? `<p class="dk-debts"><span class="dk-k">欠账</span>${debts.map((x) => `<span class="dk-chip">${inline(x)}</span>`).join('')}</p>` : ''}
+        <div class="dk-hero-acts">
+          ${open ? `<button type="button" class="btn btn-primary btn-lg dk-go" data-sid="${escapeHtml(open.id)}">接着上课</button>` : ''}
+          <button type="button" class="btn ${open ? '' : 'btn-primary btn-lg'} dk-new"${prepBusy ? ' disabled' : ''}>开新课</button>
+          ${open ? `<span class="dk-hero-more"><button type="button" class="link-btn dk-close" data-sid="${escapeHtml(open.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button><button type="button" class="link-btn dk-purge" data-sid="${escapeHtml(open.id)}" title="测试开的、不要的课：连黑板和记录一起删掉">删掉</button></span>` : ''}
+        </div>
+        <div class="dk-stats">
+          ${stat('is-review', '.dk-today', dueN, '组', '复现到期')}
+          ${stat('is-recall', '.dk-recall', rc.total, '条', '今天要记')}
+          ${last ? `<a class="dk-stat is-last" href="#classes/${escapeHtml(last.id)}"><span class="dk-stat-n">${escapeHtml(String(last.date || '').slice(5).replace('-', '/'))}</span><span class="dk-stat-u"></span><span class="dk-stat-k">上一节${lastLine ? ` · ${escapeHtml(lastLine)}` : ''}</span></a>` : stat('is-last', '.dk-class', '—', '', '还没上过课')}
+        </div>
+        ${lastNext.length ? `<p class="dk-last muted"><span class="dk-k">下次先测</span>${lastNext.map((x) => inline(x.name)).join('；')}</p>` : ''}
+      </div>
+      ${others.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || blockTitle(x.block) || x.id)}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button><button type="button" class="btn btn-sm btn-danger dk-purge" data-sid="${escapeHtml(x.id)}" title="测试开的、不要的课：连黑板和记录一起删掉">删掉</button></div>`; }).join('')}
+      ${blocksHere.length ? `<details class="dk-fold dk-prepfold"${prepBusy || prepMsg ? ' open' : ''}><summary><span class="dk-fold-t">${main ? '换一块 / 重新备课' : '让 Claude 备课'}</span><span class="muted">${main ? '' : '选一块，Claude 先备好教案（也可以直接开课）'}</span></summary>${planner.prepHtml({ suggested: main?.block || suggestBlock(blocksHere, pos), blocks: blocksHere, main, busy: prepBusy, msg: prepMsg })}</details>` : ''}`;
+    box.querySelectorAll('.dk-stat[data-go]').forEach((b) => b.addEventListener('click', () => $(b.dataset.go)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
     // 资料包的目标常常很长：先收成三行，点一下展开
     box.querySelector('.dk-goal')?.addEventListener('click', (e) => e.currentTarget.classList.toggle('is-open'));
     box.querySelector('.dk-to-pending')?.addEventListener('click', (e) => { e.preventDefault(); $('.dk-pending').scrollIntoView({ behavior: 'smooth' }); });
@@ -465,8 +473,8 @@ export async function renderDesk(root, meta) {
     const t = recallToday(data.recall, { today });
     const body = box.querySelector('.dk-body');
     body.innerHTML = t.items.length
-      ? `<p>今天该想一遍的 ${t.total} 条（${escapeHtml(spaceCounts(t.bySpace))}）${t.total > t.items.length ? `，这次先想 ${t.items.length} 条` : ''}。</p>
-        <button type="button" class="btn btn-primary dk-recall-go">开始（${t.items.length} 条）</button>`
+      ? `<div class="dk-deck"><span class="dk-deck-n">${t.total}</span><span class="dk-deck-t">条今天要想<small>${escapeHtml(spaceCounts(t.bySpace))}${t.total > t.items.length ? ` · 这次先想 ${t.items.length} 条` : ''}</small></span></div>
+        <button type="button" class="btn btn-primary dk-recall-go">开始</button>`
       : `<p class="muted">${live.length ? `今天没有要想的${t.next ? `，下一条 ${escapeHtml(t.next.slice(5).replace('-', '/'))} 到期` : ''}（一共在记 ${live.length} 条）。` : '还没有：上课时老师会把要背的（定义、结论、默写没写出的）记进来，也可以自己加一条。'}</p>`;
     body.querySelector('.dk-recall-go')?.addEventListener('click', () => {
       recalling = true;
@@ -782,6 +790,22 @@ export async function renderDesk(root, meta) {
       toast(`没开成：${err?.message || err}`);
       root.querySelectorAll('.dk-review').forEach((x) => { x.disabled = false; });
     }
+  });
+
+  // —— 样子（theme.js）：三种推荐的，加上收起来的另外三种；点了马上换，这台设备记着 ——
+  function paintLook() {
+    const cur = document.documentElement.dataset.theme || '';
+    const sw = (x) => `<span class="dk-sw" aria-hidden="true" style="background:${x.sw[0]}"><i style="background:${x.sw[1]}"><b style="background:${x.sw[2]}"></b><b style="background:${x.sw[3]}"></b></i></span>`;
+    const card = (x) => `<button type="button" class="dk-look-btn" data-theme-id="${escapeHtml(x.id)}" aria-pressed="${x.id === cur}">${sw(x)}<span class="dk-look-t"><b>${escapeHtml(x.name)}</b>${x.note ? `<span class="muted">${escapeHtml(x.note)}</span>` : ''}</span></button>`;
+    $('.dk-look .dk-body').innerHTML = `<div class="dk-looks">${PICKS.map(card).join('')}</div>
+      <details class="dk-soft"${MORE.some((x) => x.id === cur) ? ' open' : ''}><summary>更多</summary><div class="dk-looks is-more">${MORE.map(card).join('')}</div></details>`;
+  }
+  paintLook();
+  $('.dk-look').addEventListener('click', (e) => {
+    const b = e.target.closest('.dk-look-btn');
+    if (!b) return;
+    applyTheme(b.dataset.themeId, { save: true });
+    paintLook();
   });
 
   // —— 首页以外的页面：课程地图、弱点表、错题本、以前的课、统计（pages.js，换页不刷新）——
