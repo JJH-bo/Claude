@@ -28,7 +28,9 @@ function splitTitle(src) {
 
 export const callouts = Object.fromEntries(Object.entries(CALLOUTS).map(([name, label]) => [name, (el, src) => {
   const [title, rest] = splitTitle(src);
-  el.innerHTML = `<aside class="callout callout-${name}"><div class="callout-title">${label}${title ? `<span class="callout-sub">${mdToHtml(title, { inline: true })}</span>` : ''}</div><div class="callout-body">${mdToHtml(rest)}</div></aside>`;
+  // 标签拆成中文和英文两截（「重点」「Key Idea」）：风格可以分开排（水墨里中文是毛笔字，英文是小号字母）
+  const [zh, ...en] = label.split(' ');
+  el.innerHTML = `<aside class="callout callout-${name}"><div class="callout-title"><span class="co-zh">${zh}</span>${en.length ? `<span class="co-en">${en.join(' ')}</span>` : ''}${title ? `<span class="callout-sub">${mdToHtml(title, { inline: true })}</span>` : ''}</div><div class="callout-body">${mdToHtml(rest)}</div></aside>`;
 }]));
 
 const FOLDS = { hint: '提示 Hint', solution: '解答 Solution', proof: '证明 Proof' };

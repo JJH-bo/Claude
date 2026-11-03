@@ -465,3 +465,11 @@
 /* 荧光笔（board mark 的 highlight、==涂色==）：深色黑板上淡了发灰发褐，涂浓一点；浅色纸上浓了压字，淡一点 */
 :root { --mk-fill-a: .46; --hl-a: .44; }
 :root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) { --mk-fill-a: .32; --hl-a: .3; }
+
+/* 水墨的提示框：标签的中文是毛笔字，英文是一行小号的字母（不要毛笔里夹一串斜体）；
+   版面里的提示框照样是一张白卡，不要左边那道粗线（白卡加粗线是一道弯的红边） */
+:root[data-theme="ink"] .callout-title { align-items: center; gap: 10px; font-size: 24px; }
+:root[data-theme="ink"] .callout-title .co-en { margin-left: 0; font: 600 11.5px/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; opacity: .7; }
+:root[data-theme="ink"] .callout-sub { font-family: var(--sans); }
+:root[data-theme="ink"] .class-page-body.is-canvas .callout { border-left: 0; padding: 16px 20px; border-radius: 16px; background: #fbfaf6; box-shadow: inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.1), 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); }
+:root[data-theme="ink"] .class-page-body.is-canvas .callout-key, :root[data-theme="ink"] .class-page-body.is-canvas .callout-theorem { box-shadow: inset 0 0 0 0.5px rgb(var(--yellow-rgb) / 0.3), 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); }
