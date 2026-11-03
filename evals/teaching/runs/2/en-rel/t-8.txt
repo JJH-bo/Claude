@@ -1,0 +1,13 @@
+第 1 空的理由说得对：没有逗号，是在挑出哪一部。下面换成改错：句子里有一处关系词用错了，先点出来，再改。
+
+````board new id=b7 title="找出用错的词"
+```errfind
+id: ef-b7
+q: 句中有一个关系词用错了，点出来并改正。
+text: I visited the museum that my teacher recommended, that was built in 1925.
+wrong: that#2
+fix: which | !who=museum 是物，不是人
+decoys: that=这里没有逗号，是在挑出哪一座博物馆，that 没错
+explain: 第一个 that 前面没有逗号，挑出「老师推荐的那座」，that 可以；第二个 that 前面有逗号，只是补充「它建于 1925 年」，要用 which。
+```
+````

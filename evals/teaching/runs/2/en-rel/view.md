@@ -1,14 +1,11 @@
-# 第 6 块板「一句里两个空」
+# 第 7 块板「找出用错的词」
 
-老师写在板顶的话：那题是我写的问题，只显示了一个空，你填的 who 是对的。至于「为什么逗号后面不行」：that 引导从句时只有「挑出是哪一个」这一种用法；逗号的意思恰好是「不挑，只补充」，两者冲突，所以英语里规定逗号后面换成 which / who。看板上这一句，两个空一个挑、一个补充。
+老师写在板顶的话：第 1 空的理由说得对：没有逗号，是在挑出哪一部。下面换成改错：句子里有一处关系词用错了，先点出来，再改。
 
-填完用一句话说：第 1 空为什么 that 可以？
-
-## 一句里两个空
-【填空 cz-b6】一个挑，一个补充
-  每个空填一个关系词（who / which / that），能填 that 的地方就填 that。
-  The phone （1）____ I bought last week has broken, but my old phone, （2）____ I have used for five years, still works.
-  （按顺序写每个空，用 | 隔开，比如 "who | has lived"）
+## 找出用错的词
+【改错 ef-b7】句中有一个关系词用错了，点出来并改正。
+  I visited the museum that my teacher recommended, that was built in 1925.
+  （写成 "错的词 → 改成什么"，比如 "are → is"）
 
 # 常驻栏
 ## 有没有逗号

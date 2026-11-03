@@ -53,6 +53,12 @@
    "page": 6,
    "title": "一句里两个空",
    "md": "```cloze\nid: cz-b6\ntitle: 一个挑，一个补充\nq: 每个空填一个关系词（who / which / that），能填 that 的地方就填 that。\ntext: The phone {{that|which|!who=phone 是物}} I bought last week has broken, but my old phone, {{which|!that=前面有逗号，是补充说明，不用 that|!who=phone 是物}} I have used for five years, still works.\nexplain: 第 1 空没有逗号，从我的手机里挑出「上周买的那部」，that / which 都行；第 2 空有逗号，my old phone 已经确定是哪部，从句只是补充，只能用 which。\n```"
+  },
+  {
+   "id": "b7",
+   "page": 7,
+   "title": "找出用错的词",
+   "md": "```errfind\nid: ef-b7\nq: 句中有一个关系词用错了，点出来并改正。\ntext: I visited the museum that my teacher recommended, that was built in 1925.\nwrong: that#2\nfix: which | !who=museum 是物，不是人\ndecoys: that=这里没有逗号，是在挑出哪一座博物馆，that 没错\nexplain: 第一个 that 前面没有逗号，挑出「老师推荐的那座」，that 可以；第二个 that 前面有逗号，只是补充「它建于 1925 年」，要用 which。\n```"
   }
  ],
  "pages": [
@@ -85,9 +91,14 @@
    "n": 6,
    "title": "一句里两个空",
    "talk": "那题是我写的问题，只显示了一个空，你填的 who 是对的。至于「为什么逗号后面不行」：that 引导从句时只有「挑出是哪一个」这一种用法；逗号的意思恰好是「不挑，只补充」，两者冲突，所以英语里规定逗号后面换成 which / who。看板上这一句，两个空一个挑、一个补充。\n\n填完用一句话说：第 1 空为什么 that 可以？"
+  },
+  {
+   "n": 7,
+   "title": "找出用错的词",
+   "talk": "第 1 空的理由说得对：没有逗号，是在挑出哪一部。下面换成改错：句子里有一处关系词用错了，先点出来，再改。"
   }
  ],
- "cur": 6,
+ "cur": 7,
  "progress": {},
  "tries": {
   "q-b1": 1,
@@ -252,6 +263,18 @@
     "raw": "```cloze\nid: cz-b6\ntitle: 一个挑，一个补充\nq: 每个空填一个关系词（who / which / that），能填 that 的地方就填 that。\ntext: The phone {{that|which|!who=phone 是物}} I bought last week has broken, but my old phone, {{which|!that=前面有逗号，是补充说明，不用 that|!who=phone 是物}} I have used for five years, still works.\nexplain: 第 1 空没有逗号，从我的手机里挑出「上周买的那部」，that / which 都行；第 2 空有逗号，my old phone 已经确定是哪部，从句只是补充，只能用 which。\n```",
     "at": 0
    }
+  },
+  "ef-b7": {
+   "seg": {
+    "id": "b7"
+   },
+   "f": {
+    "lang": "errfind",
+    "body": "id: ef-b7\nq: 句中有一个关系词用错了，点出来并改正。\ntext: I visited the museum that my teacher recommended, that was built in 1925.\nwrong: that#2\nfix: which | !who=museum 是物，不是人\ndecoys: that=这里没有逗号，是在挑出哪一座博物馆，that 没错\nexplain: 第一个 that 前面没有逗号，挑出「老师推荐的那座」，that 可以；第二个 that 前面有逗号，只是补充「它建于 1925 年」，要用 which。",
+    "id": "ef-b7",
+    "raw": "```errfind\nid: ef-b7\nq: 句中有一个关系词用错了，点出来并改正。\ntext: I visited the museum that my teacher recommended, that was built in 1925.\nwrong: that#2\nfix: which | !who=museum 是物，不是人\ndecoys: that=这里没有逗号，是在挑出哪一座博物馆，that 没错\nexplain: 第一个 that 前面没有逗号，挑出「老师推荐的那座」，that 可以；第二个 that 前面有逗号，只是补充「它建于 1925 年」，要用 which。\n```",
+    "at": 0
+   }
   }
  },
  "ops": [],
@@ -325,6 +348,11 @@
    "role": "student",
    "seq": 14,
    "text": "第1空没有逗号，是在挑出是哪一部手机（上周买的那部），所以 that 可以；第2空有逗号只是补充，要用 which。这样 that 就不是万能的了，我有点明白了\n[作答] b6 里的填空 cz-b6「一个挑，一个补充」：「每个空填一个关系词（who / which / that），能填 that 的地方就填 that。」做对了（共 1 次）\n[动作] b6 里的组件 cz-b6：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 15,
+   "text": "第 1 空的理由说得对：没有逗号，是在挑出哪一部。下面换成改错：句子里有一处关系词用错了，先点出来，再改。\n\n````board new id=b7 title=\"找出用错的词\"\n```errfind\nid: ef-b7\nq: 句中有一个关系词用错了，点出来并改正。\ntext: I visited the museum that my teacher recommended, that was built in 1925.\nwrong: that#2\nfix: which | !who=museum 是物，不是人\ndecoys: that=这里没有逗号，是在挑出哪一座博物馆，that 没错\nexplain: 第一个 that 前面没有逗号，挑出「老师推荐的那座」，that 可以；第二个 that 前面有逗号，只是补充「它建于 1925 年」，要用 which。\n```\n````\n"
   }
  ],
  "turns": [
@@ -528,8 +556,20 @@
     }
    ],
    "msg": "第1空没有逗号，是在挑出是哪一部手机（上周买的那部），所以 that 可以；第2空有逗号只是补充，要用 which。这样 that 就不是万能的了，我有点明白了\n[作答] b6 里的填空 cz-b6「一个挑，一个补充」：「每个空填一个关系词（who / which / that），能填 that 的地方就填 that。」做对了（共 1 次）\n[动作] b6 里的组件 cz-b6：学生标了「有把握」"
+  },
+  {
+   "seq": 15,
+   "role": "teacher",
+   "bytes": 693,
+   "talk": "第 1 空的理由说得对：没有逗号，是在挑出哪一部。下面换成改错：句子里有一处关系词用错了，先点出来，再改。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 7 块板「找出用错的词」\n\n老师写在板顶的话：第 1 空的理由说得对：没有逗号，是在挑出哪一部。下面换成改错：句子里有一处关系词用错了，先点出来，再改。\n\n## 找出用错的词\n【改错 ef-b7】句中有一个关系词用错了，点出来并改正。\n  I visited the museum that my teacher recommended, that was built in 1925.\n  （写成 \"错的词 → 改成什么\"，比如 \"are → is\"）\n\n# 常驻栏\n## 有没有逗号\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）：指人 who，指物 which，**不用 that**\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）：that 也行\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 14,
+ "seq": 15,
  "pendingNotes": []
 }
