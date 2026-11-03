@@ -17,7 +17,7 @@ ask: subnet
   - `ssthresh: 16`、`rounds: 20`、`events: 3dup@12, timeout@16`（第 12 轮收到 3 个重复确认，第 16 轮超时）、`variant: reno`（默认；`tahoe`：3 个重复确认也让 cwnd 回到 1）：cwnd 每个传输轮次怎么变的折线图（ssthresh 画成虚线）。慢开始每轮翻倍但不超过 ssthresh，到了 ssthresh 拥塞避免每轮加 1；3 个重复确认：ssthresh = cwnd / 2，cwnd = ssthresh（快恢复）；超时：ssthresh = cwnd / 2，cwnd = 1。`ask: cwnd`（这一轮的 cwnd）；`mode: quiz` 配 `at: 13` 问第 13 轮的 cwnd。
   - `handshake: x=100, y=300`：三次握手的时序图，每个报文段的 SYN、ACK、seq、ack，两边的状态。`ask:` 能问 `ack`、`seq`。
   - `close: u=500, v=800, w=900`：四次挥手（FIN 消耗一个序号，TIME-WAIT 等 2MSL）。`ask: ack`。
-  - `send: 70 100` 配 `last: 180`（各报文段的序号、最后一段到达后的确认号）或 `seq: 1000` 配 `lens: 200 300`：传数据的时序图，累积确认；`lost: 1` 第 1 个第一次丢了（B 暂存失序的，重传后一起确认）。`ask:` 能问 `len`、`seq`、`ack`；`mode: quiz` 依次写确认号。
+  - `send: 70 100` 配 `last: 180`（各报文段的序号、最后一段到达后的确认号）或 `seq: 1000` 配 `lens: 200 300`：传数据的时序图，累积确认；`lost: 1` 第 1 个第一次丢了（B 暂存失序的，重传后一起确认）。`ask:` 能问 `len`（给了序号时：每个报文段带多少字节）、`seq`（给了长度时：第 2 个起每个的序号）、`ack`（每次的确认号）；`mode: quiz` 依次写确认号。
 - **`window` 滑动窗口**：`proto:` 选 `sw`（停止-等待）、`gbn`（后退 N 帧）、`sr`（选择重传）；`frames: 6`（发几帧，从 0 编号）、`window: 4`（发送窗口，SR 的接收窗口一样大）、`lost: 2`（这几个帧第一次发送时丢失）、`acklost: 1`（这几个帧的确认第一次丢失），可选 `delay: 2`（单程传播几个时间单位）、`timeout:`（默认 2 × delay + 2）。每个时间单位一步：画时序图（丢的线是虚线打 ✗，重传的是粉色）和发送窗口。GBN 接收方只收按序的、累积确认，超时从出错的帧起全部重传；SR 缓存失序帧、单独确认、只重传超时的。`ask:` 能问 `resend`（超时后重传哪几个，写帧号）、`total`（一共发了几帧）；`mode: quiz`：一共发了几个数据帧。
 
 - `mode: fill`：`subnet` 填网络地址、广播地址、可用地址范围和个数（划分子网、路由聚合各有一张表）；`tcp` 每一轮一列（cwnd、ssthresh）；`window` 每一帧发了几次。
