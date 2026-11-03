@@ -442,3 +442,28 @@ export function linkHint(r, tokens) {
   if (r.missing) bits.push(`还有 ${r.missing} 条没连`);
   return bits.join('；');
 }
+
+// —— 拿不准时问 Claude（drill 整句改写）：页面判错、又不是已知的错答时，可能只是换了个说法 ——
+
+/** 发给 Claude 的一小段：题目、标准答案、学生写的；只要它回一行 JSON（几百个字，一两千 token） */
+export function regradePrompt({ q, task = '', alts = [], given }) {
+  return [
+    '你在帮英语练习的页面复核一道整句改写题（考研英语一的语法）。页面按标准答案逐字比，判了错；请判断学生的句子是不是其实也对（只是换了说法、语序），还是真的错了。',
+    task ? `题目要求：${task}` : '',
+    `原句：${q}`,
+    `标准答案：${alts.join(' / ')}`,
+    `学生写的：${given}`,
+    '标准：语法正确、完成了题目要求的变换、意思和原句一样，就算对；拼写错、时态语态错、没按要求变换都算错。',
+    '只回一行 JSON：{"ok": true 或 false, "why": "一句中文：对的话说为什么也行；错的话指出哪里不对，但不要写出正确答案"}',
+  ].filter(Boolean).join('\n');
+}
+
+/** Claude 的回答 → { ok, why } 或 null（看不懂就当没复核） */
+export function parseRegrade(text) {
+  const m = String(text ?? '').match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try {
+    const j = JSON.parse(m[0]);
+    return typeof j.ok === 'boolean' ? { ok: j.ok, why: String(j.why || '').slice(0, 200) } : null;
+  } catch { return null; }
+}

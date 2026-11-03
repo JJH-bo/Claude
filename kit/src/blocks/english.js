@@ -7,8 +7,21 @@ import { parseFields } from '../parse.js';
 import { widget, mdToHtml, escapeHtml } from './common.js';
 import {
   ROLES, matchText, textHint, parseCloze, tokenizeSentence, findWrong, parseAlts, parseBrackets, judgeSpans, spanText, spansHint, parseRoles, parseDrill, joinWords,
-  parseAnswer, diagnose, parseDecoys, parseSteps, parseChunk, judgeChunks, chunkHint, chunksOf, parseLink, judgeLinks, linkHint,
+  parseAnswer, diagnose, parseDecoys, parseSteps, parseChunk, judgeChunks, chunkHint, chunksOf, parseLink, judgeLinks, linkHint, regradePrompt, parseRegrade,
 } from '../entext.js';
+import { getAI } from '../ai.js';
+
+// 复核用的模型：和课堂讲课一样只用 Opus 5.5（课堂里不许别的模型「讲课」），回来的不是它就当没复核
+const REGRADE_MODEL = 'claude-opus-5-5';
+async function regrade(args) {
+  try {
+    const ai = await getAI();
+    if (!ai?.call || ai.legacy) return null;
+    const res = await ai.call([{ role: 'user', content: regradePrompt(args) }], { model: REGRADE_MODEL, effort: 'low', cache: false });
+    if (res?.modelApplied && res.modelApplied !== REGRADE_MODEL) return null;
+    return parseRegrade(res?.text);
+  } catch { return null; }
+}
 
 // errfind 的「删掉」（多了一个词的错：which I bought it 里的 it）：fix: 删掉；学生点「删掉这个词」或者写「删」都算
 const DEL = /^[（(]?\s*(删掉|删去|删除|删|去掉|delete|del|-|—)\s*[)）]?$/i;
@@ -614,18 +627,33 @@ export function drill(el, src) {
       fb.insertAdjacentHTML('beforeend', `<div class="dr-sum">做完了：${items.length} 题，一次就对 ${firstTry} 题。</div>`);
     }
   };
-  const check = () => {
-    if (settled) return;
+  let checking = false;
+  const check = async () => {
+    if (settled || checking) return;
     attempts++;
     lastChecked = input.value.trim();
-    const r = matchText(input.value, items[k].alts, opts);
+    let r = matchText(input.value, items[k].alts, opts);
     const d = r.ok ? null : diagnose(input.value, items[k].wrongs, opts);
+    // 页面判错、又不是已知的错答：可能只是换了个说法，问一次 Claude（一两千 token）。它说对就算对，证据里记「Claude 复核」
+    let review = null;
+    if (!r.ok && !d && !r.empty && !r.near) {
+      checking = true;
+      const btn = body.querySelector('.en-check');
+      btn.disabled = true;
+      fb.hidden = false;
+      fb.className = 'q-feedback';
+      fb.innerHTML = '<div class="muted">和标准答案写得不一样，问一下 Claude 是不是也对……</div>';
+      review = await regrade({ q: items[k].q, task: fields.q || title, alts: items[k].alts, given: lastChecked });
+      checking = false;
+      btn.disabled = false;
+      if (review?.ok) r = { ok: true };
+    }
     input.classList.toggle('is-right', r.ok);
     input.classList.toggle('is-wrong', !r.ok);
-    session.record({ type: 'drill', liveOnly: true, title, q: short(items[k].q, 200), value: lastChecked, ok: r.ok, attempts, detail: r.ok ? '' : textHint(r), misread: d ? `写成了常见的错法${d.why ? `：${d.why}` : ''}` : undefined, el });
+    session.record({ type: 'drill', liveOnly: true, title, q: short(items[k].q, 200), value: lastChecked, ok: r.ok, attempts, detail: review ? `Claude 复核：${review.why}` : r.ok ? '' : textHint(r), misread: d ? `写成了常见的错法${d.why ? `：${d.why}` : ''}` : undefined, el });
     fb.hidden = false;
     fb.className = `q-feedback ${r.ok ? 'is-ok' : 'is-bad'}`;
-    fb.innerHTML = verdict(r.ok, r.ok ? '' : d?.why || textHint(r)) + (r.ok && items[k].alts.length > 1 ? `<div class="muted">也可以：${items[k].alts.filter((a) => matchText(a, [input.value], opts).ok === false).map(escapeHtml).join(' / ')}</div>` : '');
+    fb.innerHTML = verdict(r.ok, review?.why ? `${review.ok ? '和标准答案写法不同，' : ''}${review.why}` : r.ok ? '' : d?.why || textHint(r)) + (r.ok && items[k].alts.length > 1 ? `<div class="muted">也可以：${items[k].alts.filter((a) => matchText(a, [input.value], opts).ok === false).map(escapeHtml).join(' / ')}</div>` : '');
     if (r.ok) settle(true);
     else if (attempts >= 2) body.querySelector('.en-show').hidden = false;
   };
