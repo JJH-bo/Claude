@@ -112,7 +112,7 @@
 .is-canvas .class-app:not(.has-pins) .class-stage { width: 100%; }
 .class-page-body.is-canvas { display: block; margin-top: 6px; }
 /* 一层：分几栏（宽度比由 Claude 的 cols= 给，写在 style 上）；一栏里的段从上往下接 */
-.cv-band { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 56px; margin: 0 0 22px; }
+.cv-band { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 56px; margin: 0 0 22px; align-items: start; }
 .cv-band:last-child { margin-bottom: 0; }
 .cv-col { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
 /* 栏和栏之间一道淡淡的竖粉笔线：一栏从上往下读，左右是两件事（这一栏里还没有露出来的东西时不画） */
@@ -121,6 +121,9 @@
   background: rgb(var(--chalk-rgb) / 0.16); filter: var(--rough);
 }
 .cv-col + .cv-col:not(:has(> .class-seg:not([hidden]):not(.beat-wait)))::before { display: none; }
+/* 两栏差得太多：页面改成一栏（classroom.js 的 balanceBand），先左栏、再右栏，不画竖线 */
+.cv-band.is-stacked { grid-template-columns: minmax(0, 1fr) !important; row-gap: 18px; }
+.cv-band.is-stacked > .cv-col + .cv-col::before { display: none; }
 /* 板上的东西直接写在黑板上，不框成一块块（2026-11-03 我说：每块都被框着，感觉还是一块块）：段没有底色、没有边，
    靠留白分开；段里组件自带的卡片框也拿掉（题、步骤、选择题只留自己的输入框和按钮） */
 .class-page-body.is-canvas .class-seg {

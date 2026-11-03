@@ -912,6 +912,39 @@ export async function renderClass(root, meta, desk = null) {
     });
     body.querySelectorAll(':scope > .cv-band').forEach((x) => x.remove());
     body.append(...made);
+    for (const el of made) watchBand(el);
+  }
+  // 两栏差得太多（一栏短、另一栏一直往下长）就改成一栏：先左栏的、再右栏的，阅读顺序不变，竖线也不画了。
+  // 2026-11-03 我说：左边空一大片、右边窄窄一条往下长，像看书一样，不行。Claude 看不到页面，估不准一段英文在窄栏里折成几行，所以页面量
+  const STACK_RATIO = 1.7;
+  function balanceBand(el) {
+    const cols = [...el.children].filter((c) => c.classList.contains('cv-col'));
+    if (cols.length < 2 || !el.isConnected) return;
+    const was = el.classList.contains('is-stacked');
+    el.classList.remove('is-stacked'); // 先按分栏量（同一帧里量完再决定，不会闪）
+    const hs = cols.map((c) => c.getBoundingClientRect().height);
+    const hi = Math.max(...hs), lo = Math.min(...hs);
+    // 这一层从哪开始、到底部那条之间能看见多高（停在板的最上面时）
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    const screen = Math.max(200, window.innerHeight - top - (bar?.height || 110));
+    // 只有长的那栏超出一屏（学生往下滑时一边空着、一边还在往下长）才改：一屏之内一栏短一点，像黑板上留白，不用改
+    // 差得特别多（一栏只有几行、另一栏一大段）时长到快一屏就改；差得没那么多时要明显超出一屏才改（只多出一点点，滑一下就完了）
+    const stack = hi - lo > screen * 0.3 && (hi > lo * 3 && hi > screen * 0.8 || hi > lo * STACK_RATIO && hi > screen * 1.15);
+    el.classList.toggle('is-stacked', stack);
+    el.dataset.cvH = hs.map(Math.round).join('/');
+    if (stack !== was) el._cvMuteUntil = performance.now() + 120;
+  }
+  function watchBand(el) {
+    requestAnimationFrame(() => balanceBand(el));
+    if (!window.ResizeObserver) return;
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      if (!el.isConnected) { ro.disconnect(); return; }
+      if ((el._cvMuteUntil || 0) > performance.now()) return; // 自己换栏引起的尺寸变化不算
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => balanceBand(el));
+    });
+    for (const c of el.children) ro.observe(c);
   }
   // ⤢ 只给图、演示这类要看细节、要拖的块（字和题不用放大，角上不多一个钮）
   function ensureZoom(seg) {
@@ -943,13 +976,15 @@ export async function renderClass(root, meta, desk = null) {
     const cols = p.cols?.length ? p.cols : [1];
     const list = [...segs.values()].filter((x) => x.page === p.n && x.place !== 'pin' && !x.hidden && x.sec).sort((x, y) => ordOf(x) - ordOf(y));
     const bands = bandsOf(list.map((x) => ({ id: x.id, col: x.col ?? 1 })), cols);
-    const band = p.bodyEl.querySelector(':scope > .cv-band:not(.is-all)');
-    const widths = band ? [...band.children].map((c) => c.getBoundingClientRect().width) : [p.bodyEl.clientWidth];
+    const band = p.bodyEl.querySelector(':scope > .cv-band:not(.is-all):not(.is-stacked)') || p.bodyEl.querySelector(':scope > .cv-band:not(.is-all)');
+    const widths = band?.classList.contains('is-stacked') ? [] : band ? [...band.children].map((c) => c.getBoundingClientRect().width) : [p.bodyEl.clientWidth];
+    // 页面改成一栏的层：按层的先后记下两栏原来多高
+    const stacked = [...p.bodyEl.querySelectorAll(':scope > .cv-band')].map((el, i) => (el.classList.contains('is-stacked') ? { i, h: el.dataset.cvH || '' } : null)).filter(Boolean);
     const top = p.bodyEl.getBoundingClientRect().top + window.scrollY;
     const screen = window.innerHeight - top - (bar?.height || 110);
     const total = p.sec.hidden ? 0 : p.bodyEl.getBoundingClientRect().height;
     const info = (id) => { const x = segs.get(id); return { h: x?.sec && !x.sec.hidden ? x.sec.getBoundingClientRect().height : 0, held: !!x?.held }; };
-    return { text: layoutText({ cols, bands, info, widths, screen, total }) };
+    return { text: layoutText({ cols, bands, info, widths, screen, total, stacked }) };
   }
 
   function saveSeg(seg) {

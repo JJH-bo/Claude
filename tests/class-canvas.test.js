@@ -58,3 +58,9 @@ test('说明里有版面一节（开着时才带），例子照抄能解析，�
   }
   assert.equal(parseOutput('````board layout cols=6/6\n````\n', { final: true }).ops[0].op, 'layout');
 });
+
+test('layoutText：页面因为两栏差太多改成一栏时告诉 Claude', () => {
+  const bands = bandsOf([{ id: 'b1', col: 1 }, { id: 'b2', col: 2 }], [1, 1]);
+  const t = layoutText({ cols: [1, 1], bands, stacked: [{ i: 0, h: '300/1400' }] });
+  assert.match(t, /这块板两栏差得太多（左栏 300、右栏 1400），页面改成了一栏：先左栏、再右栏/);
+});
