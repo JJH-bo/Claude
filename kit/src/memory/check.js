@@ -82,6 +82,10 @@ export function checkMemory(data = {}, { today, ledger = null } = {}) {
     if (r.error) add('reviews', d.id, r.error);
     if (d.due !== undefined) add('reviews', d.id, '不用写 due：到期日由页面按 last 和 tier 算', true);
   }
+  for (const d of docs.recall || []) {
+    if (!REVIEW_TIERS.includes(Number(d.tier))) add('recall', d.id, `档位 tier 只能是 ${REVIEW_TIERS.join(' / ')}（天）`);
+    if (d.due !== undefined) add('recall', d.id, '不用写 due：到期日由页面按 last 和 tier 算', true);
+  }
   for (const d of docs.rules) {
     if (d.status === 'void' && empty(d.voidedBy) && empty(d.note)) add('rules', d.id, '作废的规则写一下被哪条取代（voidedBy）或者为什么作废（note）', true);
   }

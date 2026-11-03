@@ -49,3 +49,24 @@
   - 第 5 批：真题验收 6/6 一次写对（`evals/results.md` 的 2-english）；教学尺子英语那节 4/5（`evals/teaching/results.md` 第 2 轮）。
   - 跟着验收加的（第 6 批）：`link` 连线组件、`errfind` 的 `fix: 删掉`、`mark` 能标标点、说明书补了拿不准的地方、教法加了一条「追问理由时不替学生列候选理由」。
 - 还没做（验收里提的）：`drill` / `errfind` 按条件判整句（`check:`，换语序也算对；「考试口径」）、多词改错、时间轴组件、`conjecture` 判一句话里的要点。
+
+## 第 7 批：真课里看出来的三件事（2026-11-03）
+
+开发这边看了英语三节真课的记录（10-28、11-02、11-03）：练习组件够用（新加的几种真课里还没用上，学生在从头打语法基础），缺的是下面三件。
+
+1. **要背的写进内容，不靠事后画圈**。11-03 学生说「要背的画圈」「一大段没必要每个都圈，直接一个大圈，还挡住字了」「你圈了吗？我怎么没看到」：课堂 Claude 先是只用 `\hl` 起了名字没画，后来六处逐个圈，最后干脆不圈了。
+   - `==要背的==`（公式里 `\bei{…}`）：粉色荧光笔涂在字的下半截，在字底下、不压字（`render.js` 的 `forgive`、KaTeX 宏）。
+   - `remember` 框（`blocks/content.js`）：一个粉色大框圈住一整块清单、例外、搭配；版面里照样是一圈框。进「这节课的一页」（`sheet.js`）。
+   - `board mark part=2-4`（`markspec.js`、`marks.js` 的 `partGeom`）：讲着讲着要框一大块时，按段里的第几部分框（段落、列表、表、框、组件各算一部分），框在字外面；数错了报出一共几部分、各是什么。
+2. **点词看释义 + 生词本**。10-28 学生问「As well as 什么意思」「Instance 什么意思」，每问一个词就是一整轮调用。
+   - `gloss` 块（`blocks/gloss.js`；读法 `entext.js` 的 `parseGloss` / `glossMatches`）：一行「词 = 意思」，页面在这一段的英文里找到这些词画虚线，点一下当场出意思，不调用。点了是在作答的英文组件（parse、errfind、chunk、link 的词、选择题选项）里不画，在「生词 N 个」那一行点开。
+   - 点开记一条动作 `gloss`：不单独调用课堂 Claude，跟着下一条告诉它（`prompt.js` 的 `actionTrigger` / `eventText`）；课后报告列出 `words`；下课写报告时 `memory/vocab.js` 把点过的词收进记忆点（`kind: word`，按 1 → 3 → 7 → 14 → 30 天在首页「要记的」里想一遍；同一个词在记的不再加，一节课最多 20 个）。
+3. **翻译按要点判**。三节课 46 条作答里 12 条是翻译，全记成「没判」，进不了掌握和弱点统计。
+   - `translate`（`blocks/english.js`；判分 `entext.js` 的 `parsePoints` / `judgeTranslation` / `translationHint`）：`points:` 一行一个「英文那几个词 = 中文说法 | 另一种」，`…` 中间可以有别的字；`!误译 = 提示`；`order: A < B`。去掉空格标点后查；没译出来只说是哪几个英文词，不给中文；要点都在就算对、给参考译文；通不通顺照旧由课堂 Claude 看原文。
+
+花费：都不多调用（gloss 让课堂 Claude 每个生词多写几个字）。说明：英语的教法 `TEACH_EN`、说明书第三节 `translate` / `gloss`（科目：英语）、「其他组件」里一行 `remember` 和 `==…==`（线代的说明已经贴着 64 KiB 的上限，通用的只加了这一行）。
+
+验收：`node --test tests/english-gloss.test.js`；浏览器 `en-demo.html` 最后一节、`class-demo.html?dev` 打「测试:要背」（粉框、荧光底、`part=1` 的框、点生词出意思且调用次数不涨、翻译先错后对）。
+
+- [x] 第 7 批做完（2026-11-03y）
+- [ ] 真课里看：课堂 Claude 用不用 ==…== / remember / gloss / translate，学生点了几个生词、「要记的」里的生词想不想得起来

@@ -28,7 +28,7 @@ const DIAG = new Set(['diag', 'diagonal', '对角线', '主对角线']);
 const NAME_RE = /^[A-Za-z0-9_-]{1,40}$/;
 const ID_RE = /^[A-Za-z0-9_\-.~:@+]{1,64}$/;
 const validId = (id) => ID_RE.test(id) && id !== '.' && id !== '..';
-const SEL_LIST = 'text="板上的字"、li=1-4、para=2、tr=2、term=名字、row=2、col=3、diag、entry=2,3、block=1,2、step=2、label=Ax、item=4、at=[1, 2]、word=3、words=4-7、phrase="who lives"、blank=2';
+const SEL_LIST = 'text="板上的字"、li=1-4、para=2、tr=2、term=名字、row=2、col=3、diag、entry=2,3、block=1,2、step=2、label=Ax、item=4、at=[1, 2]、word=3、words=4-7、phrase="who lives"、blank=2、part=2-4';
 // 列表的第几条、第几段、表格（Markdown 写的，不是矩阵）的第几行：写一个数或者一段 1-4
 const RANGE_SEL = { li: 'li', para: 'para', p: 'para', tr: 'tr' };
 // 矩阵的部位（matrix 组件里只能标这些）
@@ -95,6 +95,12 @@ function readMark(src, inherit = {}, component = false) {
         const m = /^(\d+)\s*[-–~～到]\s*(\d+)$/.exec(v);
         if (!m || !(+m[1] >= 1) || +m[2] < +m[1]) throw new Error('words 后面写从第几个词到第几个词，比如 words=4-7');
         setSel('words', { a: +m[1], b: +m[2] });
+      }
+      else if (k === 'part' || k === 'parts') {
+        // 段里的第几部分（一个段落、一张表、一个列表、一个框、一个组件；标题不算）：要背的一大块一个框圈住
+        const m = /^(\d+)(?:\s*[-–~～到]\s*(\d+))?$/.exec(v);
+        if (!m || !(+m[1] >= 1) || (m[2] && +m[2] < +m[1])) throw new Error('part 后面写段里的第几部分，或者从第几到第几部分，比如 part=2、part=2-4');
+        setSel('part', { a: +m[1], b: +(m[2] || m[1]) });
       }
       else if (k === 'phrase') {
         const m = /^(.*?)(?:#(\d+))?$/.exec(v);
@@ -250,6 +256,7 @@ const SEL_TEXT = {
   li: (s) => (s.a === s.b ? `第 ${s.a} 条` : `第 ${s.a}–${s.b} 条`),
   para: (s) => (s.a === s.b ? `第 ${s.a} 段` : `第 ${s.a}–${s.b} 段`),
   tr: (s) => (s.a === s.b ? `表格第 ${s.a} 行` : `表格第 ${s.a}–${s.b} 行`),
+  part: (s) => (s.a === s.b ? `第 ${s.a} 部分` : `第 ${s.a}–${s.b} 部分`),
 };
 const STYLE_TEXT = { circle: '圈', box: '框', brace: '大括号', underline: '下划线', double: '双下划线', wave: '波浪线', dots: '着重号', highlight: '荧光笔', strike: '划掉', tick: '✓', cross: '✗', arrow: '箭头' };
 

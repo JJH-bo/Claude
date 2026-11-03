@@ -1901,7 +1901,7 @@ export async function renderClass(root, meta, desk = null) {
         },
       }, {
         name: 'memory_read',
-        description: '查学习台的记忆库（只读）。collection 写集合名：rules、profile、curriculum、errors、weaknesses、mastery、reviews、position、slips、lessons、observations、sessions、evidence。ids 写编号数组，一次取好几条的全文（比如 collection errors、ids ["L2-07","L2-31"]；同一类的放一起取）；id 取一条。sessions 写课的编号，给那节课的要点、课后报告和小结。不写 id / ids 时列出这一类（可以写 block 只要挨着这一块的）。evidence 按 block 或 session（这节课是 ' + desk.sid + '）查最近的 30 条。每调用一次你要多等一整轮：照记忆里的目录挑准了编号，一次取够。',
+        description: '查学习台的记忆库（只读）。collection 写集合名：rules、profile、curriculum、errors、weaknesses、mastery、reviews、recall、position、slips、lessons、observations、sessions、evidence。ids 写编号数组，一次取好几条的全文（比如 collection errors、ids ["L2-07","L2-31"]；同一类的放一起取）；id 取一条。sessions 写课的编号，给那节课的要点、课后报告和小结。不写 id / ids 时列出这一类（可以写 block 只要挨着这一块的）。evidence 按 block 或 session（这节课是 ' + desk.sid + '）查最近的 30 条。每调用一次你要多等一整轮：照记忆里的目录挑准了编号，一次取够。',
         inputSchema: { type: 'object', properties: { collection: { type: 'string' }, ids: { type: 'array', items: { type: 'string' } }, id: { type: 'string' }, block: { type: 'string' }, session: { type: 'string' } }, required: ['collection'] },
         async execute(input) {
           const q = { collection: String(input?.collection ?? '').trim(), ids: Array.isArray(input?.ids) ? input.ids.map(String) : undefined, id: input?.id, block: input?.block, session: input?.session };
@@ -2042,7 +2042,7 @@ export async function renderClass(root, meta, desk = null) {
       const sp = spaceOfId(desk?.block || '');
       const why = desk ? tidyDue(desk.mem, sp, desk.sid) : '';
       const tidy = why ? { why, text: tidyText(desk.mem, sp) } : null;
-      const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review, slips: desk ? slipsToFold(desk.mem, sp) : '', plan: FEATURES.plan === false ? null : latestPlan(history), tidy }) }], maxBytes: promptLimit(), stub: teacher.tools });
+      const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review, opening: desk?.opening, slips: desk ? slipsToFold(desk.mem, sp) : '', plan: FEATURES.plan === false ? null : latestPlan(history), tidy }) }], maxBytes: promptLimit(), stub: teacher.tools });
       // 小结边写边显示（以前要干等一两分钟才一下子出来），也记下等了多久
       const t0 = performance.now();
       firstAt = 0;

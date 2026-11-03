@@ -16,13 +16,15 @@ import classBoardCss from './class/board.css';
 import { renderDesk, classHash } from './memory/desk.js';
 import deskCss from './memory/desk.css';
 import themesCss from './themes.css';
-import { themeOf } from './theme.js';
+import { themeOf, storedTheme, applyTheme } from './theme.js';
 import { VERSION } from './version.js';
 import './confidence.js';
 
 // 粉笔手写体：数字和字母用 Caveat（1 和 7 容易分辨），中文用龙藏体。
 // Google Fonts 是 artifact 唯一允许的外部样式来源；加载不到时退回系统楷体
-const HAND_FONT = 'https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Long+Cang&display=swap';
+// 学习台的标题和大数字用思源宋体（Noto Serif SC）：书桌上的东西像一本排得好的书，黑板上的照旧是粉笔手写体。
+// Google Fonts 的中文字体按字切成小块，只下载用到的字
+const HAND_FONT = 'https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Long+Cang&family=Noto+Serif+SC:wght@600;700;900&display=swap';
 
 // 粉笔质感滤镜：给线条加颗粒和毛边
 const CHALK_FILTER = `<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -81,11 +83,12 @@ function renderAll() {
     else s.after(article);
     const { meta, body } = frontMatter(dedent(s.textContent));
     // 风格要在渲染之前定：图、板书的颜色都从 CSS 变量取
+    // 课件写了 theme: 就用它；没写就用这台设备上选过的（学习台「管理」里选，theme.js 的 storedTheme）
     if (meta.theme !== undefined) {
       const theme = themeOf(meta.theme);
-      if (theme === null) console.warn(`不认识的 theme「${meta.theme}」，用默认的石墨。可以写 chalk（墨绿黑板）、paper（纸本）、midnight（深蓝）、white（白板）`);
+      if (theme === null) console.warn(`不认识的 theme「${meta.theme}」，用默认的石墨。可以写 chalk（墨绿黑板）、paper（纸本）、celadon（青瓷）、midnight（深蓝）、white（白板）`);
       else if (theme) document.documentElement.dataset.theme = theme;
-    }
+    } else applyTheme(storedTheme());
     session.reset(meta.unit || lessonTitle(body));
     session.subject = meta.subject || '线性代数';
     if (/^(class|课堂)$/i.test(meta.mode || '')) renderClass(article, meta);

@@ -128,10 +128,12 @@ export async function enterDrill(root, meta, { db, store, sid, doc, readOnly = f
       await writeReport?.(doc).catch(() => {});
     }
     const clean = res.rows.filter((x) => x.clean).length;
+    const groupName = (id) => String(mem.reviews.find((r) => String(r.id) === id)?.title || id);
     out.innerHTML = `
       <h2 class="dk-h">做完了：${clean} / ${res.rows.length} 道一次对</h2>
       <div class="dr-rows">${res.rows.map((x, i) => `<div class="dk-row"><b>${i + 1}</b><span>${escapeHtml(x.block)}${titleOf(x.block) ? ` ${mdToHtml(titleOf(x.block), { inline: true })}` : ''}　<span class="muted">${mdToHtml(String(byId.get(x.id)?.title || '').slice(0, 60), { inline: true }) || escapeHtml(String(x.q).replace(/\\[a-zA-Z]+/g, '').slice(0, 60))}</span></span><em class="${x.clean ? 'dr-ok' : 'dr-bad'}">${escapeHtml(TEXT[x.outcome] || x.outcome)}${x.sure === false ? '（没把握）' : ''}</em></div>`).join('')}</div>
-      ${res.reviewResults.length ? `<p>复现组：${res.reviewResults.map((r) => `${escapeHtml(r.id)} ${r.passed ? '过了' : '没过'}（下次 ${r.tier} 天后）`).join('；')}，已经记下了。</p>` : ''}
+      ${res.reviewResults.length ? `<p>复现组：${res.reviewResults.map((r) => `${escapeHtml(groupName(r.id))} 没过（下次 ${r.tier} 天后）`).join('；')}，已经记下了。</p>` : ''}
+      ${res.practiced?.length ? `<p class="muted">${res.practiced.map((r) => escapeHtml(groupName(r.id))).join('、')}：原题都对了。练一练的题是课上的原题，不算复现通过——要在「今天复现」里做新题才算。</p>` : ''}
       <div class="dr-acts">${res.wrong.length && !readOnly ? `<button type="button" class="btn btn-primary dr-class">带着没过的 ${res.wrong.length} 道开课</button>` : ''}<button type="button" class="btn dr-back">回学习台</button></div>`;
     out.querySelector('.dr-back').addEventListener('click', () => goto(''));
     out.querySelector('.dr-class')?.addEventListener('click', async (e) => {

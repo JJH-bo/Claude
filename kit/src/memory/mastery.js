@@ -10,6 +10,8 @@
 //   基础题过 / 复现通过以后失手 → 掉了，重新数。
 //   一节课一节课地看（walk 的说明）：一节课里先对后错不算过，复现只看这节课第一次碰到它。
 // 归过类的课（skills.js）按知识点数：证据的标签换成归类时定的「块 + 知识点」。
+// 练一练里的题是课上原样抄来的（drills.js，组件 id 是题库编号 d-…）：再做对只是记住了题，按我的规则（复现要新题、不是原题换数）
+// 不算干净、不往上升；原题都做错了照样算失手（连原题都不会了，肯定是掉了）。
 // 从记忆里现有的状态出发（我确认过的、对话里的 Claude 写的），只看那以后的题：不会把定下来的状态推翻成没依据的样子。
 import { REVIEW_TIERS, toDate, daysBetween } from './schema.js';
 import { itemsOf } from './report.js';
@@ -20,10 +22,12 @@ import { retagEvidence, pointCatalog } from './skills.js';
 export const MASTERY_RULE = {
   basic: 2, // 几道不同的题干净算基础题过
   tiers: REVIEW_TIERS, // 复现的间隔（和复现组同一套档位）
-  text: '两道不同的题一次对、没标没把握 → 基础题过（一节课里只算最后一次失手以后的）；之后隔够 1 / 3 / 7 / 14 / 30 天、那节课一上来就做对 → 复现通过到那一档；一上来就错了、看了答案、想不出来 → 掉了',
+  text: '两道不同的题一次对、没标没把握 → 基础题过（一节课里只算最后一次失手以后的）；之后隔够 1 / 3 / 7 / 14 / 30 天、那节课一上来就做对（新题，练一练里的原题不算）→ 复现通过到那一档；一上来就错了、看了答案、想不出来 → 掉了',
 };
 
-const CLEAN = (it) => it.outcome === 'first' && it.sure !== false;
+/** 练一练里做的原题（题库编号 d-…）：做对不算数，做错照样算失手 */
+export const isOriginal = (it) => /^d-/.test(String(it?.comp || ''));
+const CLEAN = (it) => it.outcome === 'first' && it.sure !== false && !isOriginal(it);
 // 改对了（第一次错）也算失手：考试只有一次机会
 // 试出来的选择题（report.js 的 guess）outcome 是 ok，本来就算失手
 const FAIL = (it) => ['wrong', 'giveup', 'revealed', 'ok'].includes(it.outcome);

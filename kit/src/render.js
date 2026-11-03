@@ -9,32 +9,8 @@ import './paramcalc.js'; // 含参数的 \calc（let 里写 a = param）：exact
 import { MARK_COLORS } from './markspec.js';
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false, typographer: false });
-
-// ==要背的== / =={pink}要背的==：写板时就涂上荧光笔（docs/mark-plan.md）。讲着讲着才要指的用 board mark；
-// 写的时候就知道是重点的直接涂，不用再多一条指令。颜色：yellow（默认）pink blue green red，也认中文的黄粉蓝绿红
 const HL_COLORS = { yellow: 'yellow', pink: 'pink', blue: 'blue', green: 'green', red: 'red', 黄: 'yellow', 粉: 'pink', 蓝: 'blue', 绿: 'green', 红: 'red' };
-md.inline.ruler.before('emphasis', 'hlmark', (state, silent) => {
-  const src = state.src, start = state.pos;
-  if (src.charCodeAt(start) !== 0x3d || src.charCodeAt(start + 1) !== 0x3d || src.charCodeAt(start + 2) === 0x3d) return false;
-  let p = start + 2;
-  let color = 'yellow';
-  const m = /^\{([a-z\u4e00-\u9fa5]+)\}/.exec(src.slice(p, p + 12));
-  if (m && HL_COLORS[m[1]]) { color = HL_COLORS[m[1]]; p += m[0].length; }
-  const end = src.indexOf('==', p);
-  if (end < 0 || end === p || end > state.posMax || /\s/.test(src[p]) || /\s/.test(src[end - 1])) return false;
-  if (!silent) {
-    const open = state.push('hl_open', 'mark', 1);
-    open.attrSet('class', `hl-mark hl-${color}`);
-    const max = state.posMax;
-    state.pos = p;
-    state.posMax = end;
-    state.md.inline.tokenize(state);
-    state.posMax = max;
-    state.push('hl_close', 'mark', -1);
-  }
-  state.pos = end + 2;
-  return true;
-});
+
 
 const MATH_RE = /(`+)[\s\S]*?\1|\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?!\s)((?:\\.|[^$\\\n])+?)(?<!\s)\$/g;
 
@@ -79,13 +55,20 @@ function maskMath(src, store) {
 // 代码 `…` 里的不动。换成占位符，unmask 时放回去
 const CJK_PUNCT = /[\u3000-\u303f\uff00-\uffef\u2018-\u201f\u2026\u2014]/;
 function forgive(text, store) {
-  if (!/\\(?:chalk|hl)\{|\*\*/.test(text)) return text;
+  if (!/\\(?:chalk|hl|bei)\{|\*\*|==/.test(text)) return text;
   const raw = (html) => { store.push({ raw: html }); return `\uE001${store.length - 1}\uE002`; };
   return text.split(/(`+[\s\S]*?`+)/).map((part, i) => {
     if (i % 2) return part;
     let t = part.replace(/\\(chalk|hl)\{([\w-]{1,24})\}\{([^{}\n]{1,300})\}/g, (m, cmd, name, body) => {
       if (cmd === 'chalk' && !MARK_COLORS.includes(name)) return body;
       return raw(`<span data-${cmd === 'chalk' ? 'lkc' : 'lkmark'}="${escapeHtml(name)}">${md.renderInline(body)}</span>`);
+    });
+    // 要背的（docs/english-plan.md 第 7 批）：==……== 和写在公式外面的 \bei{……} 画成粉色荧光笔的底（在字底下，不压字）
+    t = t.replace(/\\bei\{([^{}\n]{1,300})\}/g, (m, body) => raw(`<mark class="lk-bei">${md.renderInline(body)}</mark>`));
+    // =={yellow}……==：换一种颜色的荧光笔（关键说明、结论；docs/mark-plan.md），不写颜色就是要背的粉色
+    t = t.replace(/(^|[^=])==(?:\{(yellow|pink|blue|green|red|黄|粉|蓝|绿|红)\})?(?=[^\s=])([^=\n]{1,300}?)(?<=[^\s=])==(?!=)/g, (m, pre, c, body) => {
+      const color = HL_COLORS[c] || 'pink';
+      return `${pre}${raw(`<mark class="${color === 'pink' ? 'lk-bei' : `hl-mark hl-${color}`}">${md.renderInline(body)}</mark>`)}`;
     });
     t = t.replace(/(^|[^*])\*\*(?=\S)([^*\n]{1,200}?)\*\*(?!\*)/g, (m, pre, body, at, all) => {
       const after = all[at + m.length] || '';
@@ -114,7 +97,8 @@ function unmask(html, store) {
 //   \hl{名字}{…}：给一项起名字（板书标注 mark term=名字 靠它找到这一项），本身不画东西
 //   \chalk{颜色}{…}：这一项用彩色粉笔写（颜色跟着风格走，见 styles.css 的 [data-lkc]）
 // 两个都展开成 \htmlData，所以 trust 只放行 \htmlData（\htmlClass、\href 这类照旧不认）
-const MACROS = { '\\hl': '\\htmlData{lkmark=#1}{#2}', '\\chalk': '\\htmlData{lkc=#1}{#2}' };
+//   \bei{…}：要背的，粉色荧光笔的底（和公式外面的 ==…== 一样）
+const MACROS = { '\\hl': '\\htmlData{lkmark=#1}{#2}', '\\chalk': '\\htmlData{lkc=#1}{#2}', '\\bei': '\\htmlData{lkbei=1}{#1}' };
 const trust = (ctx) => ctx.command === '\\htmlData';
 
 // \calc{表达式}：页面精确地算出来再写进公式。变量：整节课的 let 块（session.vars），

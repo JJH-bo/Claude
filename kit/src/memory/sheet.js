@@ -3,7 +3,7 @@
 // 小结那块板、学习台「以前的课」、复现课的资料包都用它。纯函数（tests/memory-sheet.test.js）。
 
 // 板上值得留下的框（content.js 的 callout）
-export const SHEET_CALLOUTS = { definition: '定义', theorem: '定理', key: '重点', warning: '易错' };
+export const SHEET_CALLOUTS = { remember: '要背', definition: '定义', theorem: '定理', key: '重点', warning: '易错' };
 const MAX_KEYS = 10;
 const MAX_ITEMS = 8;
 export const SHEET_MAX = 6000; // 一页多长（字）：放进复现课的资料包也不占太多
@@ -11,10 +11,10 @@ export const SHEET_MAX = 6000; // 一页多长（字）：放进复现课的资�
 const cut = (s, n) => { const t = String(s ?? '').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; };
 const oneLine = (s, n) => cut(String(s ?? '').replace(/\s+/g, ' '), n);
 
-/** 一段 Markdown 里的重点框：```key / definition / theorem / warning（title: 那行是标题） */
+/** 一段 Markdown 里的重点框：```remember / key / definition / theorem / warning（title: 那行是标题） */
 export function calloutsIn(md) {
   const out = [];
-  const re = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*(definition|theorem|key|warning)[ \t]*\n([\s\S]*?)^[ \t]{0,3}\1[ \t]*$/gm;
+  const re = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*(remember|definition|theorem|key|warning)[ \t]*\n([\s\S]*?)^[ \t]{0,3}\1[ \t]*$/gm;
   let m;
   while ((m = re.exec(String(md ?? '')))) {
     let body = m[3].replace(/\n$/, '');

@@ -240,7 +240,10 @@ export function lessonPlanText(main = {}) {
   const out = {};
   if (Array.isArray(main.methods) && main.methods.length) out.methods = main.methods.map((m) => `- ${m.id} ${m.title || ''}${m.teach ? `（第 ${m.teach} 步讲）` : ''}${m.scope ? `［${m.scope}］` : ''}\n  ${String(m.steps || '').replace(/\n/g, '\n  ')}`).join('\n');
   if (Array.isArray(main.sequence) && main.sequence.length) out.sequence = main.sequence.map((x) => `${x.step}. ${x.point}${x.how ? `\n   怎么讲：${x.how}` : ''}${x.check ? `\n   确认：${x.check}` : ''}`).join('\n');
-  if (Array.isArray(main.review) && main.review.length) out.review = main.review.map((r) => `- ${r.id}：${r.how}`).join('\n');
+  // 备课写的开头复现是 [{ id, how }]；复现课（views.js 的 reviewPack）是编号的数组，整节课都在复现它们
+  if (Array.isArray(main.review) && main.review.length) out.review = main.reviewClass
+    ? `这节课复现 ${main.review.map((r) => String(r?.id ?? r)).join('、')}（整节课都是复现，见下面的范围和计划）`
+    : main.review.map((r) => (r && typeof r === 'object' ? `- ${r.id}：${r.how}` : `- ${r}`)).join('\n');
   if (Array.isArray(main.prepCheck) && main.prepCheck.length) out.prepCheck = main.prepCheck.map((w) => `- ${w}`).join('\n');
   if (Array.isArray(main.todos) && main.todos.length) out.todos = main.todos.map((t) => `- ${t.text}`).join('\n');
   return out;

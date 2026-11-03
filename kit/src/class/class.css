@@ -69,9 +69,11 @@ body.has-keypad .class-bar, .class-bar.is-away {
 /* 底色垫在字下面（z-index: -1）：绝对定位的伪元素默认画在字的上面，会把字蒙淡 */
 .cb-q::before {
   content: ""; position: absolute; z-index: -1; inset: 5px 0; border-radius: 16px 18px 15px 17px; pointer-events: none;
-  border: 1.5px dashed rgb(var(--chalk-rgb) / 0.42); background: rgb(var(--board-3-rgb) / 0.72); transition: border-color .2s;
+  /* 一颗颗实心的小粉笔块（原来是虚线框，看着像没做完）：浮在板上，上沿一道亮边 */
+  border: 1px solid rgb(var(--chalk-rgb) / 0.14); background: linear-gradient(180deg, rgb(var(--board-2-rgb) / 0.96), rgb(var(--board-3-rgb) / 0.94));
+  box-shadow: inset 0 1px 0 rgb(var(--glow-rgb) / 0.06), 0 6px 16px -8px rgb(var(--shade-rgb) / 0.6); transition: border-color .2s, background .2s;
 }
-@media (hover: hover) { .cb-q:not(:disabled):hover { color: var(--chalk); } .cb-q:not(:disabled):hover::before { border-color: rgb(var(--chalk-rgb) / 0.6); } }
+@media (hover: hover) { .cb-q:not(:disabled):hover { color: var(--chalk); } .cb-q:not(:disabled):hover::before { border-color: rgb(var(--chalk-rgb) / 0.3); } }
 .cb-q:active { transform: scale(.95); }
 .cb-q:disabled { opacity: .35; cursor: default; }
 .cb-q:focus-visible, .cb-nav-btn:focus-visible, .cb-nav-label:focus-visible, .cb-now:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }

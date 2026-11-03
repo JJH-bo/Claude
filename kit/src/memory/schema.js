@@ -148,6 +148,18 @@ export const COLLECTIONS = {
     refs: { block: 'curriculum' },
     tracked: [],
   },
+  // 记忆点（docs/review-plan.md）：要反复想起来才记得牢的一条（定义、结论、表里的一格、句型……），一条一条排期（recall.js）。
+  // 课堂里的 Claude 用 memo 的 recall 写（默写没写出的、讲过要背的），我能自己加、停掉；每天想一遍的结果页面写（档位跟着变）
+  recall: {
+    label: '记忆点', kind: 'state', writers: ['chat', 'class', 'page', 'me'],
+    id: { re: /^K\d+$/, eg: 'K12（页面自动编号）' },
+    required: ['q', 'a', 'tier'],
+    // done：隔 30 天还想得起来，记牢了；void：不要了（撤销、我停掉）
+    enums: { status: ['active', 'done', 'void'], result: ['got', 'vague', 'miss'], space: ['math', 'cs', 'en'] },
+    dates: ['last'],
+    refs: { block: 'curriculum', session: 'sessions' },
+    tracked: ['tier', 'last', 'status'],
+  },
   // 题库（docs/learning-plan.md 第 3 节）：以前课上页面判得了分的组件，抄一份给练习用（drills.js）。页面写（下课写报告时抄），
   // 对话里的 Claude 备课时也能写；我能把坏了的、不想再练的标作废（status: void）。课堂里的 Claude 每一轮不带它
   drills: {

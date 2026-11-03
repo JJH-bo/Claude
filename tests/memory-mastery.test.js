@@ -72,6 +72,15 @@ test('walk：两道干净 → 基础题过；隔够 1 天 → 复现通过 1；�
   assert.ok(MASTERY_RULE.text.includes('基础题过'));
 });
 
+test('walk：练一练的原题（d-…）做对不算干净、不升档；做错照样掉了', () => {
+  const it = (key, outcome, d, comp = key) => ({ key, comp, outcome, first: at(d), sure: null, evidence: [`ev-${key}-${d}`] });
+  assert.equal(walk([it('d-1', 'first', 0), it('d-2', 'first', 0)]).state, '未学', '原题两道对了不算基础题过');
+  const base = { state: '基础题过', last: '2026-10-01' };
+  assert.equal(walk([it('d-1', 'first', 5)], base).state, '基础题过', '隔够天数做对原题也不算复现通过');
+  assert.deepEqual([walk([it('c', 'first', 5)], base).state], ['复现通过'], '新题照样算');
+  assert.equal(walk([it('d-1', 'wrong', 5)], base).state, '掉了', '原题都错了：掉了');
+});
+
 test('masteryProposals：按块和知识点出提议；记忆里已经定下的只看那以后的；改动单不重复', () => {
   const mem = sampleMemory('2026-10-01');
   mem.mastery = (mem.mastery || []).filter((m) => !String(m.id).startsWith('L2.2.1'));

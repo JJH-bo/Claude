@@ -1,11 +1,12 @@
 // 学习台第 3、4 批（docs/desk-plan.md 第 5、6 节）：给我看的页面算的部分（views.js）、复现课的资料包、启动语、
 // 课堂说明里按需带的组件手册、发布用的瘦身说明书。页面本身在真浏览器里另外验（desk-demo.html?dev 的 #map、#weak……）。
 import { test } from 'node:test';
+const { packText } = await import('../kit/src/class/prompt.js');
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const {
-  curriculumTree, blockDetail, blockTimeline, weaknessRows, errorRows, classRows, learningStats, reviewPack, handoffText, evidenceLine,
+  curriculumTree, blockDetail, blockTimeline, weaknessRows, errorRows, classRows, learningStats, reviewPack, reviewQueue, todayReviews, reviewIdsOf, handoffText, evidenceLine,
 } = await import('../kit/src/memory/views.js');
 const { sampleMemory } = await import('../kit/src/memory/sample.js');
 const { addDays } = await import('../kit/src/memory/schema.js');
@@ -88,7 +89,7 @@ test('复现课：页面自己拼资料包（这一组、盯的弱点、错题�
   const m = M();
   m.reviews[0].blocks = ['L2.2.2'];
   const { main, problems } = reviewPack(m, 'R3', { today: TODAY, packs: [{ block: 'L2.2.2', session: 'c-1', items: [{ q: '求 A^5', answer: '81A' }, { q: '求 A^5', answer: 'dup' }] }, { block: 'L9', items: [{ q: '别的' }] }] });
-  assert.equal(main.review, 'R3');
+  assert.deepEqual(main.review, ['R3']);
   assert.equal(main.block, 'L2.2.2');
   assert.match(main.unit, /^复现 R3/);
   assert.match(main.student, /W19 内积和外积分不清/);
@@ -96,6 +97,42 @@ test('复现课：页面自己拼资料包（这一组、盯的弱点、错题�
   assert.match(main.plan, /review id=R3 result=过/);
   assert.deepEqual(problems.items.map((x) => x.q), ['求 A^5']);
   assert.throws(() => reviewPack(m, 'R99'), /没有 R99/);
+});
+
+test('今天复现：到期的按「从没复现 > 上次没过 > 过期久」排，每门课一行先挑 3 组；几组一起拼一份资料包', () => {
+  const R = (id, extra) => ({ id, title: `组${id}`, tier: 1, status: 'active', log: [], ...extra });
+  const mem = {
+    reviews: [
+      R('R1', { last: '2026-09-28', result: '没过', blocks: ['L2.1.7'] }),
+      R('R2', { last: '2026-09-20', result: '过', tier: 3, blocks: ['L2.1.8'] }),
+      R('R3', { blocks: ['L2.1.2'] }),
+      R('R4', { last: '2026-10-30', result: '没过', blocks: ['L2.1.4'] }),
+      R('R5', { last: '2026-09-01', result: '没过', blocks: ['L2.1.3'] }),
+      R('R6', { last: '2026-11-03', blocks: ['L2.1.5'] }),
+      R('R7', { last: '2026-09-28', result: '没过', blocks: ['DS-L8.1.1'], space: 'cs' }),
+      R('R8', { last: '2026-09-01', result: '没过', blocks: ['L1.1.1'], status: 'paused' }),
+    ],
+    weaknesses: [], errors: [], curriculum: [],
+  };
+  const q = reviewQueue(mem, { today: '2026-11-03' });
+  assert.deepEqual(q.map((x) => x.id), ['R3', 'R5', 'R1', 'R7', 'R4', 'R2'], '从没复现的最前，没过的按过期久排，暂停的、没到期的不算');
+  assert.equal(q[0].why, '从没复现过');
+  const t = todayReviews(mem, { today: '2026-11-03' });
+  assert.deepEqual(t.map((g) => [g.course, g.total, g.pick.map((x) => x.id)]), [['LA', 5, ['R3', 'R5', 'R1']], ['DS', 1, ['R7']]]);
+  assert.equal(t[1].subject, '数据结构');
+  const { main } = reviewPack(mem, t[0].pick.map((x) => x.id), { today: '2026-11-03' });
+  assert.deepEqual(main.review, ['R3', 'R5', 'R1']);
+  assert.match(main.unit, /^复现 R3、R5、R1/);
+  assert.match(main.plan, /几组的题混着出、不说是哪一组/);
+  assert.match(main.plan, /不是原题换数/);
+  assert.match(main.plan, /没测到的点用 add=/);
+  assert.deepEqual(reviewIdsOf([{ id: 'R19', how: '…' }, 'R20']), ['R19', 'R20']);
+  // 课堂看到的资料包：复现课写成「这节课复现 R3、R5、R1」，不当成备课的开头复现
+  const txt = packText({ main }).text;
+  assert.match(txt, /这节课复现 R3、R5、R1/);
+  assert.doesNotMatch(txt, /undefined|reviewClass/);
+  assert.deepEqual(reviewIdsOf('R3'), ['R3']);
+  assert.deepEqual(reviewIdsOf(null), []);
 });
 
 test('启动语：说明书地址、学到哪、上一节、到期的复现组、等外部做的事', () => {
@@ -172,4 +209,17 @@ test('开场简报：每科一份，接手要知道的 + 这一科记忆库里�
   assert.ok(Buffer.byteLength(b.text) <= BRIEF_MAX);
   assert.equal(briefId('math'), 'brief');
   assert.equal(briefId('en'), 'brief-en');
+});
+
+test('下课：复现课每组判一次；备课写的开头复现做了的也判；整理单记要背的', async () => {
+  const { closingPrompt } = await import('../kit/src/class/prompt.js');
+  const many = closingPrompt({ report: '报告', review: ['R3', 'R5'] });
+  assert.match(many, /这是复现课（复现组 R3、R5）：整理单里每组一定写一行 `review id=… result=过`/);
+  assert.match(many, /没测到的点用 `add="…"` 记进那一组/);
+  assert.match(closingPrompt({ report: '报告', review: 'R3' }), /`review id=R3 result=过`/);
+  const open = closingPrompt({ report: '报告', opening: [{ id: 'R19', how: '…' }] });
+  assert.match(open, /开头安排了复现 R19：做了的那几组/);
+  assert.doesNotMatch(open, /这是复现课/);
+  assert.match(open, /`recall`/);
+  assert.doesNotMatch(closingPrompt({ report: '报告' }), /复现课|开头安排了复现/);
 });

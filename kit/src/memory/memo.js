@@ -21,6 +21,7 @@
 import { COLLECTIONS, UNDO_DAYS, assertWrite, applyChange, nextTier, toDate, daysBetween, same } from './schema.js';
 import { tokenize } from '../tokens.js';
 import { courseOf, prefixOf, positionId, spaceOfId, spaceOfDoc, sharedFor } from './space.js';
+import { recallSpace, nextRecallId, RECALL_CAP } from './recall.js';
 
 export const MEMO_KINDS = {
   pref: { tier: 'direct', coll: 'profile', label: '偏好' },
@@ -34,6 +35,8 @@ export const MEMO_KINDS = {
   review: { tier: 'direct', coll: 'reviews', label: '复现组' },
   position: { tier: 'direct', coll: 'position', label: '下一节' },
   rule: { tier: 'direct', coll: 'rules', label: '规则' },
+  // 要反复记的一条（recall.js）：页面每天让学生自己想一遍，一条一条排期
+  recall: { tier: 'direct', coll: 'recall', label: '记忆点' },
   // 这节课改讲别的块（学生临时改了计划）：页面改 sessions 和之后证据挂的块，不进改动单（classroom.js 先拿出来，blockSwitch 查）
   block: { tier: 'page', coll: 'sessions', label: '这节课的块' },
 };
@@ -53,7 +56,8 @@ export const RULE_CATS = ['红线', '掌握', '检验', '来源', '讲解', '细
 export const CAPS = { weaknesses: 20, reviews: 12, profile: 30, rules: 70, lessons: LESSONS_MAX };
 // 一节课里每一种新加的最多几条（2026-11-03 我说：别一丁点小事都记、别反复累加）。11/2 那节课记了 27 条观察（多是把作答复述一遍，
 // 页面本来就自动记了每一次作答）、27 条失误、同一个毛病 5 道错题。到了就不收，告诉它挑要紧的、并进已有的
-export const SESSION_CAPS = { note: 3, propose: 2, slip: 3, error: 5, todo: 5, pref: 3, rule: 3, weakness: 3, review: 2 };
+// 记忆点一节课最多 8 条：只记真要背的（定义原文、结论、表里的一格），会推出来的不记
+export const SESSION_CAPS = { note: 3, propose: 2, slip: 3, error: 5, todo: 5, pref: 3, rule: 3, weakness: 3, review: 2, recall: 8 };
 // 列表字段最多几项（欠账、复现组的题）：新的放后面，最老的挤掉，不越堆越长
 export const LIST_CAPS = { debts: 5, first: 3, content: 6 };
 // 和已有的一条比「像不像」：守则、失误、观察、待办、错题这类句子长，0.3 就算同一件事
@@ -283,7 +287,7 @@ export function planEntry(entry, ctx = {}) {
     const mine = { note: () => get('observations').filter((o) => o.session === sid && o.kind === 'note'), propose: () => get('observations').filter((o) => o.session === sid && o.kind === 'proposal'),
       todo: () => get('observations').filter((o) => o.session === sid && o.kind === 'todo'), slip: () => get('slips').filter((x) => x.session === sid), error: () => get('errors').filter((x) => x.session === sid && !x.corrects),
       pref: () => get('profile').filter((x) => String(x.source || '').includes(sid)), rule: () => get('rules').filter((x) => String(x.source || '').includes(sid)),
-      weakness: () => get('weaknesses').filter((x) => x.session === sid), review: () => get('reviews').filter((x) => x.session === sid) }[kind];
+      weakness: () => get('weaknesses').filter((x) => x.session === sid), review: () => get('reviews').filter((x) => x.session === sid), recall: () => get('recall').filter((x) => x.session === sid) }[kind];
     const n = mine ? mine().length : 0;
     if (n >= SESSION_CAPS[kind]) return { error: `这节课已经记了 ${n} 条${spec.label}（一节课最多 ${SESSION_CAPS[kind]} 条）：只记下一节课会因为它做得不一样的；同一件事并进已有的那条` };
   }
@@ -547,6 +551,34 @@ export function planEntry(entry, ctx = {}) {
       // 新的一组：从明天开始（档位 1 天，last 是今天）
       return { ...base, op: 'add', target: nextReviewId(get('reviews')), data: { title: cut(a.title, 120), ...(a.family ? { family: cut(a.family, 120) } : {}), content: a.content ? [cut(a.content, 300)] : [], weaknesses: a.weaknesses || [], blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], tier: 1, last: date, status: 'active', ...(sid ? { session: sid } : {}), ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
     }
+    case 'recall': {
+      // 要反复记的一条：q 问法、a 标准答案、block 挂哪一块（不写就是这节课的块）。从明天开始排（当天刚讲的不测）
+      const old = a.id ? find('recall', a.id) : null;
+      if (a.id && !old) return { error: `记忆点里没有 ${a.id}：新的一条不写 id（页面自动编）` };
+      const curIds = new Set(get('curriculum').map((d) => String(d.id)));
+      if (a.block && curIds.size && !curIds.has(String(a.block))) return { error: `课程地图里没有 ${a.block}：block 写块的编号，不写就挂这节课的块` };
+      if (old) {
+        if (old.status === 'void') return { error: `${old.id} 已经不要了` };
+        if (a.status) {
+          if (a.status !== 'void') return { error: 'status 只能写 void（这条不用记了，写 why=）；记牢没有由学生每天想的结果定' };
+          return { ...base, op: 'update', target: old.id, patch: { status: 'void', why: cut(a.why || '', 200) } };
+        }
+        const patch = {};
+        if (a.q) patch.q = cut(a.q, 300);
+        if (a.a) patch.a = cut(a.a, 600);
+        if (a.block) patch.block = String(a.block);
+        if (!Object.keys(patch).length) return { error: `${a.id} 没有要改的：改问法写 q="…"，改答案写 a="…"，不要了写 status=void why="…"` };
+        return { ...base, op: 'update', target: old.id, patch };
+      }
+      if (!a.q || !a.a) return { error: '新的记忆点要写 q="问法" 和 a="标准答案"（一条只问一件事；答案写成学生能对着检查的样子）' };
+      const blk = String(a.block || ctx.block || '');
+      const space = blk ? spaceOfId(blk) : (ctx.space || 'math');
+      const live = get('recall').filter((d) => (d.status || 'active') === 'active' && recallSpace(d) === space);
+      const near = nearest(a.q, live, 'q');
+      if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.q, 40)}）是同一条：要改问法、答案写 recall id=${near.d.id} q="…" a="…"，不另加` };
+      if (live.length >= RECALL_CAP) return { error: `这一科的记忆点已经有 ${live.length} 条（最多 ${RECALL_CAP}）：记得太碎了，先把重复的停掉（recall id=… status=void why="…"）` };
+      return { ...base, op: 'add', target: nextRecallId(get('recall')), data: { q: cut(a.q, 300), a: cut(a.a, 600), ...(blk ? { block: blk } : {}), tier: 1, last: date, lapses: 0, status: 'active', space, ...(basis.length ? { basis } : {}), ...(sid ? { session: sid } : {}) } };
+    }
     case 'position': {
       // 每科一条「下一节从哪接」：按这节课的块是哪一科
       const pid = positionId(spaceOfId(a.block || ctx.block));
@@ -687,7 +719,7 @@ function voidCorrection(coll, orig, all, { date, pd }) {
 /** 被作废的条目（status: void，或者有一条 void 的更正指向它）、并进别的一条的（status: merged）：摘要、页面列表都不再当真 */
 export function voidedIds(mem = {}) {
   const out = new Set();
-  for (const c of ['errors', 'slips', 'observations', 'profile', 'weaknesses', 'reviews', 'lessons', 'mastery']) {
+  for (const c of ['errors', 'slips', 'observations', 'profile', 'weaknesses', 'reviews', 'lessons', 'mastery', 'recall']) {
     for (const d of mem[c] || []) {
       if (!d) continue;
       if (d.status === 'void' || d.status === 'merged') out.add(`${c}/${d.id}`);
@@ -736,6 +768,23 @@ export function meChange(what, mem = {}, args = {}) {
     if ((r.status || 'active') === to) throw new Error(what === 'pause' ? '已经暂停了' : '没有暂停');
     return pendingRecord({ kind: 'review', tier: 'me', coll: 'reviews', op: 'update', target: r.id, patch: { status: to }, label: what === 'pause' ? '暂停复现组' : '恢复复现组', reason: '我改的' }, { by: 'me' });
   }
+  // 我自己加一条要记的（学习台外面看到的、自己想背的）；不用记了的停掉
+  if (what === 'recall-add') {
+    const q = String(args.q || '').trim();
+    const a = String(args.a || '').trim();
+    if (!q || !a) throw new Error('问法和答案都要写');
+    const block = String(args.block || '');
+    const space = block ? spaceOfId(block) : (args.space || 'math');
+    const near = nearest(q, get('recall').filter((d) => (d.status || 'active') === 'active' && recallSpace(d) === space), 'q');
+    if (near && near.s >= SIMILAR) throw new Error(`已经有一条差不多的了：${cut(near.d.q, 40)}`);
+    return pendingRecord({ kind: 'recall', tier: 'me', coll: 'recall', op: 'add', target: nextRecallId(get('recall')), data: { q: cut(q, 300), a: cut(a, 600), ...(block ? { block } : {}), tier: 1, last: date, lapses: 0, status: 'active', space }, label: '记忆点', reason: '我自己加的' }, { by: 'me' });
+  }
+  if (what === 'recall-void') {
+    const k = get('recall').find((d) => d.id === args.id);
+    if (!k) throw new Error(`没有 ${args.id}`);
+    if (k.status === 'void') throw new Error('已经不用记了');
+    return pendingRecord({ kind: 'recall', tier: 'me', coll: 'recall', op: 'update', target: k.id, patch: { status: 'void', why: '我说不用记了' }, label: '记忆点', reason: '我改的' }, { by: 'me' });
+  }
   throw new Error(`不认识「${what}」`);
 }
 
@@ -767,6 +816,7 @@ export function pendingTitle(pd, nameOf = null) {
     error: () => (d.resolved ? `${nameOf ? '一道错题' : d.corrects} 已解决` : `${nameOf ? '' : `${pd.target}：`}${d.cause || d.q || ''}`),
     weakness: () => (pd.op === 'add' ? `${nameOf ? '' : `${pd.target} `}${d.title}（${d.scope}，${d.level}）` : p.status === 'merged' ? `${me()} 并进 ${nm('weaknesses', p.into)}` : `${me()} ${Object.entries(p).filter(([k]) => k !== 'last' && !(nameOf && k === 'errors')).map(([k, v]) => `${nameOf ? FIELD[k] || k : k} → ${Array.isArray(v) ? (nameOf && k === 'blocks' ? v.map((b) => nm('curriculum', b)).join('、') : v.join('、')) : v}`).join('，') || (nameOf && p.errors ? '多挂了一道错题' : '')}`),
     review: () => (pd.op === 'add' ? `${nameOf ? '' : `${pd.target} `}${d.title}` : `${me()} ${p.status ? ({ paused: '暂停', merged: `并进 ${nm('reviews', p.into)}`, done: `停掉：${p.why || ''}` }[p.status] || '恢复') : p.result ? `${p.result}，下次 ${p.tier} 天后` : p.content ? `加题：${p.content.at(-1)}` : '改了'}`),
+    recall: () => (pd.op === 'add' ? `${d.q} → ${d.a}` : p.status === 'void' ? `${me()} 不用记了${p.why ? `：${p.why}` : ''}` : p.result ? `${me()} ${{ got: '想起来了', vague: '模糊', miss: '没想起' }[p.result] || ''}` : `${me()} 改成：${p.q || ''}${p.a ? ` → ${p.a}` : ''}`),
     position: () => p.next || d.next || (p.block ? `学到 ${nm('curriculum', p.block)}` : '改了'),
     mastery: () => { const st = p.state || d.state; const t = p.tier ?? d.tier; return `${nm('curriculum', String(pd.target).split('#')[0])}${String(pd.target).includes('#') ? ` ${String(pd.target).split('#')[1]}` : ''} → ${st}${st === '复现通过' && t ? `（第 ${t} 天那档）` : ''}`; },
   }[pd.kind];

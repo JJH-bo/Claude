@@ -6,7 +6,7 @@
 // - 题库 drills：下课写报告时，页面把这节课**页面判得了分**的组件（连同这节课的 let 块）抄一份。组件 id 换成题库编号，
 //   练习里的作答 comp 就是题库编号，按它对回题库、块和知识点。
 // - 挑题 pickDrills：到期的复现组挂的块和错题、掉了的块、该复现的块、最近错过的，分高的先；混练：挨着的两道尽量不同块。
-// - 做完 drillOutcome：每道题的结果；复现组的结果提议（过 / 没过，等我确认）；错了的几道拼成开课用的资料包。
+// - 做完 drillOutcome：每道题的结果；复现组没过的直接记（原题都对了不算复现通过，档位不动）；错了的几道拼成开课用的资料包。
 import { toDate, addDays, dueList, nextTier, REVIEW_TIERS } from './schema.js';
 import { itemsOf } from './report.js';
 import { voidedIds, resolvedErrors } from './memo.js';
@@ -195,6 +195,7 @@ export function drillOutcome({ drills = [], evidence = [], mem = {}, reviews = [
     return { id: d.id, block: String(d.block || ''), point: d.point || '', q: d.q || '', outcome, sure, clean: outcome === 'first' && sure !== false, evidence: mine.flatMap((x) => x.evidence || []) };
   });
   const reviewResults = [];
+  const practiced = [];
   for (const rid of reviews) {
     const r = (mem.reviews || []).find((x) => String(x.id) === String(rid));
     if (!r) continue;
@@ -205,9 +206,12 @@ export function drillOutcome({ drills = [], evidence = [], mem = {}, reviews = [
     }).filter((row) => row.outcome !== 'skip' && row.outcome !== 'open');
     if (!mine.length) continue;
     const passed = mine.every((x) => x.clean);
+    // 练一练的题是原题：都对了只说明还记得这几道，按我的规则（新题、不是原题换数）不算复现通过，档位不动（practiced）；
+    // 有一道没一次做对，连原题都不会了，照样记没过
+    if (passed) { practiced.push({ id: String(r.id), n: mine.length }); continue; }
     reviewResults.push({ id: String(r.id), passed, tier: nextTier(r.tier, passed), basis: mine.flatMap((x) => x.evidence.slice(-2)).slice(0, 20), n: mine.length, bad: mine.filter((x) => !x.clean).length });
   }
-  return { rows, wrong: rows.filter((x) => ['wrong', 'giveup', 'ok'].includes(x.outcome) || x.sure === false).map((x) => x.id), reviewResults };
+  return { rows, wrong: rows.filter((x) => ['wrong', 'giveup', 'ok'].includes(x.outcome) || x.sure === false).map((x) => x.id), reviewResults, practiced };
 }
 
 const newId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
