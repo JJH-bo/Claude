@@ -1,0 +1,1 @@
+{"say": "换 0 吧，内存里它最早进来的。", "acts": [{"comp": "pg-lru", "value": "0"}], "sure": {"pg-lru": false}}
