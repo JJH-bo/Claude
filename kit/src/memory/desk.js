@@ -31,6 +31,7 @@ import { masteryProposals, masteryPendingWrites } from './mastery.js';
 import { pickDrills, harvestDrills, drillLine, DRILL_N } from './drills.js';
 import { enterDrill } from './drillrun.js';
 import { recallToday, spaceCounts } from './recall.js';
+import { PICKS, MORE, applyTheme } from '../theme.js';
 import { runRecall } from './recallrun.js';
 import { purgePlan, purgeText } from './purge.js';
 import { needsSkills, skillsPrompt, parseSkills, skillSummary, pointCatalog, lessonLines, SKILLS_VERSION } from './skills.js';
@@ -106,6 +107,7 @@ export async function renderDesk(root, meta) {
     </div>
     </div>
     <div class="dk-manage" hidden>
+    <section class="dk-card dk-look"><h2 class="dk-h">样子</h2><p class="dk-sub muted">学习台和课堂都换成这个样子，这台设备记着。</p><div class="dk-body"></div></section>
     <section class="dk-card dk-recent"><h2 class="dk-h">最近记下的</h2><p class="dk-sub muted">课堂里的 Claude 和页面直接写进记忆的，不对就撤销（7 天内）。</p><div class="dk-pdone"></div></section>
     <section class="dk-card dk-mine" hidden><h2 class="dk-h">我改记忆</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-backup" hidden><h2 class="dk-h">备份</h2><div class="dk-body"></div></section>
@@ -781,6 +783,22 @@ export async function renderDesk(root, meta) {
       toast(`没开成：${err?.message || err}`);
       root.querySelectorAll('.dk-review').forEach((x) => { x.disabled = false; });
     }
+  });
+
+  // —— 样子（theme.js）：三种推荐的，加上收起来的另外三种；点了马上换，这台设备记着 ——
+  function paintLook() {
+    const cur = document.documentElement.dataset.theme || '';
+    const sw = (x) => `<span class="dk-sw" aria-hidden="true" style="background:${x.sw[0]}"><i style="background:${x.sw[1]}"><b style="background:${x.sw[2]}"></b><b style="background:${x.sw[3]}"></b></i></span>`;
+    const card = (x) => `<button type="button" class="dk-look-btn" data-theme-id="${escapeHtml(x.id)}" aria-pressed="${x.id === cur}">${sw(x)}<span class="dk-look-t"><b>${escapeHtml(x.name)}</b>${x.note ? `<span class="muted">${escapeHtml(x.note)}</span>` : ''}</span></button>`;
+    $('.dk-look .dk-body').innerHTML = `<div class="dk-looks">${PICKS.map(card).join('')}</div>
+      <details class="dk-soft"${MORE.some((x) => x.id === cur) ? ' open' : ''}><summary>更多</summary><div class="dk-looks is-more">${MORE.map(card).join('')}</div></details>`;
+  }
+  paintLook();
+  $('.dk-look').addEventListener('click', (e) => {
+    const b = e.target.closest('.dk-look-btn');
+    if (!b) return;
+    applyTheme(b.dataset.themeId, { save: true });
+    paintLook();
   });
 
   // —— 首页以外的页面：课程地图、弱点表、错题本、以前的课、统计（pages.js，换页不刷新）——
