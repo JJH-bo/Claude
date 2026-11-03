@@ -34,6 +34,12 @@
    "page": 2,
    "title": "形状怎么定",
    "md": "$(m\\times \\chalk{yellow}{k})(\\chalk{yellow}{k}\\times n)\\;\\to\\; m\\times n$：中间的 $k$ 要相等，结果的形状是两头的 $m\\times n$。\n\n- $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$：$(2\\times\\chalk{yellow}{1})(\\chalk{yellow}{1}\\times2)\\to 2\\times2$\n- $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$：$(1\\times\\chalk{yellow}{2})(\\chalk{yellow}{2}\\times1)\\to 1\\times1$，一行乘一列，只有一个数\n\n```matrix\nid: m-bta\ntitle: βᵀα：点一下结果里的数\nlet R = [[3, 1]]\nlet C = [[1], [2]]\nproduct R C name=S\n```\n\n```quiz\nid: q-dot3\nq: 换一组 3 维的：$\\mathbf u=(2,-1,3)^{\\mathrm T}$，$\\mathbf v=(1,4,2)^{\\mathrm T}$。$\\mathbf u^{\\mathrm T}\\mathbf v$ 等于多少？\nanswer: 4\nexplain: $(1\\times3)(3\\times1)\\to1\\times1$：$2\\cdot1+(-1)\\cdot4+3\\cdot2=\\calc{2*1+(-1)*4+3*2}$，是一个数。\n```"
+  },
+  {
+   "id": "b4",
+   "page": 3,
+   "title": "[5] 和 5 一样吗",
+   "md": "常驻栏里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=[\\,\\calc{b'*a}\\,]$，一个 $1\\times1$ 矩阵。\n\n```answer\nid: q-a11\ntitle: 按矩阵乘法乘\nq: 按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix}$ 等于多少？\nanswer: (b'*a)*a\nbefore: \\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix} =\nhint: 结果是 $2\\times1$：第 $i$ 行 = 左边第 $i$ 行的那个数 × 右边那一列的那个数。\nexplain: 第 1 行 $1\\cdot\\calc{b'*a}$，第 2 行 $2\\cdot\\calc{b'*a}$。\n```"
   }
  ],
  "pages": [
@@ -46,9 +52,14 @@
    "n": 2,
    "title": "形状怎么定",
    "talk": "算的过程没问题，结果是 4。你标了「没把握」：是哪一点让你不踏实？在下面输入框里用一句话说说就行。"
+  },
+  {
+   "n": 3,
+   "title": "[5] 和 5 一样吗",
+   "talk": "你的感觉没错：严格说它是一个 $1\\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。\n\n算完以后，拿结果和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 比一比。"
   }
  ],
- "cur": 2,
+ "cur": 3,
  "progress": {},
  "tries": {
   "q-shape1": 1,
@@ -156,6 +167,18 @@
     "raw": "```quiz\nid: q-dot3\nq: 换一组 3 维的：$\\mathbf u=(2,-1,3)^{\\mathrm T}$，$\\mathbf v=(1,4,2)^{\\mathrm T}$。$\\mathbf u^{\\mathrm T}\\mathbf v$ 等于多少？\nanswer: 4\nexplain: $(1\\times3)(3\\times1)\\to1\\times1$：$2\\cdot1+(-1)\\cdot4+3\\cdot2=\\calc{2*1+(-1)*4+3*2}$，是一个数。\n```",
     "at": 457
    }
+  },
+  "q-a11": {
+   "seg": {
+    "id": "b4"
+   },
+   "f": {
+    "lang": "answer",
+    "body": "id: q-a11\ntitle: 按矩阵乘法乘\nq: 按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix}$ 等于多少？\nanswer: (b'*a)*a\nbefore: \\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix} =\nhint: 结果是 $2\\times1$：第 $i$ 行 = 左边第 $i$ 行的那个数 × 右边那一列的那个数。\nexplain: 第 1 行 $1\\cdot\\calc{b'*a}$，第 2 行 $2\\cdot\\calc{b'*a}$。",
+    "id": "q-a11",
+    "raw": "```answer\nid: q-a11\ntitle: 按矩阵乘法乘\nq: 按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix}$ 等于多少？\nanswer: (b'*a)*a\nbefore: \\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix} =\nhint: 结果是 $2\\times1$：第 $i$ 行 = 左边第 $i$ 行的那个数 × 右边那一列的那个数。\nexplain: 第 1 行 $1\\cdot\\calc{b'*a}$，第 2 行 $2\\cdot\\calc{b'*a}$。\n```",
+    "at": 90
+   }
   }
  },
  "ops": [],
@@ -199,6 +222,11 @@
    "role": "student",
    "seq": 8,
    "text": "数是照规则乘出来的，但我不太懂它为什么就算「一个数」，感觉它还是个矩阵，只是里面算出个4。\n[作答] b3 里的 quiz q-dot3：「换一组 3 维的：$\\mathbf u=(2,-1,3)^{\\mathrm T}$，$\\mathbf v=(1,4,2)^{\\mathrm T}$。$\\mathbf u^{\\mathrm T}\\mathbf v$ 等于多少？」做对了（共 2 次）\n[动作] b3 里的组件 q-dot3：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "role": "claude",
+   "seq": 9,
+   "text": "你的感觉没错：严格说它是一个 $1\\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。\n\n````board new id=b4 title=\"[5] 和 5 一样吗\"\n常驻栏里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=[\\,\\calc{b'*a}\\,]$，一个 $1\\times1$ 矩阵。\n\n```answer\nid: q-a11\ntitle: 按矩阵乘法乘\nq: 按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix}$ 等于多少？\nanswer: (b'*a)*a\nbefore: \\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix} =\nhint: 结果是 $2\\times1$：第 $i$ 行 = 左边第 $i$ 行的那个数 × 右边那一列的那个数。\nexplain: 第 1 行 $1\\cdot\\calc{b'*a}$，第 2 行 $2\\cdot\\calc{b'*a}$。\n```\n````\n\n算完以后，拿结果和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 比一比。\n"
   }
  ],
  "turns": [
@@ -320,8 +348,20 @@
     }
    ],
    "msg": "数是照规则乘出来的，但我不太懂它为什么就算「一个数」，感觉它还是个矩阵，只是里面算出个4。\n[作答] b3 里的 quiz q-dot3：「换一组 3 维的：$\\mathbf u=(2,-1,3)^{\\mathrm T}$，$\\mathbf v=(1,4,2)^{\\mathrm T}$。$\\mathbf u^{\\mathrm T}\\mathbf v$ 等于多少？」做对了（共 2 次）\n[动作] b3 里的组件 q-dot3：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "seq": 9,
+   "role": "teacher",
+   "bytes": 867,
+   "talk": "你的感觉没错：严格说它是一个 $1\\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。\n\n算完以后，拿结果和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 比一比。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 3 块板「[5] 和 5 一样吗」\n\n老师写在板顶的话：你的感觉没错：严格说它是一个 $1\\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。\n\n算完以后，拿结果和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 比一比。\n\n## [5] 和 5 一样吗\n常驻栏里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=[\\,5\\,]$，一个 $1\\times1$ 矩阵。\n\n【作答题 q-a11】按矩阵乘法乘\n  按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}5\\end{bmatrix}$ 等于多少？\n  （写出答案）\n\n# 常驻栏\n## 这节课的记号\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 8,
+ "seq": 9,
  "pendingNotes": []
 }

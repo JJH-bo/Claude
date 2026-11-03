@@ -1,22 +1,14 @@
-# 第 2 块板「形状怎么定」
+# 第 3 块板「[5] 和 5 一样吗」
 
-老师写在板顶的话：算的过程没问题，结果是 4。你标了「没把握」：是哪一点让你不踏实？在下面输入框里用一句话说说就行。
+老师写在板顶的话：你的感觉没错：严格说它是一个 $1\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。
 
-## 形状怎么定
-$(m\times \chalk{yellow}{k})(\chalk{yellow}{k}\times n)\;\to\; m\times n$：中间的 $k$ 要相等，结果的形状是两头的 $m\times n$。
+算完以后，拿结果和 $\boldsymbol\alpha=(1,2)^{\mathrm T}$ 比一比。
 
-- $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$：$(2\times\chalk{yellow}{1})(\chalk{yellow}{1}\times2)\to 2\times2$
-- $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$：$(1\times\chalk{yellow}{2})(\chalk{yellow}{2}\times1)\to 1\times1$，一行乘一列，只有一个数
+## [5] 和 5 一样吗
+常驻栏里 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=[\,5\,]$，一个 $1\times1$ 矩阵。
 
-【matrix m-bta】
-  id: m-bta
-  title: βᵀα：点一下结果里的数
-  let R = [[3, 1]]
-  let C = [[1], [2]]
-  product R C name=S
-
-【填空题 q-dot3】
-  换一组 3 维的：$\mathbf u=(2,-1,3)^{\mathrm T}$，$\mathbf v=(1,4,2)^{\mathrm T}$。$\mathbf u^{\mathrm T}\mathbf v$ 等于多少？
+【作答题 q-a11】按矩阵乘法乘
+  按矩阵乘法规则算 $(2\times1)(1\times1)$：$\begin{bmatrix}1\\2\end{bmatrix}\begin{bmatrix}5\end{bmatrix}$ 等于多少？
   （写出答案）
 
 # 常驻栏
