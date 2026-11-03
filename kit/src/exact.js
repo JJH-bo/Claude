@@ -95,6 +95,9 @@ export class Sym { constructor(name) { this.name = name; } }
 export const isSym = (x) => x instanceof Sym;
 let symbolic = null;
 export function useSymbolic(fn) { symbolic = fn; }
+// 算法函数（algofuncs.js 注册：next、nextval、faults、victims、wpl）：要用引擎，引擎不能反过来 import 这里
+const EXTRA = {};
+export function useFuncs(obj) { Object.assign(EXTRA, obj); }
 class NeedSymbolic extends Error { constructor() { super('含参数'); this.symbolic = true; } }
 export const isQVec = (x) => Array.isArray(x) && x.length > 0 && x.every(isQ);
 export const isQMat = (x) => Array.isArray(x) && x.length > 0 && x.every((r) => isQVec(r) && r.length === x[0].length);
@@ -362,6 +365,8 @@ const FUNCS = {
   // 含参数时 factor(det(A)) 写成因式分解的样子（paramcalc.js）；没有参数时就是它自己
   factor: (x) => x,
   expand: (x) => x,
+  // same(a, b)：两个值（数、向量、矩阵、写出来的词）一样是 1，不一样是 0（where 里比两串换出的页：same(victims(v, 3, lru), victims(v, 3, fifo)) == 0）
+  same: (a, b) => new Q(exactText(a) === exactText(b) ? 1n : 0n),
   // 向量的几个小工具（practice 取数用）：el(v, 2) 第 2 个分量（从 1 数）、sort(v) 从小到大、sum(v)、cumsum(v) 前缀和
   el: (v, i) => { vec(v); const k = int(i, '第几个') - 1; if (k < 0 || k >= v.length) throw new Error(`没有第 ${k + 1} 个分量（一共 ${v.length} 个，从 1 数）`); return v[k]; },
   sort: (v) => vec(v).slice().sort((a, b) => a.cmp(b)),
@@ -496,6 +501,11 @@ function run(n, vars) {
       return items;
     }
     case 'call': {
+      const ex = EXTRA[n.name];
+      if (ex) {
+        // 算法名直接写：faults(v, 3, lru)（没定义的名字当成一个词）
+        return ex(...n.args.map((x) => (x.t === 'var' && !(x.name in vars) ? textValue(x.name) : run(x, vars))));
+      }
       const f = FUNCS[n.name];
       if (!f) {
         if (FLOAT_ONLY.has(n.name)) throw new Inexact(`${n.name}() `);

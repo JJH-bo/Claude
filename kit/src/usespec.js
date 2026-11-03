@@ -124,7 +124,8 @@ export function drawUse(tpl, { base = {}, rand = Math.random, avoid = null, trie
 }
 
 // —— 内置出题：就是写好的模板（和老师写的同一套取数、自检），[level 1, level 2] ——
-// 数都取得「考试里那样」：位数、长度和王道的例题差不多；字段写法和各组件的说明一致
+// 数都取得「考试里那样」：位数、长度和王道的例题差不多；字段写法和各组件的说明一致。
+// 能分开对错两种想法的才出（where same(…) == 0）：LRU 和 FIFO 换出的页不一样、nextval 和 next 不一样，照抄、按错法做都对不上
 const T = String.raw;
 export const BUILTIN_USE = {
   hamming: { name: '海明码', levels: [T`pick d = bits(4) nonzero
@@ -194,6 +195,7 @@ mtu: \calc{m}, \calc{r}`] },
   kmp: { name: 'next / nextval', levels: [T`pick p = str(7, ab)
 pattern: \calc{p}
 show: next`, T`pick p = str(8, abc)
+where same(next(p), nextval(p)) == 0
 pattern: \calc{p}
 show: nextval`] },
   huffman: { name: '哈夫曼树的 WPL', levels: [T`pick v = seq(5, 1, 12) distinct
@@ -212,11 +214,13 @@ algo: \calc{a}
 pass: \calc{p}`] },
   paging: { name: '页面置换', levels: [T`pick v = seq(12, 0, 5)
 pick a = word(fifo, lru, opt)
+where same(victims(v, 3, lru), victims(v, 3, fifo)) == 0
 refs: \calc{list(v)}
 frames: 3
 algo: \calc{a}`, T`pick v = seq(16, 0, 7)
 pick a = word(fifo, lru, opt, clock)
 pick f = int(3, 4)
+where same(victims(v, f, lru), victims(v, f, fifo)) == 0
 refs: \calc{list(v)}
 frames: \calc{f}
 algo: \calc{a}`] },

@@ -4,6 +4,7 @@ import katex from 'katex';
 import { blocks } from './blocks/index.js';
 import { session } from './session.js';
 import { calcValue, expandCalc, parseLets, letValue } from './exact.js';
+import './algofuncs.js'; // 表达式里的算法函数（next、nextval、faults……）：exact.js 交给它
 import './paramcalc.js'; // 含参数的 \calc（let 里写 a = param）：exact.js 遇到参数时交给它
 import { MARK_COLORS } from './markspec.js';
 
