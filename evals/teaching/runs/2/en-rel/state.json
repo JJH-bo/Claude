@@ -22,6 +22,18 @@
    "page": 2,
    "title": "换一对句子",
    "md": "**A.** The students **who passed the exam** went home early.\n\n**B.** The students**, who passed the exam,** went home early.\n\n```quiz\nid: q-b2\nq: 哪一句说的是**全班学生都考过了**，而且都早早回家了？\n- [ ] A（没有逗号）\n- [x] B（有逗号）\n- [ ] 两句一样\nexplain: B 的逗号把 who passed the exam 隔开，只是补充说明「这些学生（全体）都考过了」；A 没有逗号，是从学生里**挑出**考过的那部分，没考过的可能还在学校。\n```"
+  },
+  {
+   "id": "b3",
+   "page": 3,
+   "title": "删掉试试",
+   "md": "把从句删掉，看前面的名词还能不能让人知道说的是谁：\n\n- B 句删掉后：*My brother is a doctor.* 听的人知道是谁（我就那一个哥哥）→ 从句只是**补充**，加逗号。\n- A 句删掉后：*My brother is a doctor.* 如果我有三个哥哥，就不知道是哪个了 → 从句在**挑出**是哪个，不加逗号。\n\n所以「只有一个」是结果：名词已经确定（专有名词、my mother、全体学生……），从句就只能补充。\n\n```quiz\nid: q-b3\nq: 哪一句写得自然？\n- [ ] My mother who is a teacher lives in Shanghai.\n- [x] My mother, who is a teacher, lives in Shanghai.\nexplain: 每个人只有一位母亲，my mother 已经确定是谁，删掉 who is a teacher 也知道说的是谁，从句只是补充，要加逗号。不加逗号会让人以为你有好几位母亲，要挑出当老师的那位。\n```"
+  },
+  {
+   "id": "k1",
+   "place": "pin",
+   "title": "有没有逗号",
+   "md": "删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）"
   }
  ],
  "pages": [
@@ -34,12 +46,18 @@
    "n": 2,
    "title": "换一对句子",
    "talk": "你的理由是对的：没逗号的从句在**挑出哪一个**。你标了没把握，是不确定「有逗号就只有一个」这一边吗？先换一对句子再试一次，顺便一句话告诉我哪里不踏实。"
+  },
+  {
+   "n": 3,
+   "title": "删掉试试",
+   "talk": "关键不在「几个」，在于**名词本身是不是已经确定是谁**。用「删掉试试」来判断，看板上。\n\n选完用一句话说说：你是怎么判断的？"
   }
  ],
- "cur": 2,
+ "cur": 3,
  "progress": {},
  "tries": {
-  "q-b1": 1
+  "q-b1": 1,
+  "q-b2": 1
  },
  "results": {
   "q-b1": [
@@ -49,6 +67,18 @@
     "step": "b1",
     "type": "quiz",
     "q": "哪一句暗示说话的人**不止一个**哥哥（有一个在北京，可能还有别的在别处）？",
+    "ok": true,
+    "attempts": 1,
+    "final": true
+   }
+  ],
+  "q-b2": [
+   {
+    "source": "record",
+    "block": "q-b2",
+    "step": "b2",
+    "type": "quiz",
+    "q": "哪一句说的是**全班学生都考过了**，而且都早早回家了？",
     "ok": true,
     "attempts": 1,
     "final": true
@@ -79,6 +109,18 @@
     "raw": "```quiz\nid: q-b2\nq: 哪一句说的是**全班学生都考过了**，而且都早早回家了？\n- [ ] A（没有逗号）\n- [x] B（有逗号）\n- [ ] 两句一样\nexplain: B 的逗号把 who passed the exam 隔开，只是补充说明「这些学生（全体）都考过了」；A 没有逗号，是从学生里**挑出**考过的那部分，没考过的可能还在学校。\n```",
     "at": 126
    }
+  },
+  "q-b3": {
+   "seg": {
+    "id": "b3"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-b3\nq: 哪一句写得自然？\n- [ ] My mother who is a teacher lives in Shanghai.\n- [x] My mother, who is a teacher, lives in Shanghai.\nexplain: 每个人只有一位母亲，my mother 已经确定是谁，删掉 who is a teacher 也知道说的是谁，从句只是补充，要加逗号。不加逗号会让人以为你有好几位母亲，要挑出当老师的那位。",
+    "id": "q-b3",
+    "raw": "```quiz\nid: q-b3\nq: 哪一句写得自然？\n- [ ] My mother who is a teacher lives in Shanghai.\n- [x] My mother, who is a teacher, lives in Shanghai.\nexplain: 每个人只有一位母亲，my mother 已经确定是谁，删掉 who is a teacher 也知道说的是谁，从句只是补充，要加逗号。不加逗号会让人以为你有好几位母亲，要挑出当老师的那位。\n```",
+    "at": 223
+   }
   }
  },
  "ops": [],
@@ -97,6 +139,16 @@
    "role": "claude",
    "seq": 3,
    "text": "你的理由是对的：没逗号的从句在**挑出哪一个**。你标了没把握，是不确定「有逗号就只有一个」这一边吗？先换一对句子再试一次，顺便一句话告诉我哪里不踏实。\n\n````board new id=b2 title=\"换一对句子\"\n**A.** The students **who passed the exam** went home early.\n\n**B.** The students**, who passed the exam,** went home early.\n\n```quiz\nid: q-b2\nq: 哪一句说的是**全班学生都考过了**，而且都早早回家了？\n- [ ] A（没有逗号）\n- [x] B（有逗号）\n- [ ] 两句一样\nexplain: B 的逗号把 who passed the exam 隔开，只是补充说明「这些学生（全体）都考过了」；A 没有逗号，是从学生里**挑出**考过的那部分，没考过的可能还在学校。\n```\n````\n"
+  },
+  {
+   "role": "student",
+   "seq": 4,
+   "text": "选B。不踏实的是有逗号是不是就一定只有一个、没有别的可选，感觉有点绕\n[作答] b2 里的 quiz q-b2：「哪一句说的是**全班学生都考过了**，而且都早早回家了？」做对了（共 1 次）\n[动作] b2 里的组件 q-b2：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "role": "claude",
+   "seq": 5,
+   "text": "关键不在「几个」，在于**名词本身是不是已经确定是谁**。用「删掉试试」来判断，看板上。\n\n````board new id=b3 title=\"删掉试试\"\n把从句删掉，看前面的名词还能不能让人知道说的是谁：\n\n- B 句删掉后：*My brother is a doctor.* 听的人知道是谁（我就那一个哥哥）→ 从句只是**补充**，加逗号。\n- A 句删掉后：*My brother is a doctor.* 如果我有三个哥哥，就不知道是哪个了 → 从句在**挑出**是哪个，不加逗号。\n\n所以「只有一个」是结果：名词已经确定（专有名词、my mother、全体学生……），从句就只能补充。\n\n```quiz\nid: q-b3\nq: 哪一句写得自然？\n- [ ] My mother who is a teacher lives in Shanghai.\n- [x] My mother, who is a teacher, lives in Shanghai.\nexplain: 每个人只有一位母亲，my mother 已经确定是谁，删掉 who is a teacher 也知道说的是谁，从句只是补充，要加逗号。不加逗号会让人以为你有好几位母亲，要挑出当老师的那位。\n```\n````\n\n````board pin id=k1 title=\"有没有逗号\"\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）\n````\n\n选完用一句话说说：你是怎么判断的？\n"
   }
  ],
  "turns": [
@@ -141,8 +193,39 @@
    "notes": [],
    "plan": false,
    "view": "# 第 2 块板「换一对句子」\n\n老师写在板顶的话：你的理由是对的：没逗号的从句在**挑出哪一个**。你标了没把握，是不确定「有逗号就只有一个」这一边吗？先换一对句子再试一次，顺便一句话告诉我哪里不踏实。\n\n## 换一对句子\n**A.** The students **who passed the exam** went home early.\n\n**B.** The students**, who passed the exam,** went home early.\n\n【选择题 q-b2】\n  哪一句说的是**全班学生都考过了**，而且都早早回家了？\n  A. A（没有逗号）\n  B. B（有逗号）\n  C. 两句一样\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 4,
+   "role": "student",
+   "say": "选B。不踏实的是有逗号是不是就一定只有一个、没有别的可选，感觉有点绕",
+   "acts": [
+    {
+     "comp": "q-b2",
+     "ok": true,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-b2",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "选B。不踏实的是有逗号是不是就一定只有一个、没有别的可选，感觉有点绕\n[作答] b2 里的 quiz q-b2：「哪一句说的是**全班学生都考过了**，而且都早早回家了？」做对了（共 1 次）\n[动作] b2 里的组件 q-b2：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "seq": 5,
+   "role": "teacher",
+   "bytes": 1356,
+   "talk": "关键不在「几个」，在于**名词本身是不是已经确定是谁**。用「删掉试试」来判断，看板上。\n\n选完用一句话说说：你是怎么判断的？",
+   "ops": [
+    "new",
+    "pin"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 3 块板「删掉试试」\n\n老师写在板顶的话：关键不在「几个」，在于**名词本身是不是已经确定是谁**。用「删掉试试」来判断，看板上。\n\n选完用一句话说说：你是怎么判断的？\n\n## 删掉试试\n把从句删掉，看前面的名词还能不能让人知道说的是谁：\n\n- B 句删掉后：*My brother is a doctor.* 听的人知道是谁（我就那一个哥哥）→ 从句只是**补充**，加逗号。\n- A 句删掉后：*My brother is a doctor.* 如果我有三个哥哥，就不知道是哪个了 → 从句在**挑出**是哪个，不加逗号。\n\n所以「只有一个」是结果：名词已经确定（专有名词、my mother、全体学生……），从句就只能补充。\n\n【选择题 q-b3】\n  哪一句写得自然？\n  A. My mother who is a teacher lives in Shanghai.\n  B. My mother, who is a teacher, lives in Shanghai.\n\n# 常驻栏\n## 有没有逗号\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 3,
+ "seq": 5,
  "pendingNotes": []
 }
