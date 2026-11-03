@@ -1,6 +1,6 @@
 # 学习台 · 给 Claude 的教学说明
 
-> **版本：2026-11-03k**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
+> **版本：2026-11-03l**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
 >
 > 这份说明的**最新版**一直放在**学习台** artifact 里（文件 `CLAUDE-PROJECT.md`）。每个新对话里，第一次做和学习有关的事（写黑板、备课、读课堂记录、改记忆）之前，先用 `Artifact` 工具读它：`action: "read"`，`url` 是上面的学习台地址，`path: "CLAUDE-PROJECT.md"`。
 > - 读到的版本比你手上这份新：以读到的为准，这份里和它不一样的地方全部作废。回复里顺便告诉我「项目指令里的说明是旧版（版本号），学习台里是新版（版本号）」。
@@ -445,6 +445,11 @@ b = [1, 1, -2]
 - 模型是固定的：课堂里的 Claude 只用 Opus 5.5（effort high）。平台临时换成别的模型时，那一轮整段作废，我会看到「Opus 5.5 暂时用不了，稍后点重试」。资料包里不要写模型相关的字段。我在板顶那句话后面看得到「Opus 5.5 ✓」（平台核验过的模型），「⋯」菜单里有这节课核验过几轮、作废了几轮。
 - `images`（可选）：讲义里关键的幻灯片、教材页，课堂里的 Claude 能用 `image` 组件贴上黑板，自己也能用工具看。先把图片上传到学习台的 assets（`Artifact` 工具 publish，`url` 是学习台地址，`asset: true`，`file_path` 是图片），再在 `pack/main` 里写 `images: [{ "name": "例2.1", "src": "上传结果里给的 url，原样照抄", "title": "讲义里例 2.1 那一页" }]`。名字要短，课堂 Claude 按名字找。
 - 课堂里的 Claude 有这些教具，`plan` 里可以直接点名用：`board mark` 圈、框、划板上已有的东西并写旁注；`matrix` 组件演示会动的矩阵（幂次、分块、乘积）；`derive` 一行一行写推导；`sketch` 当场画示意图；`image` 贴讲义原图；`practice` 的 `type: custom` 换着数出题；`formula: n` 判含 n 的式子；公式里的 `\calc{…}` 让页面精确地算，`let` 块定义整节课的量。资料包 `textbook` 里的矩阵、向量照原样写清楚（比如 `A = [[1, 1], [2, 2]]`），它好放进 `let` 块。
+- **预案和拍子**（2026-11-03k 起；写法在课堂说明里，课堂里的 Claude 每一轮都看得到，你不用教它写法）：
+  - **预案** `board react target=组件`：出题时写好「答对 / 答错 / 页面认出的某种错法 / 想不出来 / 例题看完」各接什么。我作答落在里面时，页面当场把那句话写到板顶、揭开预先藏着的下一题（`board add id=… hold`），**不调用它**（每调用一次要重发整份说明，约 2～6 万 token，我还要等几十秒）。板顶那句话标「Opus 5.5 预写」。没写到的情况、我打字、附图、在板上写、标「没把握」，照常调用。
+  - **拍子**：它一轮里「说一句 → 写一段 → 再说一句 → 圈一下」时，页面一拍一拍地播，我点「下一拍」往下走、点「‹」倒回去看。
+  - 想让它多用，在 `plan` 里点名：比如「确认题都写预案：答对揭开下一题，常见错法写针对的提示」「这段推导分拍讲，一拍圈一项」。
+  - 这两样**只在课堂里有**（学习台首页「开新课」开的课）；实时黑板（第五节）是你写的，没有。页面要是开着旧版（学习台底部的版本早于 2026-11-03k），刷新一下。
 
 ### 教具指令：figure、mark / unmark
 
@@ -486,14 +491,14 @@ b = [1, 1, -2]
 
 - `collection: "class_turns"`（`query`，`order_by: seq`，**`limit: 1000`**——不写 limit 只返回前 100 条，长的课会被截掉；记录多时加 `out_dir` 存成文件再读）：每一轮一条，按 `seq` 排起来就是整节课。字段：`seq`、`role`、`text`、`kind`、`discarded`、`at`，以及下面各自的字段。
   - `role: "student"`：`say` 是我说的话（打字或快捷按钮）；`start: true` 是我点了「开始上课」按钮（`say` 固定是「开始上课。」，不是我打的字）；`actions` 是我在黑板上的动作，每条一行，比如「[作答] b7 里的 steps 第 3 步：选了『跑到线外去』（错），用时 44 秒」；`drafts` 是我在黑板上写了、还没点「检查」「提交」的草稿（填了一半的格子、打了字的理由框），跟着这一条一起发给了课堂里的 Claude，比如「[草稿] b4 里的 answer q-b4：写着 (3, □)，还没提交」；`images` 是我附的手写 / 截图原图的 asset id（我在黑板上用 Pencil 新写的板书也会导出成图附进来，`text` 里有一行「[板书] …」说写在哪一段上）；`text` 是发给课堂 Claude 的完整内容（我在「⋯」里打开了「停久了提醒老师」（默认关：每提醒一次就多调用一轮）、又在一块板上很久没动静时，页面会发一行「[动作] 学生在当前板上 … 分钟没有动静」，课堂 Claude 只轻轻问一句）；`page` 是我发这条时黑板在第几块板。
-  - `role: "claude"`：`text` 是课堂里的 Claude 的完整输出（话 + 黑板指令原文）；`boardOps` 是实际执行了哪些指令（`op`：new / add / replace / hide / pin / unpin / figure / mark / unmark / memo（学习台里改记忆，`n` 是读懂了几条，每条记成什么见 `pending`），`id`，`page` 是写在第几块板，`ok: false` 的没执行成功，`error` 是原因；figure 还有 `action`：set / play / highlight 和 `args`；mark 的 `marks` 是画上的标注：`id`、所在的段 `seg`、标的什么 `spec`；unmark 的 `ids` 是擦掉的标注）；`page` 是这一轮之后黑板停在第几块板，`talkPage` 是它这一轮的话写在第几块板的顶上（只改了写法、没对我说话的轮没有）；`truncated: true` 表示这一轮太长被截断了；`tools` 是它调用过的工具（如果有）；`modelApplied` 一定是 `claude-opus-5-5`；`cost` 是这一次调用花了多少（见下面 `role: "system"` 后面的说明）。
-  - `role: "system"`：页面发给它的系统消息。`kind` 有：`lint`（它写的组件有写法错误，没显示，要求重写）、`note`（指令没执行之类的提醒）、`images`（它要看的手写原图，附在这一轮）、`summary`（对话太长时的摘要，`upTo` 是摘要覆盖到第几轮）、`closing`（下课小结）、`fallback`（Opus 5.5 不可用，这一轮作废）、`error`（这一轮出错或我点了停止，`code` 是原因）。
+  - `role: "claude"`：`text` 是课堂里的 Claude 的完整输出（话 + 黑板指令原文）；`boardOps` 是实际执行了哪些指令（`op`：new / add / replace / hide / show（揭开藏着的段）/ pin / unpin / figure / mark / unmark / react（预案：`target` 组件、`cases` 各种情况接什么）/ memo（学习台里改记忆，`n` 是读懂了几条，每条记成什么见 `pending`），`id`，`page` 是写在第几块板，`ok: false` 的没执行成功，`error` 是原因；figure 还有 `action`：set / play / highlight 和 `args`；mark 的 `marks` 是画上的标注：`id`、所在的段 `seg`、标的什么 `spec`；unmark 的 `ids` 是擦掉的标注）；`page` 是这一轮之后黑板停在第几块板，`talkPage` 是它这一轮的话写在第几块板的顶上（只改了写法、没对我说话的轮没有）；`truncated: true` 表示这一轮太长被截断了；`tools` 是它调用过的工具（如果有）；`modelApplied` 一定是 `claude-opus-5-5`；`cost` 是这一次调用花了多少（见下面 `role: "system"` 后面的说明）。
+  - `role: "system"`：页面发给它的系统消息。`kind` 有：`react`（页面按它预写的预案接了我的作答，这一次没调用它；`fired` 是用掉了哪个组件的哪一条：`target`、`kind`）、`lint`（它写的组件有写法错误，没显示，要求重写）、`note`（指令没执行之类的提醒）、`images`（它要看的手写原图，附在这一轮）、`summary`（对话太长时的摘要，`upTo` 是摘要覆盖到第几轮）、`closing`（下课小结）、`fallback`（Opus 5.5 不可用，这一轮作废）、`error`（这一轮出错或我点了停止，`code` 是原因）。
   - `cost`（2026-10-28 起）：调用了 Claude 的那一轮（讲课、重写、摘要、小结、作废的轮）记着这一次花了多少：`bytes` 发出去的字节数（整份说明 + 对话，约 2.8 字节一个 token），`why` 为什么调用（`turn` 我说话 / 作答引起的、`closing` 下课小结、`lint` 写错了要重写、`images` 要看原图补发一轮、`stuck` 停久了的提醒、`compact` 对话太长写摘要、`failed` 出错或换了模型白花的），`tools` 这一次里调了几次工具（每次平台多跑一整轮）。整节课的合计在 `sessions/{编号}` 的 `usage`（`calls` 估计跑了几轮、`bytes`、`tokens`、`avgBytes`、`extra` 多跑的轮按原因）。
   - 旧版课堂记录里的 `sayAfter`、`boardAt` 只是当时页面排话的位置，读记录时不用管。
   - `discarded: true` 的轮没有进入课堂对话：内容没给我看，黑板也没动。读的时候跳过它们的内容，只当作「这里卡过一下」。
 - `collection: "class_notes"`：课堂里的 Claude 记的观察（`kind: "note"`，`turn` 是在第几轮记的），以及下课时写的小结（`kind: "summary"`：讲了什么、我哪里卡住、哪里看起来懂了但证据不够、建议下一节怎么接；`verify: { turns, discarded }` 是页面记的：这节课平台核验是 Opus 5.5 回答的轮数、因为换了别的模型而作废的轮数）。**小结只有我点了「下课」才有**；直接关掉页面不会写（关页面时来不及等 Claude 写完），这时你就从 `class_turns` 自己读。
-- `collection: "class_pages"`：每一块板一条（`n` 是第几块，`title` 板的标题，`talk` 最后留在板顶的那句话，`talkBy` 是平台核验的、说这句话的模型，`lead` 板上第一段的 id）。`kind: "closing"` 的是下课小结那块板，小结在 `body` 里，`foot` 是页面写在最后的核验说明。学习台里上的课，`memo` 是挂在这块板顶那句话下面（小结那块板是整理单）的改动单 id（`pending`）。
-- `collection: "steps"`：黑板上出现过的每一段（`by: "class"`，`page` 是在第几块板上，`place: "pin"` 的是常驻栏里的条目（id 是 `k1`、`k2`…），`md` 是这一段**最后的版本**，改写前的版本在 `class_turns` 的 Claude 输出里；`hidden: true` 是被撤回、从常驻栏撤下的；`failed: true` 是重写两次还画不出来、我看到的是「这段没画出来」）。
+- `collection: "class_pages"`：每一块板一条（`n` 是第几块，`title` 板的标题，`talk` 最后留在板顶的那句话，`talkBy` 是平台核验的、说这句话的模型，`lead` 板上第一段的 id，`beats` 是这一轮分拍播时每一拍的话）。`kind: "closing"` 的是下课小结那块板，小结在 `body` 里，`foot` 是页面写在最后的核验说明。学习台里上的课，`memo` 是挂在这块板顶那句话下面（小结那块板是整理单）的改动单 id（`pending`）。
+- `collection: "steps"`：黑板上出现过的每一段（`by: "class"`，`page` 是在第几块板上，`place: "pin"` 的是常驻栏里的条目（id 是 `k1`、`k2`…），`md` 是这一段**最后的版本**，改写前的版本在 `class_turns` 的 Claude 输出里；`hidden: true` 是被撤回、从常驻栏撤下的；`held: true` 是预先写好、还藏着没揭开的（`add … hold`）；`failed: true` 是重写两次还画不出来、我看到的是「这段没画出来」）。
 - `collection: "answers"`、`"events"`：和实时黑板一样，每次作答、揭开、放弃、拖图都有记录；课堂里 `events` 还有 `end`（点了「下课」）。手写原图用 `Artifact` 工具 `action: "read"`、`path` 填 asset id 取回。
 
 读完后判断我是真的掌握了，还是只是跟着做下来；把错题、弱点、掌握、复现结果、下一节从哪接写进学习台（第七节「平时怎么用」），下一节资料包的 `student` 和 `plan` 也从学习台里摘。
