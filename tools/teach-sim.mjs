@@ -19,6 +19,11 @@ import { parseOutput } from '../kit/src/class/protocol.js';
 import { wordSpan } from '../kit/src/entext.js';
 import { parseCloze, matchText, diagnose, tokenizeSentence, findWrong, parseAnswer, parseDecoys, parseBrackets, judgeSpans, spansHint, parseRoles, parseChunk, judgeChunks, chunkHint, chunksOf, parseDrill, textHint } from '../kit/src/entext.js';
 import { compile, valueTeX } from '../kit/src/expr.js';
+import { ENGINES } from '../kit/src/engines/registry.js';
+import { parseFields } from '../kit/src/parse.js';
+import { calcFields, commonSpec, resolveAsks, parseAskField, checkAsk, askAnswerText } from '../kit/src/stepperspec.js';
+import { textAnswerSpec } from '../kit/src/textspec.js';
+import { toExact } from '../kit/src/exact.js';
 
 const [cmd, dir, arg, ...rest] = process.argv.slice(2);
 const read = (f) => fs.readFileSync(f, 'utf8');
@@ -75,7 +80,7 @@ const field = (body, k) => {
 const HIDDEN = /^\s*(answer|answers|check|explain|show|expected|hint|why|wrong|variants|alts|accept|solution)\s*[:：]/i;
 
 /** 一个组件 → 学生看到的文字（progress：steps 走到第几步了） */
-function studentComp(f, progress = 0) {
+function studentComp(f, progress = 0, st = null) {
   const id = f.id || '（没写 id）';
   try {
     if (f.lang === 'steps') {
@@ -115,11 +120,73 @@ function studentComp(f, progress = 0) {
     }
     if (['scene', 'graph', 'space', 'plot'].includes(f.lang)) return `【一张图 ${id}】${field(f.body, 'title')}（模拟课里拖不了；可以看图里的标注：${f.body.split('\n').filter((l) => /^\s*show\b|label=/.test(l)).map((l) => l.trim()).slice(0, 3).join('；') || '没有'}）`;
     if (f.lang === 'let') return '';
+    if (ENGINES[f.lang] && f.lang !== 'frames') return studentDemo(f, st, progress);
     // 别的组件：去掉答案类字段，原样给
     return `【${f.lang} ${id}】\n${f.body.split('\n').filter((l) => !HIDDEN.test(l) && !/^\s*-\s*\[[xX]\]/.test(l)).map((l) => `  ${l}`).join('\n')}`;
   } catch (e) {
     return `【${f.lang} ${id}】（这个组件写错了，学生看到的是「这段没画出来」：${e.message}）`;
   }
+}
+
+
+/* ---------------- 演示组件（stepper）：用真的引擎出题、判分 ---------------- */
+// 模拟课里学生做得了的：mode: quiz（写结果）和 ask:（先猜；在图上点的写出点的那个的名字）。fill 表格判不了
+function demoOf(f, st) {
+  const e = ENGINES[f.lang];
+  const raw = parseFields(e.head ? e.head(f.body) : f.body).fields;
+  const ev = {};
+  for (const [k, v] of Object.entries(boardVars(st))) { try { ev[k] = toExact(v); } catch { /* 小数照原样 */ } }
+  const { fields } = calcFields(raw, ev);
+  const common = commonSpec(fields);
+  const input = e.parse(fields, f.body);
+  if ((fields.ask === undefined || fields.ask === '') && e.defaultAsk) { const d = e.defaultAsk(input); if (d) common.ask = parseAskField(d); }
+  const run = e.run(input);
+  const quiz = common.mode === 'quiz' ? e.quiz?.(input, run, fields) : null;
+  const { asks, which } = resolveAsks(common.ask, run.steps);
+  const list = [...asks].map((k) => ({ at: k, ask: which.get(k) }));
+  const variants = () => (e.variants?.(input, fields) || []).map((v) => { try { return { label: v.label, input: v.input, run: e.run(v.input) }; } catch { return null; } }).filter(Boolean);
+  return { e, fields, input, run, quiz, list, mode: common.mode, variants };
+}
+const inputText = (fields) => Object.entries(fields).filter(([k]) => !['id', 'title', 'q', 'note', 'ask', 'mode', 'quiz', 'start', 'speed', 'auto', 'hint'].includes(k) && !HIDDEN.test(`${k}:`)).map(([k, v]) => `${k}: ${v}`).join('；');
+function studentDemo(f, st, progress) {
+  const id = f.id || '（没写 id）';
+  const d = demoOf(f, st);
+  const head = `【演示 ${f.lang} ${id}】${d.fields.title || d.e.title}${d.fields.q ? `\n  ${d.fields.q}` : ''}\n  输入：${inputText(d.fields)}`;
+  if (d.quiz) return `${head}\n  ${d.quiz.q}${d.quiz.qhtml ? '（题面画着开始的样子：就是上面的输入）' : ''}\n  （写出结果）`;
+  if (d.mode === 'fill') return `${head}\n  （自己填表：模拟课里填不了，跳过）`;
+  if (!d.list.length) return `${head}\n  （演示，一步步看；没有要你答的）`;
+  const k = Math.min(progress, d.list.length);
+  if (k >= d.list.length) return `${head}\n  （问题都答完了）`;
+  const { at, ask } = d.list[k];
+  const before = d.run.steps.slice(1, at).map((x, i) => `  第 ${i + 1} 步：${String(x.msg || '').replace(/\$/g, '')}`).slice(-4).join('\n');
+  const how = ask.kind === 'choice' ? `选项：${(ask.choices || []).join(' / ')}` : ask.kind === 'pick' ? `在图上点${(ask.count || 1) > 1 ? ` ${ask.count} 个` : ''}（写出点的那个的名字或值）` : ask.kind === 'order' ? '在图上按顺序点（按顺序写出来，空格隔开）' : '写出来';
+  return `${head}\n${before ? `${before}\n` : ''}  第 ${k + 1} / ${d.list.length} 问（走到第 ${at} 步之前）：${ask.q}\n  （${how}）`;
+}
+function judgeDemo(st, act, base, attempts) {
+  const { f } = st.compAt[act.comp];
+  const d = demoOf(f, st);
+  const title = d.fields.title || d.e.title;
+  const rec = { ...base, type: 'stepper', engine: f.lang, title };
+  if (d.quiz) {
+    const spec = textAnswerSpec(d.quiz.type || 'seq', d.quiz.answer, { width: d.quiz.width });
+    if (act.giveup) return { ...rec, q: d.quiz.q, ok: false, attempts, revealed: true, expected: spec.display, detail: '写出结果', final: true };
+    const ok = spec.check(act.value).ok;
+    const misread = ok ? '' : d.variants().find((v) => { try { const a = d.e.quiz(v.input, v.run, d.fields); return a && textAnswerSpec(d.quiz.type || 'seq', a.answer, { width: d.quiz.width }).check(act.value).ok; } catch { return false; } })?.label || '';
+    return { ...rec, q: d.quiz.q, value: act.value, ok, attempts, detail: '写出结果', misread: misread || undefined, final: ok };
+  }
+  const k = st.progress[f.id] || 0;
+  const item = d.list[k];
+  if (!item) return { source: 'page', text: `[系统] ${f.id} 没有要答的了` };
+  const next = () => { st.progress[f.id] = k + 1; st.tries[f.id] = 0; };
+  if (act.giveup) { next(); return { ...rec, q: item.ask.q, ok: false, attempts, giveup: true, expected: askAnswerText(item.ask), detail: `第 ${item.at} 步`, final: true }; }
+  const given = item.ask.kind === 'order' || (item.ask.kind === 'pick' && (item.ask.count || 1) > 1) ? String(act.value).split(/[\s,，、→]+/).filter(Boolean) : act.value;
+  const r = checkAsk(item.ask, given);
+  let misread = '';
+  if (!r.ok) {
+    misread = d.variants().find((v) => { const a = v.run.steps[item.at]?.ask; try { return a && a.tag === item.ask.tag && checkAsk(a, given).ok; } catch { return false; } })?.label || '';
+  }
+  if (r.ok) next();
+  return { ...rec, q: item.ask.q, value: Array.isArray(given) ? given.join(' ') : given, ok: r.ok, attempts, detail: `第 ${item.at} 步`, misread: misread || undefined, final: r.ok };
 }
 
 // 页面会把 \calc{…} 算好再写上去：学生看到的是数（算不出来的照原样留着）
@@ -135,7 +202,7 @@ function studentSeg(seg, st) {
   let pos = 0;
   for (const f of fs_) {
     out += md.slice(pos, f.at);
-    out += studentComp(f, st.progress[f.id] || 0);
+    out += studentComp(f, st.progress[f.id] || 0, st);
     pos = f.at + f.raw.length;
   }
   out += md.slice(pos);
@@ -274,6 +341,9 @@ function judge(st, act) {
     const d = r.ok ? null : diagnose(act.value, it.wrongs, { sentence: true });
     if (r.ok || attempts >= 2) { st.progress[f.id] = k + 1; st.tries[f.id] = 0; }
     return { ...base, type: 'drill', q: it.q, value: act.value, ok: r.ok, attempts, detail: r.ok ? '' : d?.why || textHint(r), misread: d ? `写成了常见的错法${d.why ? `：${d.why}` : ''}` : undefined };
+  }
+  if (ENGINES[f.lang] && f.lang !== 'frames') {
+    try { return judgeDemo(st, act, base, attempts); } catch (e) { return { source: 'page', text: `[系统] ${f.id} 判不了：${e.message}` }; }
   }
   if (f.lang === 'answer') {
     const exp = field(f.body, 'answer');
