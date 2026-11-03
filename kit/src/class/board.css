@@ -96,6 +96,8 @@
 
 /* 板上的段：比以前的课件排得紧一点，一屏才放得下 */
 .class-page-body { container: board / inline-size; }
+/* 黑板字号（boardzoom.js，「⋯」里的 A− / A+）：板的内容、常驻栏的卡整块缩放；标题和板顶的话不动 */
+.class-page-body, .class-pin { zoom: var(--board-zoom, 1); }
 /* 放不下就分屏（boardview.js 的 fitScreens）：不在这一屏的块藏起来，底部一条上一屏 / 下一屏 */
 .class-page .is-off { display: none !important; }
 .class-screens { margin-top: auto; padding-top: 10px; display: flex; align-items: center; justify-content: center; gap: 14px; font-family: var(--sans); font-size: 15px; color: rgb(var(--chalk-rgb) / 0.7); }

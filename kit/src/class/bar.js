@@ -4,6 +4,7 @@
 // 输入框一行：手写 · 截图 · 输入框 · 发送（生成中变「停止」）·「⋯」菜单（板书、复制学习记录、下课、模型标记）。
 // 只在需要时多出东西：附上的图（输入框上沿一排小照片）、出错 / 提示（输入框上面一条，带「重试」）、手写板、粘贴图片的小框。
 // 「Claude 在想 / 在写」的指示（indicator）由这里更新，但放在黑板末尾（控制器把它挂上去），眼睛不用离开黑板。
+import { getZoom, applyZoom, stepZoom } from './boardzoom.js';
 import { createPad } from '../ink/pad.js';
 import { createPageNav } from './pagenav.js';
 import { FEATURES } from '../features.js';
@@ -184,6 +185,7 @@ export function createClassBar({ onSend, onStop, onRetry, onEnd, onCopy, onQuick
     <div class="cb-pill">
       <div class="cb-menu" hidden role="menu" aria-label="课堂菜单">
         <div class="cb-dock"></div>
+        <div class="cb-font" role="group" aria-label="黑板字号"><span class="cb-font-l">黑板字号</span><button type="button" class="btn btn-sm cb-font-dn" aria-label="字小一点">A−</button><span class="cb-font-n">${Math.round(getZoom() * 100)}%</span><button type="button" class="btn btn-sm cb-font-up" aria-label="字大一点">A+</button></div>
         <button type="button" class="cb-item cb-copy" role="menuitem">${ICON.copy}<span>复制学习记录</span></button>
         ${stuck ? `<button type="button" class="cb-item cb-stuck" role="menuitemcheckbox" aria-checked="${stuck.on ? 'true' : 'false'}" title="我在一块板上很久没动静（题还没做）时，提醒 Claude 问一句（每提醒一次多调用一轮 Claude，默认关）">${ICON.clock}<span></span></button>` : ''}
         <button type="button" class="cb-item cb-end" role="menuitem">${ICON.bell}<span>下课</span></button>
@@ -221,6 +223,8 @@ export function createClassBar({ onSend, onStop, onRetry, onEnd, onCopy, onQuick
   const menu = $('.cb-menu');
   const moreBtn = $('.cb-more');
   const copyBtn = $('.cb-copy');
+  applyZoom();
+  for (const [sel, dir] of [['.cb-font-dn', -1], ['.cb-font-up', 1]]) $(sel).addEventListener('click', () => { $('.cb-font-n').textContent = `${Math.round(stepZoom(dir) * 100)}%`; });
   const endBtn = $('.cb-end');
   const endText = endBtn.querySelector('span');
   const form = $('.cb-form');
