@@ -1,10 +1,12 @@
 /* 学习台 · 石墨风格
-   整页是一块中性深灰的「黑板」：正文用清晰的无衬线字体，标题、标签、按钮、手写数字用手写体，线条干净。
+   整页是一块夜里的石板黑板：底色是带一点蓝的墨灰（不是死灰），左上角像有一盏台灯照过来一点暖光，右边一点冷光，
+   上面一层极淡的粉笔灰颗粒。面板浮起来（一层亮边 + 柔和的影子），不靠一圈框线分开。
+   原来的说法：整页是一块中性深灰的「黑板」：正文用清晰的无衬线字体，标题、标签、按钮、手写数字用手写体，线条干净。
    颜色有固定含义：蓝 = 第一列/定义，粉 = 第二列/批注，黄（琥珀）= 结果/重点，绿 = 正确，珊瑚红 = 错误。
    别的风格（墨绿黑板、纸本、深蓝、白板）在 themes.css，课件 front matter 写 theme: 选。 */
 :root {
   /* 主题：颜色都从这几组 RGB 来（rgb(var(--x-rgb) / 透明度)），换主题只要换这些值和下面几个背景（见 themes.css）。 */
-  --chalk-rgb: 234 232 227;   /* 「粉笔」：正文、线条、描边的颜色 */
+  --chalk-rgb: 238 235 226;   /* 「粉笔」：正文、线条、描边的颜色（偏一点暖，像真粉笔） */
   --yellow-rgb: 240 190 92;
   --blue-rgb: 128 196 240;
   --pink-rgb: 240 146 176;
@@ -13,11 +15,11 @@
   --shade-rgb: 0 0 0;         /* 阴影、压暗一块 */
   --well-k: 1;                /* 压暗一块的底（代码框、输入框）乘的系数：浅色风格里压暗同样多会成一大片灰，调小 */
   --glow-rgb: 255 255 255;    /* 提亮一块 */
-  --board-rgb: 24 26 30;
-  --board-2-rgb: 30 33 38;
-  --board-3-rgb: 17 19 22;
-  --bar-rgb: 24 26 30;        /* 课堂底部输入框后面那一层 */
-  --halo-rgb: 24 26 30;       /* 图里文字的描边：和板子同色，压住后面的线 */
+  --board-rgb: 21 25 31;      /* 墨灰带一点蓝：石板，不是死灰 */
+  --board-2-rgb: 29 34 41;
+  --board-3-rgb: 15 18 23;
+  --bar-rgb: 21 25 31;        /* 课堂底部输入框后面那一层 */
+  --halo-rgb: 21 25 31;       /* 图里文字的描边：和板子同色，压住后面的线 */
 
   --board: rgb(var(--board-rgb));
   --board-2: rgb(var(--board-2-rgb));
@@ -25,7 +27,7 @@
   --chalk: rgb(var(--chalk-rgb));
   --text: var(--chalk);
   --body: rgb(var(--chalk-rgb) / 0.9);
-  --muted: #8f949c;
+  --muted: #8e97a3;
   --faint: rgb(var(--chalk-rgb) / 0.16);
   --line: rgb(var(--chalk-rgb) / 0.5);
   --blue: rgb(var(--blue-rgb));
@@ -48,9 +50,11 @@
 
   /* 整页背景和几块有自己底色的东西 */
   --page-bg:
-    radial-gradient(1100px 600px at 18% -10%, rgb(var(--glow-rgb) / 0.05), transparent 70%),
-    radial-gradient(900px 500px at 100% 100%, rgb(var(--glow-rgb) / 0.025), transparent 70%),
-    linear-gradient(180deg, #1b1d21 0%, #18191d 100%);
+    radial-gradient(1000px 640px at 8% -14%, rgb(var(--yellow-rgb) / 0.075), transparent 68%),
+    radial-gradient(820px 560px at 108% 4%, rgb(var(--blue-rgb) / 0.055), transparent 70%),
+    radial-gradient(1100px 700px at 50% 118%, rgb(var(--glow-rgb) / 0.03), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #191e25 0%, #151a20 55%, #13171c 100%);
   --keypad-bg: linear-gradient(#26292f, #1e2025);
   --key-bg: linear-gradient(#33373e, #2a2d33);
   --key-active: #3c4048;
@@ -96,6 +100,14 @@
   --g1: #80c4f0; --g2: #f092b0; --g3: #80d2a0; --g4: #b9a3f3; --g5: #f0be5c; --g6: #f2a65e; --grp-ink: #18191c;
   --cell: 46px;
   --radius: 16px;
+  /* 浮起来的面板（学习台的卡片、菜单）：一层很淡的亮面 + 上沿一道高光 + 柔和的影子，不画框线。都从上面几组 RGB 来，换风格跟着变 */
+  --panel: linear-gradient(180deg, rgb(var(--glow-rgb) / 0.058), rgb(var(--glow-rgb) / 0.028));
+  --panel-edge: inset 0 1px 0 rgb(var(--glow-rgb) / 0.075), inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.05);
+  --lift: 0 1px 2px rgb(var(--shade-rgb) / 0.16), 0 14px 34px -14px rgb(var(--shade-rgb) / 0.6);
+  --shine: rgb(255 255 255 / 0.28); /* 实心按钮上沿的一道高光：哪种风格都是白的 */
+  /* 输入框、下拉框：压下去的一块 */
+  --field: rgb(var(--shade-rgb) / calc(0.2 * var(--well-k, 1)));
+  --field-edge: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.13);
 
   --hand: "Caveat", "Long Cang", "Kaiti SC", "STKaiti", "KaiTi", cursive;
   --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", "Microsoft YaHei", sans-serif;
@@ -115,6 +127,8 @@ body {
   -webkit-font-smoothing: antialiased;
   background: var(--page-bg);
   background-color: var(--board);
+  /* 内容短的页（学习台的弱点表、课程地图）也铺满整屏，不在内容下面露出一截平的底色 */
+  min-height: 100vh;
 }
 ::selection { background: rgb(var(--yellow-rgb) / 0.35); color: var(--sel-ink); }
 a { color: var(--blue); text-decoration: underline; text-decoration-color: rgb(var(--blue-rgb) / 0.4); text-underline-offset: 3px; }
@@ -139,14 +153,25 @@ button { font: inherit; color: inherit; }
   border: 0; border-radius: 14px; background: transparent; color: var(--chalk);
   font: 600 16.5px/1 var(--sans); letter-spacing: .02em; cursor: pointer;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
-  transition: transform .1s ease, background .2s, opacity .2s;
-  --frame: rgb(var(--chalk-rgb) / var(--btn-frame-a, 0.6));
+  transition: transform .1s ease, background .2s, box-shadow .2s, opacity .2s;
+  /* 一块淡淡的粉笔底 + 细一点的框：按得到，但不抢；要紧的那个用 btn-primary */
+  background: rgb(var(--glow-rgb) / 0.05);
+  --frame: rgb(var(--chalk-rgb) / calc(var(--btn-frame-a, 0.6) * 0.62));
 }
-.btn:hover { background: rgb(var(--glow-rgb) / 0.04); }
+.btn:hover { background: rgb(var(--glow-rgb) / 0.09); }
 .btn:active { transform: scale(.96); }
 .btn:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
 .btn:disabled { opacity: .35; pointer-events: none; }
-.btn-primary { color: var(--yellow); background: rgb(var(--yellow-rgb) / 0.07); --frame: rgb(var(--yellow-rgb) / 0.85); }
+/* 要紧的那一个：实心的琥珀粉笔，字用深色；上沿一道高光、底下一圈暖光，像灯下的一块 */
+.btn-primary {
+  color: var(--accent-ink); font-weight: 700;
+  background: linear-gradient(180deg, rgb(var(--yellow-rgb) / 1), rgb(var(--yellow-rgb) / 0.84));
+  box-shadow: inset 0 1px 0 var(--shine), 0 8px 20px -8px rgb(var(--yellow-rgb) / 0.55);
+  --frame: transparent;
+}
+.btn-primary:hover { background: linear-gradient(180deg, rgb(var(--yellow-rgb) / 1), rgb(var(--yellow-rgb) / 0.92)); }
+/* 还按不了的主按钮：退回成淡淡的琥珀框（实心的压暗了是一块泥色） */
+.btn-primary:disabled { opacity: .5; color: var(--yellow); background: rgb(var(--yellow-rgb) / 0.06); box-shadow: none; --frame: rgb(var(--yellow-rgb) / 0.45); }
 .btn-danger { color: var(--coral); --frame: rgb(var(--coral-rgb) / 0.7); }
 .btn-sm { min-height: 38px; padding: 0 14px; font-size: 15px; }
 .btn-lg { min-height: 54px; padding: 0 26px; font-size: 18px; }
