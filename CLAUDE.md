@@ -98,7 +98,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - 加了新的颜色变量，`themes.css` 里每种风格都要写上。板书（Apple Pencil）的笔色也跟风格走（`--ink-white` 等）。
   - 石墨（默认）是带一点蓝的墨灰石板，左上一点台灯暖光、右上一点冷光、极淡的粉笔颗粒（`--page-bg`）。浮起来的面板用 `--panel` + `--panel-edge` + `--lift`（亮面、上沿高光、柔和影子，不画一圈框线），输入框、下拉框用 `--field` + `--field-edge`；这几个都从 RGB 变量算，浅色风格（paper、white）在 `themes.css` 末尾另给轻一点的影子。按钮：普通的是淡淡的粉笔底 + 细框，`btn-primary` 是实心琥珀（字 `--accent-ink`），还按不了时退回淡琥珀框。
   - 学习台（书桌）的标题和大数字用思源宋体 `var(--display)`（Noto Serif SC，和手写体一起从 Google Fonts 载入），黑板上照旧是粉笔手写体 `var(--hand)`：书桌像一本排得好的书，黑板像黑板。首页的主角是「上课」卡（`.dk-hero`：这一科到哪、下一节、一个大按钮、三个数 `.dk-stat`），备课表单收在 `.dk-prepfold` 里；卡片少放解释的话。
-  - 换样子：学习台「管理」的「样子」（`theme.js` 的 `PICKS`：夜读 = 默认石墨、纸本 `paper`、青瓷 `celadon`；`MORE`：墨绿黑板、深蓝、白板），`applyTheme(…, { save: true })` 存在这台设备的 `la-theme`，`main.js` 开页时课件没写 `theme:` 就用它（`storedTheme`）。浅色风格（paper、white、celadon）在 `themes.css` 末尾一起给轻的影子、白的按钮底（`--btn-bg`）。
+  - 换样子：学习台「管理」的「样子」（`theme.js` 的 `PICKS`：深色三种 夜读 = 默认石墨、烛光 `candle`、暮色 `dusk`，浅色三种 纸本 `paper`、青瓷 `celadon`、水墨 `ink`（主按钮是浓墨）；`MORE`：墨绿黑板、深蓝、白板），`applyTheme(…, { save: true })` 存在这台设备的 `la-theme`，`main.js` 开页时课件没写 `theme:` 就用它（`storedTheme`）。浅色风格（paper、white、celadon、ink）在 `themes.css` 末尾一起给轻的影子、白的按钮底（`--btn-bg`）。
   - 学习台每一科一个颜色（`desk.css` 的 `--sp-rgb`：数学蓝、408 绿、英语粉，`root.dataset.space` 跟着切换）：科目按钮、当前页、卡片标题下手画的粉笔线（`--h1-mark` 当遮罩）、今天一览、统计的柱子都用它。首页最上面一排「今天一览」（`.dk-glance`：到期的复现、要想的记忆点、这一科学到哪，点了跳到那张卡）。2026-11-03 我说原来的样子死气沉沉。
 
 ### 课堂模式（`kit/src/class/`）

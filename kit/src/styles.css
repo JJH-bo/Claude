@@ -1863,8 +1863,8 @@ tr.cn-best td { background: rgb(var(--green-rgb) / 0.18); color: var(--green); f
 .sv-rbt .sv-tree .sv-node.sv-rb-red.sv-cmp circle, .sv-rbt .sv-tree .sv-node.sv-rb-black.sv-cmp circle { stroke: var(--yellow); stroke-width: 4.5; }
 .sv-rbt .sv-tree .sv-node.sv-rb-red.sv-done circle, .sv-rbt .sv-tree .sv-node.sv-rb-black.sv-done circle { stroke: var(--green); stroke-width: 4.5; }
 /* 浅色风格（纸本、白板）：黑结点就是实心的墨色，字反白 */
-:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"]) .sv-rbt .sv-tree .sv-node.sv-rb-black circle { fill: color-mix(in srgb, var(--chalk) 88%, rgb(var(--board-2-rgb))); }
-:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"]) .sv-rbt .sv-tree .sv-node.sv-rb-black text:not(.sv-node-note) { fill: rgb(var(--board-rgb)); }
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) .sv-rbt .sv-tree .sv-node.sv-rb-black circle { fill: color-mix(in srgb, var(--chalk) 88%, rgb(var(--board-2-rgb))); }
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) .sv-rbt .sv-tree .sv-node.sv-rb-black text:not(.sv-node-note) { fill: rgb(var(--board-rgb)); }
 /* 结点旁边的小字（平衡因子、父 / 叔 / 爷）：左孩子的写在左上角，不压着连向双亲的边 */
 .sv-tree .sv-node .sv-node-note.sv-note-l { text-anchor: end; }
 /* B 树、B+ 树：一个结点是一排格子的框，孩子连在格子的缝上（B+ 树连在格子下面）；叶结点之间的绿箭头是 B+ 树的叶链 */

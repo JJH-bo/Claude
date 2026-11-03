@@ -36,7 +36,7 @@ function markCode(lines) {
 // 构建时打进 la-kit.js（LAKit.version），课件页面的「⋯」里看得到用的是哪一版
 export function docVersion(markdown) {
   const head = String(markdown ?? '').split(/\r?\n/).slice(0, 30).join('\n');
-  const m = /版本[：:]\s*(\d{4}-\d{2}-\d{2}[a-z]?)/.exec(head);
+  const m = /版本[：:]\s*(\d{4}-\d{2}-\d{2}[a-z]*)/.exec(head);
   if (!m) throw new Error('CLAUDE-PROJECT.md 开头找不到「版本：YYYY-MM-DD」，没法给 la-kit.js 标版本');
   return m[1];
 }
