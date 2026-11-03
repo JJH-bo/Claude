@@ -87,3 +87,7 @@ test('点进课看一眼不算有动静：只看作答、说话这些', () => {
   assert.equal(lastActivity(s, [{ session: 'c-1', src: 'say', at: 7000 }, ...evs]), 7000);
   assert.equal(lastActivity(s, []), 1000);
 });
+
+test('记忆的预算只许降、不许涨：每一轮都要带，多 1 KB 每一轮都多读 1 KB（会拖慢回复）', () => {
+  assert.ok(MEMORY_BUDGET <= 28 * 1024, `MEMORY_BUDGET 是 ${MEMORY_BUDGET} 字节，不能超过 28 KiB`);
+});
