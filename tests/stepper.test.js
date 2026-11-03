@@ -239,6 +239,7 @@ test('vary:（演示上的滑块）：名字 = 最小..最大，step、init、�
   assert.throws(() => parseVary('d = 1-10'), /名字 = 最小\.\.最大/);
   assert.throws(() => parseVary('d = 5..1'), /最大值要比最小值大/);
   assert.throws(() => parseVary('step = 1..3'), /保留的名字/);
+  assert.equal(parseVary('t = 0..50 step 5 μs')[0].name, 't', '演示组件里没有联动的 t：滑块可以叫 t（时间）');
   assert.throws(() => parseVary('d = 0..10000'), /太多了/);
   assert.throws(() => parseVary('d = 1..9 init 12'), /init 要在 1 到 9 之间/);
   assert.throws(() => parseVary('a = 1..2; b = 1..2; c = 1..2; d = 1..2'), /最多 3 个/);

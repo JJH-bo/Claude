@@ -408,7 +408,8 @@ export function parseVary(src) {
     const m = part.match(/^([A-Za-z_]\w*)\s*=\s*(-?\d+(?:\.\d+)?)\s*(?:\.\.|…|~|到)\s*(-?\d+(?:\.\d+)?)(.*)$/);
     if (!m) throw new Error(`vary: 每一项写「名字 = 最小..最大」，比如 vary: d = 1..10 step 1 km（看不懂「${part}」）`);
     const [, name, a, b, rest0] = m;
-    if (['step', 'pi', 'e', 't'].includes(name)) throw new Error(`vary: ${name} 是保留的名字，换一个`);
+    // t 在图里是联动用的，演示组件里没有它，滑块可以叫 t（时间）
+    if (['step', 'pi', 'e'].includes(name)) throw new Error(`vary: ${name} 是保留的名字，换一个`);
     if (out.some((x) => x.name === name)) throw new Error(`vary: ${name} 写了两次`);
     let rest = rest0.trim();
     const take = (key) => {

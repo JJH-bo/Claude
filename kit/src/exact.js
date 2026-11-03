@@ -367,6 +367,20 @@ const FUNCS = {
   sort: (v) => vec(v).slice().sort((a, b) => a.cmp(b)),
   sum: (v) => vec(v).reduce((s, x) => s.add(x), ZERO),
   cumsum: (v) => { let s = ZERO; return vec(v).map((x) => (s = s.add(x))); },
+  // fix(x, 2, 4)：定点小数的补码（2 位符号位、4 位小数）：fix(-11/16, 2, 4) = 11.0101（answer 的 type: fixed 用）
+  fix: (x, sb, n) => {
+    q(x, 'fix() 里');
+    const s = int(sb, '符号位'), f = int(n, '小数位');
+    if (s < 1 || s > 2 || f < 1 || f > 16) throw new Error('fix(x, 符号位 1 或 2, 小数位 1～16)');
+    if (x.cmp(new Q(-1n)) < 0 || x.cmp(new Q(1n)) >= 0) throw new Error(`fix() 只写 -1 ≤ x < 1 的定点小数（现在是 ${x}）`);
+    const m = x.mul(new Q(1n << BigInt(f)));
+    if (!m.integer) throw new Error(`${x} 写成 ${f} 位二进制小数写不尽`);
+    const w = BigInt(s + f);
+    const v = m.n < 0n ? m.n + (1n << w) : m.n;
+    const d = v.toString(2).padStart(s + f, '0');
+    const t = `${d.slice(0, s)}.${d.slice(s)}`;
+    return new Shown(t, t);
+  },
   // sbin(x, n)：二进制真值（带正负号，组成原理的题面、演示组件的 x: 字段用）：整数写 n 位（sbin(-3, 3) = -011），
   // 纯小数写 n 位小数（sbin(-13/16, 4) = -0.1101）。和 bin() 不同：负数不写成补码
   sbin: (x, n) => {

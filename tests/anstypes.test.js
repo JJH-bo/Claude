@@ -86,3 +86,12 @@ test('数集：写成表达式的 a == 1 或 a == -2 也认（验收第三批 la
   assert.equal(setText(parseNumSet('a == 1 或 a == -2')), '{-2} ∪ {1}');
   assert.ok(intervalSpec('a == 1 或 a == -2').check('{1, -2}').ok);
 });
+
+test('fix(x, 符号位, 小数位)：定点小数的补码，type: fixed 的答案让页面算', async () => {
+  const { calcValue } = await import('../kit/src/exact.js');
+  assert.equal(calcValue('fix(-11/16, 2, 4)', {}).text, '11.0101');
+  assert.equal(calcValue('fix(13/16, 2, 4)', {}).text, '00.1101');
+  assert.equal(calcValue('fix(-1, 1, 4)', {}).text, '1.0000');
+  assert.throws(() => calcValue('fix(1, 2, 4)', {}), /-1 ≤ x < 1/);
+  assert.ok(fixedSpec('\\calc{fix(-11/16, 2, 4)}').check('11.0101').ok);
+});
