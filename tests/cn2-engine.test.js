@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseFields } from '../kit/src/parse.js';
-import { resolveAsks, commonSpec, trackFields, fillSpec, fillOrder, checkAsk } from '../kit/src/stepperspec.js';
+import { resolveAsks, commonSpec, trackFields, fillSpec, fillOrder, checkAsk, calcFields, parseVary } from '../kit/src/stepperspec.js';
 import { csmaEngine, switchEngine } from '../kit/src/engines/netmac.js';
 import { dvEngine } from '../kit/src/engines/netdv.js';
 import { utilEngine, rttEngine } from '../kit/src/engines/netperf.js';
@@ -228,7 +228,10 @@ const blocksOf = (file) => [...readFileSync(new URL(`../${file}`, import.meta.ur
 function checkBlock(name, src) {
   const e = ENGINES[name];
   const where = `${name}（${src.split('\n').find((l) => /^id:/.test(l)) || src.split('\n')[0]}）`;
-  const tracked = trackFields(parseFields(src).fields);
+  // vary:（滑块）的例子：字段里的 \calc{d} 换成滑块一开始的值
+  const raw = parseFields(src).fields;
+  const vals = raw.vary ? Object.fromEntries(parseVary(raw.vary).map((v) => [v.name, v.init])) : {};
+  const tracked = trackFields(calcFields(raw, vals).fields);
   const { fields } = tracked;
   const input = e.parse(fields, src);
   const r = e.run(input);

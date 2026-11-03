@@ -15,6 +15,25 @@ CSMA/CD、距离向量路由（RIP）、交换机自学习、信道利用率、H
 ## 1. CSMA/CD
 
 ```csma
+id: cd-vary
+title: 拖距离：最短帧长怎么变
+rate: 10Mb/s
+dist: \calc{d}km
+bsend: last
+vary: d = 1..10 step 1 init 2 km
+start: end
+```
+
+```frag
+id: nf-vary
+title: 拖 MTU：分几片
+total: 4000
+mtu: \calc{m}
+vary: m = 576..1500 step 4 init 1500 字节
+start: end
+```
+
+```csma
 id: cd-2010
 title: 2010 年 47 题：两台主机最晚什么时候都检测到冲突
 rate: 10Mb/s

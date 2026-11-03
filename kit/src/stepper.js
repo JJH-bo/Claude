@@ -6,8 +6,8 @@
 import { parseFields } from './parse.js';
 import { session } from './session.js';
 import { widget, mdToHtml, tex2html, escapeHtml, calcProblems, calcScope } from './blocks/common.js';
-import { figureControls } from './plot.js';
-import { commonSpec, resolveAsks, checkAsk, askAnswerText, stepLabel, parseAskField, fillSpec, checkFill, cellName, cellAnswer, fillOrder, misreadFill, trackFields, calcFields } from './stepperspec.js';
+import { figureControls, sliderText } from './plot.js';
+import { commonSpec, resolveAsks, checkAsk, askAnswerText, stepLabel, parseAskField, fillSpec, checkFill, cellName, cellAnswer, fillOrder, misreadFill, trackFields, calcFields, parseVary } from './stepperspec.js';
 import { markDraft } from './drafts.js';
 import { answerWidget, textAnswerSpec } from './blocks/answer.js';
 import { snapshot, animateFrom, settle } from './morph.js';
@@ -44,17 +44,22 @@ export function stepperBlock(engine) {
     };
     // frames 这种正文里自己有「key: 值」的行的：字段只从开头那一段读（engine.head）
     // 字段里的 \calc{…}（matrix: \calc{A}）先换成这节课 let 量的精确值（practice 里还有这一题取的数）
-    const calced = calcFields(parseFields(engine.head ? engine.head(src) : src).fields, calcScope());
+    const raw = parseFields(engine.head ? engine.head(src) : src).fields;
+    // vary:（演示上的滑块）：字段里的 \calc{d} 用滑块现在的值；拖动时整个演示按新值重算（revary）
+    const vary = raw.vary !== undefined ? parseVary(raw.vary) : null;
+    let varyVals = vary ? Object.fromEntries(vary.map((v) => [v.name, v.init])) : {};
+    const calced = calcFields(raw, { ...calcScope(), ...varyVals });
     const tracked = trackFields(calced.fields);
     for (const e of calced.errors) session.problem(el, engine.name, e);
     const { fields } = tracked;
     const common = commonSpec(fields);
-    const input = engine.parse(fields, src);
+    let input = engine.parse(fields, src);
     // 有的引擎自带要问的（trace 的 predict:）：没写 ask: 时照它问
     if ((fields.ask === undefined || fields.ask === '') && engine.defaultAsk) { const d = engine.defaultAsk(input); if (d) common.ask = parseAskField(d); }
-    const run = engine.run(input);
-    const steps = run.steps;
-    const last = steps.length - 1;
+    let run = engine.run(input);
+    let steps = run.steps;
+    let last = steps.length - 1;
+    if (vary && (common.ask || common.mode !== 'demo' || steps.some((x) => x.blanks))) throw new Error('vary:（滑块）只用在演示上（mode: demo、不写 ask:）：要我作答的，换数用 practice 的 use:');
     const { asks, which, errors } = resolveAsks(common.ask, steps);
     for (const e of errors) session.problem(el, engine.name, e);
     // practice 里随机取的数：「数据已经有序」这类提醒不是老师写的问题，不报
@@ -89,6 +94,7 @@ export function stepperBlock(engine) {
       <div class="sv-quiz" ${quiz ? '' : 'hidden'}></div>
       <div class="sv-fill" ${fill ? '' : 'hidden'}></div>
       <div class="sv-demo" ${quiz || fill ? 'hidden' : ''}>
+        ${vary ? '<div class="sliders sv-vary"></div><div class="sv-vary-err muted" hidden></div>' : ''}
         <div class="sv-stage"></div>
         <div class="sv-msg" aria-live="polite"></div>
         <div class="sv-ask" hidden></div>
@@ -124,13 +130,55 @@ export function stepperBlock(engine) {
 
     // —— 课堂操作：变量只有一个 step（停在第几步）；highlight i：第 i 个格子 / 结点闪一下 ——
     const slider = { kind: 'slider', name: 'step', min: 0, max: last, step: 1, init: 0, mods: {}, srcLine: 'step' };
-    const cmds = [slider];
-    const state = { slider: { step: 0 }, override: {} };
-    const ctl = figureControls({ root: stage, cmds, state, extra: {}, env: () => ({ step: k }), draw: () => draw() });
+    const varySliders = (vary || []).map((v) => ({ kind: 'slider', name: v.name, min: v.min, max: v.max, step: v.step, init: v.init, mods: {}, srcLine: `vary ${v.name}`, unit: v.unit }));
+    const cmds = [...varySliders, slider];
+    const state = { slider: { step: 0, ...varyVals }, override: {} };
+    const ctl = figureControls({ root: stage, cmds, state, extra: {}, env: () => ({ step: k, ...varyVals }), draw: () => draw() });
     slider.sync = () => {};
+    if (vary) {
+      const box = body.querySelector('.sv-vary');
+      for (const c of varySliders) {
+        const row = document.createElement('div');
+        row.className = 'coef';
+        row.innerHTML = `<span class="coef-name">${tex2html(c.name)}</span><input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.init}" aria-label="${escapeHtml(c.name)}"><output></output>${c.unit ? `<span class="sv-vary-unit">${escapeHtml(c.unit)}</span>` : ''}`;
+        const inp = row.querySelector('input'), out = row.querySelector('output');
+        c.sync = (moving = false) => { inp.value = state.slider[c.name]; out.textContent = sliderText(state.slider[c.name], moving); };
+        inp.addEventListener('input', () => { ctl.stop(c.name); state.slider[c.name] = Number(inp.value); c.sync(); draw(); });
+        c.sync();
+        box.appendChild(row);
+      }
+    }
+    // 滑块的值变了：按新值把字段重算一遍、重新跑；停在原来那一步（步数少了就停在最后）。算不了的值说出来，画面留在上一个能算的
+    const varyErr = body.querySelector('.sv-vary-err');
+    function revary() {
+      if (!vary) return;
+      // 对到滑块的刻度上（figure play d 1 10 走的中间值是小数：引擎按刻度上的值算）
+      const snap = (v, x) => Number(Math.min(v.max, Math.max(v.min, v.min + Math.round((x - v.min) / v.step) * v.step)).toFixed(10));
+      const now = Object.fromEntries(vary.map((v) => [v.name, snap(v, Number(state.slider[v.name]))]));
+      if (vary.every((v) => now[v.name] === varyVals[v.name])) return;
+      varyVals = now;
+      const at = vary.map((v) => `${v.name} = ${sliderText(now[v.name])}`).join('，');
+      const atEnd = k === last; // 停在最后一步的（start: end 看结果），换了值也看结果
+      try {
+        const c2 = calcFields(raw, { ...calcScope(), ...now });
+        if (c2.errors.length) throw new Error(c2.errors[0]);
+        const in2 = engine.parse(c2.fields, src);
+        const r2 = engine.run(in2);
+        input = in2; run = r2; steps = r2.steps; last = steps.length - 1;
+        variantRuns = null;
+        varyErr.hidden = true;
+      } catch (e) {
+        varyErr.hidden = false;
+        varyErr.textContent = `${at} 时算不了：${e.message}（画面还是上一个能算的值）`;
+      }
+      slider.max = last;
+      scrub.max = String(last);
+      if (state.slider.step > last || atEnd) state.slider.step = last;
+    }
     const want = () => Math.max(0, Math.min(last, Math.floor(Number(state.slider.step) + 1e-9)));
 
     function draw() {
+      revary();
       const to = want();
       const moved = to !== k;
       // 一步一步走（下一步、上一步、播放）时补过渡：挪了位置的滑过去、变了颜色的渐变；一下跳好几步就直接换
@@ -153,7 +201,7 @@ export function stepperBlock(engine) {
       // highlight 用的「命令」：画面里有几个 data-cmd 就有几条（从 1 数）
       const n = Math.max(0, ...[...stage.querySelectorAll('[data-cmd]')].map((x) => Number(x.dataset.cmd) || 0));
       // 只留 step 这个滑块再重排：滑块在数组最后，cmds.length = 1 会留下第一个格子、把滑块丢了（第二次 figure set step 就报没有 step）
-      cmds.splice(0, cmds.length, slider);
+      cmds.splice(0, cmds.length, ...varySliders, slider);
       for (let i = 1; i <= n; i++) cmds.unshift({ kind: 'item', srcLine: `第 ${i} 个`, mods: {} });
       // 正在填空时先不给说明（说明里常常就有答案）
       msg.innerHTML = filling ? '<span class="muted">把上面的空填好，点「检查」。</span>' : `${verdict ? `<span class="sv-verdict">${verdict}</span>` : ''}${mdToHtml(s.msg || '', { inline: true })}`;
@@ -583,13 +631,24 @@ export function stepperBlock(engine) {
       labels: () => [...new Set([...stage.querySelectorAll('[data-cmd]')].map(labelOf).filter(Boolean))].slice(0, 20),
       on: ctl.on,
       animate: ctl.animate,
-      play: (name, from, to, ms) => { if (name !== 'step') throw new Error(`演示只有一个变量 step（停在第几步，0 到 ${last}）`); closeAsk(); return ctl.play('step', from, to, ms); },
+      play: (name, from, to, ms) => {
+        if (vary?.some((v) => v.name === name)) return ctl.play(name, from, to, ms);
+        if (name !== 'step') throw new Error(varsText());
+        closeAsk();
+        return ctl.play('step', from, to, ms);
+      },
       highlight: ctl.highlight,
-      vars: () => ({ step: k }),
-      snapshot: () => ({ step: k }),
-      // 课堂里老师直接跳：不问（问题留给学生自己点「下一步」时）
+      vars: () => ({ step: k, ...varyVals }),
+      snapshot: () => ({ step: k, ...varyVals }),
+      // 课堂里老师直接跳：不问（问题留给学生自己点「下一步」时）。vary 的滑块也能 set（figure set d=5）
       set(name, value) {
-        if (name !== 'step') throw new Error(`演示只有一个变量 step（停在第几步，0 到 ${last}）`);
+        const v0 = vary?.find((v) => v.name === name);
+        if (v0) {
+          const x = Number(value);
+          if (!(x >= v0.min && x <= v0.max)) throw new Error(`${name} 写 ${v0.min} 到 ${v0.max} 之间的数`);
+          return ctl.set(name, x, { ms: 0 });
+        }
+        if (name !== 'step') throw new Error(varsText());
         const v = Math.round(Number(value));
         if (!(v >= 0 && v <= last)) throw new Error(`step 写 0 到 ${last} 之间的数`);
         stopPlay();
@@ -599,6 +658,9 @@ export function stepperBlock(engine) {
         return ctl.set('step', v, { ms: 0 });
       },
     };
+    function varsText() {
+      return vary ? `这个演示的变量：step（停在第几步，0 到 ${last}）、${vary.map((v) => `${v.name}（${v.min} 到 ${v.max}）`).join('、')}` : `演示只有一个变量 step（停在第几步，0 到 ${last}）`;
+    }
     if (opts.embedded) return api;
     const id = session.registerScene(el, api, title);
     el.dataset.scene = id;
