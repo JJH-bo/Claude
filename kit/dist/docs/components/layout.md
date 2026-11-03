@@ -16,3 +16,5 @@ ask: offset, size, byte
 - 画面：成员表（类型、大小、偏移、地址），下面一行 4（有 double 时 8）个字节，一个成员一种颜色，空出来的字节画斜线。
 - `mode: quiz`：结构体写 sizeof，一个数写各字节（从低地址起）；`mode: fill`：每个成员填偏移量和地址，再写 sizeof（有 `look:` 时再写那个字节）；一个数时每个地址填字节。
 - 错法诊断认得出：没对齐（一个挨一个放）、末尾没补齐、每个成员都按 4 对齐、大小端弄反。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

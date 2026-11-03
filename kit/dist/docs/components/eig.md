@@ -12,3 +12,5 @@ ask: values, geo, schmidt
 - **`schmidt`**：`vectors: (1, 1, 0), (1, 0, 1), (0, 1, 1)`，一步一个 β（减去在前面每个 β 上的投影，$(\alpha,\beta)$ 和 $(\beta,\beta)$ 写出来），最后单位化（`normalize: no` 不单位化）。`ask: dot`：$(\alpha_k, \beta_1)$ 是多少。`mode: fill`：写出每个 β（按公式算出来的，不约分乘整）。
 
 - 错法诊断认得出：`eig` 把主对角元当特征值、有重根就以为不能对角化、把 $r(\lambda E - A)$ 当成特征向量个数；`schmidt` 往 α 上投影、忘了除以 $(\beta,\beta)$。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

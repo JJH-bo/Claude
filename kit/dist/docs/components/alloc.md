@@ -13,3 +13,5 @@ ask: where, merge
 
 - 分不到时那一步写「分配失败」（`where` 问的是「能分配吗」），quiz 和填表里写 ×。
 - 错法诊断认得出：按别的算法找、回收时没和相邻的空闲区合并。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

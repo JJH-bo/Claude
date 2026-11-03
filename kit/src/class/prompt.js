@@ -526,7 +526,7 @@ export function packText(pack, budget = PACK_BUDGET) {
 // —— 4. 黑板现状 ——
 
 // 会产生作答的组件：还没作答时要写出来（图之类的不用）
-const ANSWERING = new Set(['answer', 'conjecture', 'quiz', 'predict', 'practice', 'steps', 'recognize', 'findbug', 'sortpass', 'code', 'derive', 'cloze', 'errfind', 'parse', 'drill', 'chunk', 'link']);
+const ANSWERING = new Set(['answer', 'conjecture', 'quiz', 'predict', 'practice', 'steps', 'recognize', 'findbug', 'sortpass', 'code', 'derive', 'cloze', 'errfind', 'parse', 'drill', 'chunk', 'link', 'translate']);
 const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const oneLine = (s, n = 200) => clip(String(s ?? '').replace(/\s*\n\s*/g, ' / ').replace(/\s+/g, ' ').trim(), n);
 const clip = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);

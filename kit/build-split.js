@@ -4,6 +4,7 @@
 // - 每个组件一份写法 components/<名字>.md（精简版 + 完整写法），外部要用哪个读哪个
 // 仓库里的 CLAUDE-PROJECT.md 还是整份（课堂里的组件手册也照旧从它截），拆出来的放在 kit/dist/docs/，纯函数，有测试（tests/split.test.js）。
 import { docSections, sectionNames } from './src/subject.js';
+import { ENGINES } from './src/engines/registry.js';
 
 // 每节课都用得上的写法：主说明里也留着（精简版）
 const INLINE = ['let', 'calc'];
@@ -46,6 +47,10 @@ export function splitProject(markdown, { kitUrl = '' } = {}) {
   const how = `每个组件的写法（字段、例子、常见错法）单独放在学习台里，**要用哪个先读哪个**：\`Artifact\` 工具 \`action: "read"\`，\`url\`${kitUrl ? ` 是 ${kitUrl}` : ' 是学习台的地址'}，\`path\` 写下表里的文件（比如 \`"components/answer.md"\`）；一次可以用 \`paths\` 读好几个。没读写法就写组件，页面会报写法错误。`;
   // 板书标注（圈、框、大括号、荧光笔……）不是组件，是教具指令 mark：外部的 Claude 照组件一览找「标注」找不到，
   // 就以为没有这个功能（2026-11-03）。一览里写一行指过去，写法也单独放一份 components/mark.md
+  // 演示组件的共用写法（ask、mode: quiz / fill、vary、课堂的 figure step）在 stepper.md：只读 sort.md 看不到，每份末尾指过去
+  if (files['components/stepper.md']) {
+    for (const x of index) if (x.file !== 'components/stepper.md' && x.names.some((n) => ENGINES[n]) && !files[x.file].includes('components/stepper.md')) files[x.file] += '\n这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。\n';
+  }
   const markDoc = markSection(markdown);
   if (markDoc) files['components/mark.md'] = `${markDoc}\n`;
   const table = [

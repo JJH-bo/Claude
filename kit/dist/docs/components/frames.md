@@ -30,3 +30,5 @@ stack:
 - 不是格子、栈、队列、二叉树的东西（链表、图、内存框图）：一帧里用 Markdown 表格表示；要画成图，改用 `steps` + `sketch` 或 `derive`。
 - `mode: quiz` 不适用（没有页面能算的「结果」）；要我写出最后结果，用最后一帧的 `{{…}}`，或者另放一个 `answer`。
 - 一帧的问题对应「走到这一帧之前」：`?` 写在第 3 帧，就是看完第 2 帧以后、看到第 3 帧之前问。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

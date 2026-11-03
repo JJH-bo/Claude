@@ -16,3 +16,5 @@ ask: index
 - sparse：最多 8 × 8，按行优先（`order: col` 按列）扫出非零元，三元组 (行, 列, 值)；`at` 问它是三元组表的第几个。
 - `mode: quiz`：at 的下标（没写 at 问 B 一共几个元素）；sparse 写整张三元组表。`mode: fill`：每一行（列）存在 B 的哪一段（n 大时只填第 1、2 行和 at 那一行），再填 B 的长度、at 的下标；sparse 填三元组表。
 - 错法诊断认得出：行优先当列优先、对称矩阵另一半没换成 a[j][i]、B 的下标起点差 1、A 的下标起点差 1；sparse 按列扫、行列号起点差 1。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

@@ -13,3 +13,5 @@ ask: bf, root, rotate
 - `quiz: pre` / `in` / `post` 改成写那种序列。`mode: fill`：每一步填最小不平衡子树的根、调整类型、做完以后整棵树的根（删除转了几次就按先后写几个）。
 - 结点最多 31 个，关键字不能重复。
 - 错法诊断认得出：LR 当成 LL（RL 当成 RR）只转一次、平衡因子算成右减左、找了离根最近的失衡结点。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

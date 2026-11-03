@@ -13,3 +13,5 @@ ask: op, result
 
 - `n:` 数值位数（默认按 x、y 里最长的，2～8）。
 - 错法诊断认得出：Booth 把最低两位读反了、最后一次也移位了、只加了 n 次；原码一位乘当成算术右移。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

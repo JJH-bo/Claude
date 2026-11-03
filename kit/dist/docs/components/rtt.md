@@ -15,3 +15,5 @@ ask: total
 - `total` 只数和 Web 服务器之间的 RTT（不算 DNS）；`time` 要写了 `rtt:`，DNS 每次按 `dnsrtt:`（不写就和 `rtt:` 一样）。
 - `mode: quiz`：写一共几个 RTT（写了 `rtt:` 就写总时间）。`mode: fill`：每一段几个 RTT，下面再写总数。
 - 错法诊断认得出：忘了 TCP 握手、忘了基本页面那个 RTT、流水线和非流水线弄混、并行的批数没向上取整、没管并行数的上限。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

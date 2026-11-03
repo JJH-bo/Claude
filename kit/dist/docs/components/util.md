@@ -17,3 +17,5 @@ ask: u, thru
 - `target:`：GBN / SR 求窗口至少多大（⌈target × 周期 ÷ 发送时延⌉）和帧序号至少几位（GBN 窗口 ≤ 2^n − 1，SR ≤ 2^(n−1)）；GBN / SR 没写窗口时默认 `target: 100%`。停止-等待写了 `frame:` 和 `target:` 就问能不能达到（`ask: reach`）；不写 `frame:` 就反过来求帧长至少多少比特。`seqbits: 3` 先算最大窗口（`ask: window`）。帧长是一个范围的题（128～512B）写最短的那个。
 - `mode: quiz`：只写一个数，`want:` 挑（`u` `thru` `cycle` `tframe` `wmin` `seqbits` `lmin`），不写就是：求帧长 / 序号位数时写它，有 `data:` 写有效数据传输速率，不然写利用率（百分数里的数）。`mode: fill`：每个量一行，单位写在行名里；除不尽的写到两位小数。
 - 错法诊断认得出：周期里只算单程传播时延、忘了发送时延、忘了确认帧的时延、利用率超过 100%、GBN 和 SR 的序号公式弄混。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

@@ -12,3 +12,5 @@ ask: shift, sum, norm, round
 
 - 错法诊断认得出：大阶向小阶看齐、减法直接加了 [My]补、把 11.1×× 当成规格化的、没做 0 舍 1 入。
 - `ebits:` 2～6，`mbits:` 3～16；舍入以后尾数溢出会再右规一次。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

@@ -15,3 +15,5 @@ ask: rear, full
 - 一开始 front = rear = 0；`front: 3`、`rear: 0` 换起点（中间原来就有的元素画成 ·），对应「当前 rear = 0、front = 3，删一个再加两个」这类题。入队失败（满）、出队失败（空）也算一步，指针不动。
 - `mode: quiz`：做完以后的 front、rear、长度（三个数）。`mode: fill`：每一步之后的 front、rear、长度。
 - 错法诊断认得出：长度公式没先加 MaxSize（rear 绕回来以后得负数）、把 rear == front 当队满（牺牲的那格也放了）、指针加 1 以后没取模、增设 size / tag 以后还按牺牲一个单元判满。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

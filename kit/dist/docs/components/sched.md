@@ -17,3 +17,5 @@ ask: next
 - `paging` 的 `board mark item=5` / `highlight 5` 指第 5 次访问那一列（表头）。
 - `mode: fill`：`sched` 每个进程一行（完成时间、周转时间、带权周转、等待时间）；`paging` 每次访问一列（各物理块里的页、缺页打勾、换出哪一页，有「照抄」；`clock` / `eclock` 还有每块的访问位、修改位和指针，就是考卷上那张过程表）；`banker` 每个进程的 Need 和安全性算法每一步的 Work（向量写 `3 3 2`）；`disk` 依次访问的磁道和每次移动的距离。
 - 错法诊断认得出：调度按别的算法排、RR 把用完时间片的进程排在新到的前面；页面置换按别的算法换、一开始调入没算缺页；银行家把 Max 当成 Need、Work 加的是 Need 或 Max、请求没先和 Need 比、试分配后没改状态；磁盘调度按别的算法、方向弄反、C-SCAN 跳回的距离算没算。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

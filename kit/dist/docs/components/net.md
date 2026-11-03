@@ -24,3 +24,5 @@ ask: next
 - `mode: fill`：bfs / dfs / topo 填序列；dijkstra 每一轮一列（各顶点的 dist、这一轮确定谁）；prim / kruskal 填依次选的边；critical 填每个事件的 ve、vl，每个活动的 e、l、l − e，最后是关键路径长度。
 - `ask: order`：bfs / dfs / topo / dijkstra / prim 在第 1 步之前让我在图上依次点出顶点（拓扑序列任何一个对的都算）。
 - 错法诊断认得出：BFS 和 DFS 弄反、邻接点按 edges 顺序（或按编号）走反了；Dijkstra 用了 Prim 的更新、有向图当无向图；Prim 用了 Dijkstra 的更新、只看刚加进来的顶点；Kruskal 不判环、判环判错；拓扑排序选了出度为 0 的、栈和队列弄混；关键路径 ve 取最小、vl 取最大、活动的 e 用了终点的 ve。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

@@ -176,7 +176,8 @@ export function markFired(rules, plan) {
   for (const f of plan.fired) {
     const rule = rules.get(f.target);
     if (!rule) continue;
-    if (f.kind === 'right') { rules.delete(f.target); continue; }
+    // 答对整组收起；但只管某一步的（steps 上的 right step=2）只用掉那一条，后面几步的预案、done 照常
+    if (f.kind === 'right' && rule.cases[f.index]?.step === undefined) { rules.delete(f.target); continue; }
     if (rule.cases[f.index]) rule.cases[f.index].used = true;
     if (rule.cases.every((c) => c.used)) rules.delete(f.target);
   }

@@ -23,3 +23,5 @@ ask: subnet
 - `mode: fill`：`subnet` 填网络地址、广播地址、可用地址范围和个数（划分子网、路由聚合各有一张表）；`tcp` 每一轮一列（cwnd、ssthresh）；`window` 每一帧发了几次。
 - **TCP 的轮次口径**：第 1 轮的 cwnd 就是初始值（`init:`），每过一个 RTT 是下一轮；慢开始翻倍、到 ssthresh 后加 1；超时时 ssthresh = ⌊cwnd / 2⌋（最少 2）、cwnd 回到 1；3 个重复确认（Reno）ssthresh = ⌊cwnd / 2⌋、cwnd = ssthresh（Tahoe 和超时一样）。题目的轮次从 0 数时，`init` 那一轮就是第 0 轮，自己对一下。
 - 错法诊断认得出：主机数没减 2、广播地址只把最后一段写成 255、去掉了全 0 全 1 的子网号、广播地址多算 1、没先给主机多的子网分；路由表用了第一个匹配的、按整段比；聚合前缀多数 / 少数一位、没把后面的位清 0；TCP 的 Reno 和 Tahoe 弄混、慢开始翻倍越过 ssthresh、把原来的 ssthresh 减半、超时也快恢复；GBN 和 SR 弄混、GBN 只重传超时那一帧、SR 把后面的也重传、累积确认用错；停止-等待以为确认丢了不用重传。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

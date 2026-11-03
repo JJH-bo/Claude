@@ -49,3 +49,5 @@ void InsertSort(ElemType A[], int n){
 - **内存泄漏**（不停）：结点既没 free、又没有任何指针指着了（顺着变量、结构体、数组里的指针都走不到），那一步的说明后面提醒「③ 现在没有指针指着了，又没有 free：内存泄漏」，最后一步再总结一次；自检也提醒作者。main 结束时局部变量都没了，那时不算。
 - **课堂里**：`board mark target=tr-rev label=p` 标 p 指着的结点（连同名字），`label=3` 标 data 是 3 的结点，`label=③` 标 ③ 号结点。`highlight 7` 还是第 7 行代码。
 - `mode: quiz` 链表的题用 `quiz: output`：代码最后把链表输出出来（`for (p = L->next; p; p = p->next) printf("%d ", p->data);`）。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

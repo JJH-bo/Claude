@@ -163,7 +163,7 @@ export function createPages(host, { getData, db, ops, goto, purge = null }) {
     if (!rows.length) return '<p class="muted">还没有上过课。</p>';
     return `<section class="dk-card"><h2 class="dk-h">以前的课</h2><p class="dk-sub muted">测试开的、不要的课：点进去，最下面「删掉这节课」。</p>${rows.map((r) => `<a class="dk-class-row" href="#classes/${esc(r.id)}">
       <span class="dk-cr-d"><b>${esc((r.date || '').slice(5).replace('-', '/') || r.id)}</b></span>
-      <span class="dk-cr-m">${r.kind !== 'class' ? `<span class="dk-tag is-ok">${KIND_TEXT[r.kind]}</span>` : ''}${r.review ? '<span class="dk-tag">复现课</span>' : ''}${r.status === 'open' ? '<span class="dk-tag is-warn">没下课</span>' : ''} ${inline(r.title)}<br><span class="muted">${esc(r.summary || r.line || '')}</span></span>
+      <span class="dk-cr-m">${r.kind !== 'class' ? `<span class="dk-tag is-ok">${KIND_TEXT[r.kind]}</span>` : ''}${r.review ? '<span class="dk-tag">复现课</span>' : ''}${r.drill ? '<span class="dk-tag">练习</span>' : ''}${r.status === 'open' ? '<span class="dk-tag is-warn">没下课</span>' : ''} ${inline(r.title)}<br><span class="muted">${esc(r.summary || r.line || '')}</span></span>
       <span class="dk-cr-n">${r.minutes !== null ? `${r.minutes} 分钟` : ''}${r.usage?.calls ? `<br><span class="muted">${esc(tokenText(r.usage.bytes))}</span>` : ''}${r.verify ? `<br><span class="muted">核验 ${r.verify.turns}${r.verify.discarded ? ` · 作废 ${r.verify.discarded}` : ''}</span>` : ''}</span>
     </a>`).join('')}</section>`;
   }

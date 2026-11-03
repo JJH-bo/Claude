@@ -13,3 +13,5 @@ ask: zeros, rem
 
 - 错法诊断认得出：CRC 没补 0、补了 r + 1 个 0；海明码奇偶校验弄反、信息位从 D_n 开始往 H3 放。
 - `data:` 最多 24 位（CRC）、16 位（海明码）；`recv:` 海明码最多 31 位。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

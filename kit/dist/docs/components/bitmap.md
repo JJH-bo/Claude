@@ -15,3 +15,5 @@ ask: alloc, blocks, word, bit, block
 - 位示图存在磁盘上（`at:` 从第几号盘块开始存，`block:` 盘块大小）：一块放 block × 8 位，块内按字节数（`word:` 默认 8），`ops:` 只能用 where、free。2015 年统考：`at: 32` `block: 1KB` `ops: free 409612` → 82 号盘块、块内第 1 个字节。
 - `mode: quiz` 问第一个 op（where 写「字号 位号」，磁盘上的写「盘块号 字节号」，block 写盘块号，alloc 写分到的盘块号）。`mode: fill` 填每个盘块的字号、位号、盘块号（给出的那一格不用填；磁盘上的是盘块、块内字节、位）。
 - 错法诊断认得出：编号从 0 还是从 1 弄反、商和余数弄反、把另一个值当成空闲；磁盘上的再加：一块按字节数当成了位数、忘了加起始盘块号。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

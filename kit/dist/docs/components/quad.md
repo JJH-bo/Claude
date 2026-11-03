@@ -12,3 +12,5 @@ ask: matrix, square, definite
 - `ask:` 能问的：`matrix`（矩阵的某个交叉项元素）、`square`（配方后某个平方项的系数）、`values`（正交变换法的系数）、`surface`（是什么曲线 / 曲面）、`definite`（正定 / 半正定 / 负定 / 半负定 / 不定）。`mode: quiz`：写正、负惯性指数。`mode: fill`：矩阵、标准形的系数、惯性指数和正定性一起填。
 
 - 错法诊断认得出：交叉项的系数没除以 2、看主对角元的正负判正定、正交变换法把主对角元当成系数。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

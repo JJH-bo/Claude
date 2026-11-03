@@ -15,3 +15,5 @@ ask: root, parent
 - `ops:` 也认 `Union(1, 2)`、`Find(4)`、`合并 1 2`、`查找 4`，最多 24 个。`init: -1 0 0 -1 …` 从给定的 S 开始（不能有环）。`quiz: find` 改成写每次 Find 的结果。
 - `mode: fill`：每做完一个操作写一行 S 数组（有「照抄」），有 Find 的再写结果。n 最多 16。
 - 错法诊断认得出：根接反（第一个的根挂到了第二个下）/ 大树挂到小树下、路径压缩只改了第一个结点、没先找根直接把元素挂上去、根里没存 −结点数。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

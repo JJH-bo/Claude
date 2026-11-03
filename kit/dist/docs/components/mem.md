@@ -18,3 +18,5 @@ ask: tlb, victim, paddr, time
 - 有效访问时间（`rate:`，不写 vaddr）：`rate: tlb=0.9 fault=0.0001 cache=0.95`（快表命中率、缺页率——占全部访问的比例、Cache 命中率，可写 90%），`cost:` 加 `cache=`；分快表命中 / 没命中（页在内存）/ 缺页三种算时间，再按概率加。有 Cache 时取一次数据 = 命中率 × Cache + (1 − 命中率) × (Cache + 内存)。`ask:` data（取一次数据）、hit、miss、fault、eat。
 - `mode: quiz`：一串地址写各次时间（空格隔开；没写 cost 写物理地址），rate 写 EAT。`mode: fill`：每个地址的页号、快表命中（打 √）、缺页（打 √）、物理地址、用时；rate 填每种情况的概率、时间和 EAT。
 - 错法诊断认得出：缺页处理完没重新执行、以为重新执行时快表还没命中、查完页表没放进快表、没命中时没算查快表的时间、多级页表只算了一次访存、换出了刚访问过的页、按另一种置换算法换；EAT 再加：没命中时没算访存、Cache 没命中时没算查 Cache。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

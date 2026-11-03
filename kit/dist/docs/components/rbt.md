@@ -13,3 +13,5 @@ ask: case
 - `quiz:` 还能写 `pre` / `in` / `post` / `black`。`mode: fill`：每插一个填做了哪些调整（叔叔红写「变色」，叔叔黑写 LL / RR / LR / RL，几次就按先后写几个）、树根、红结点（从小到大）。
 - 结点最多 31 个，关键字不能重复。
 - 错法诊断认得出：叔叔红也去旋转、忘了把根染黑。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

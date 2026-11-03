@@ -15,3 +15,5 @@ table: 0->5, 1->10, 2->4, 3->7
 
 - `mode: fill`：每个逻辑地址一行（页号、页内偏移、物理块号、物理地址）。
 - 错法诊断认得出：页面大小的位数多算 / 少算了一位。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

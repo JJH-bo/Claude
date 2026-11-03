@@ -12,3 +12,5 @@ ask: pred, succ
 - 问的时候题面不说「前驱 / 后继」，只问「这个空指针线索化以后指向谁」，前驱后继弄反才看得出来。
 - `quiz: succ`（默认）：右指针空着的那些结点（按层序列在题面里），线索依次指向谁；`quiz: pred` 是左指针。`mode: fill`：每个结点的 lchild、ltag、rtag、rchild（有孩子的直接给出，线索要写，指向 NULL 写 NULL）。结点最多 15 个。
 - 错法诊断认得出：前驱、后继弄反；按别的次序（先序 / 中序 / 后序）线索化。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

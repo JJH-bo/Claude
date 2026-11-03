@@ -26,3 +26,5 @@ ret
 - `predict: 7 if ecx == 2 -> eax`：第 7 行、执行之前 ecx 是 2 的那一次。`mode: fill` 填每执行一条以后几个寄存器的值（`watch: eax, ecx` 选哪几个，最多 30 条）。
 - 写错（不认的指令、两个内存操作数、找不到的标号）会报行号；死循环（超过 2000 条）、除以 0 停在那一行。
 - 错法诊断认得出：cmp 当成 b − a、lea 当成取内存、有符号转移按无符号判、shr 当成算术右移。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

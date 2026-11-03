@@ -15,3 +15,5 @@ ask: next, nextval
 - ASL失败按王道：开放定址查失败时，和空位置的那次比较也算；拉链法和空指针的比较不算；按 H 能算出的 p 个地址平均。
 - `mode: fill`：`kmp` 填每个 j 的 next、nextval（一列一个 j）；`hash` 填每个关键字的比较次数，下面写 ASL成功 和 ASL失败（可以写分数）；`bsearch` 填每一次比较的 low、high、mid、比的元素。
 - 错法诊断认得出：next 按「从 0 数、next[0] = −1」算的、写成了部分匹配值 PM、nextval 照抄 next；散列按别的探测方法、把表长当成 p、查失败时空位置那次没算、ASL失败按表长平均或除以关键字个数，拉链法和空指针比也算了；折半查找 mid 向上取整、位置从 0 数、判定树失败结点那层也算了比较、ASL失败除以 n。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

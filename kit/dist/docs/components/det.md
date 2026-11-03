@@ -13,3 +13,5 @@ ask: effect, value
 - `ask:` 能问的：`effect`（这一步行列式怎么变：不变 / 变号 / 乘 k）、`sign`（按行展开时代数余子式前面的符号）、`value`（D 是多少）。`mode: quiz`：写出 D。`mode: fill`：每一步之后的系数 $k$，最后写 D。
 
 - 错法诊断认得出：换行（列）忘了变号、某行乘 k（提出 k）后系数没跟着变、按行展开忘了 $(-1)^{i+j}$。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。

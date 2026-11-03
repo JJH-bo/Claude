@@ -15,3 +15,5 @@ ask: loser
 - 最佳归并树（最多 15 段，k = 2～6）：(n − 1) % (k − 1) = u ≠ 0 时补 k − 1 − u 个长度为 0 的虚段；每次合最短的 k 段；WPL = 所有非叶结点之和，I/O 次数 = 2 × WPL（每个记录占一个物理块）。
 - `mode: quiz`：loser 写最后的 ls[0]～ls[k−1]；replace 写几个归并段；merge 写 I/O 次数。`mode: fill`：loser 每次建好 / 调整后的 ls（一次一列）；replace 每一段；merge 每次合哪几段（不管先后）、合成多少，再填虚段数、WPL、I/O。
 - 错法诊断认得出：内部结点记了胜者（成了胜者树）、把大的当胜者；比 MINIMAX 小的也输出、每次读满工作区排好就输出一段；没补虚段、用 n % (k − 1) 算虚段、I/O 只算了一遍 WPL。
+
+这是演示组件：先猜再揭晓（`ask`）、`mode: quiz` / `fill`、`vary:` 滑块、课堂里 `figure … set step=` 这些共用写法见 `components/stepper.md`。
