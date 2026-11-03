@@ -14,8 +14,13 @@ export const WHY = ['turn', 'closing', 'lint', 'images', 'stuck', 'compact', 'fa
 export const WHY_TEXT = { lint: '重写', images: '看原图', tools: '工具', stuck: '停久提醒', compact: '摘要', failed: '出错作废' };
 
 /** 一次调用的花费，记在 class_turns 那一轮上 */
-export function callCost({ bytes, why = 'turn', tools = 0 }) {
-  return { bytes: Math.max(0, Math.round(Number(bytes) || 0)), why: WHY.includes(why) ? why : 'turn', ...(tools > 0 ? { tools: Math.round(tools) } : {}) };
+// ms：从发出到写完一共多久（学生等了多久）；first：从发出到黑板上出现第一个字（边写边显示时学生先看到东西的时候）
+export function callCost({ bytes, why = 'turn', tools = 0, ms, first }) {
+  const t = (v) => (Number.isFinite(v) && v >= 0 ? Math.round(v) : undefined);
+  return {
+    bytes: Math.max(0, Math.round(Number(bytes) || 0)), why: WHY.includes(why) ? why : 'turn', ...(tools > 0 ? { tools: Math.round(tools) } : {}),
+    ...(t(ms) !== undefined ? { ms: t(ms) } : {}), ...(t(first) !== undefined ? { first: t(first) } : {}),
+  };
 }
 
 /**
@@ -38,7 +43,11 @@ export function usageOf(turns = []) {
   const extraCalls = Object.values(extra).reduce((a, b) => a + b, 0);
   // 页面按预案自己接了几次（react.js）：每一次本来都是一整轮调用
   const local = (turns || []).filter((t) => t?.kind === 'react' && !t.discarded).length;
-  return { calls, bytes, tokens: approxTokens(bytes), avgBytes: calls ? Math.round(bytes / calls) : 0, need, extra, extraCalls, ...(local ? { local } : {}) };
+  // 学生等了多久：讲课的轮（turn）平均从发出到写完、到第一个字出现
+  const timed = (turns || []).map((t) => t?.cost).filter((c) => c && c.why === 'turn' && Number.isFinite(c.ms));
+  const avg = (k) => { const xs = timed.map((c) => c[k]).filter(Number.isFinite); return xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : undefined; };
+  const wait = timed.length ? { n: timed.length, ms: avg('ms'), ...(avg('first') !== undefined ? { first: avg('first') } : {}) } : null;
+  return { calls, bytes, tokens: approxTokens(bytes), avgBytes: calls ? Math.round(bytes / calls) : 0, need, extra, extraCalls, ...(local ? { local } : {}), ...(wait ? { wait } : {}) };
 }
 
 /** 「约 4.2 万 token」「约 800 token」 */
@@ -49,9 +58,11 @@ export function tokenText(bytes) {
   return `约 ${t} token`;
 }
 
+const secs = (ms) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)} 秒`;
+
 /** 给人看的一行：这节课调用了几轮、一共和平均每轮花了多少、多跑了几轮为什么。没调用过返回 '' */
 export function usageText(u) {
   if (!u?.calls) return '';
   const why = Object.entries(u.extra || {}).filter(([, n]) => n > 0).map(([k, n]) => `${WHY_TEXT[k] || k} ${n}`);
-  return `调用 Claude ${u.calls} 轮，共${tokenText(u.bytes)}（每轮平均${tokenText(u.avgBytes)}）${u.extraCalls ? `；多跑 ${u.extraCalls} 轮：${why.join('、')}` : ''}${u.local ? `；页面按预案接了 ${u.local} 次，没调用` : ''}`;
+  return `调用 Claude ${u.calls} 轮，共${tokenText(u.bytes)}（每轮平均${tokenText(u.avgBytes)}）${u.extraCalls ? `；多跑 ${u.extraCalls} 轮：${why.join('、')}` : ''}${u.local ? `；页面按预案接了 ${u.local} 次，没调用` : ''}${u.wait ? `；每轮平均等 ${secs(u.wait.ms)}${u.wait.first !== undefined ? `，${secs(u.wait.first)}后开始出字` : ''}` : ''}`;
 }

@@ -161,6 +161,7 @@ export async function renderClass(root, meta, desk = null) {
   let lastPrompt = null; // 开发面板看：上一轮发了多少字节
   // 被函数声明用到、而 restore() 在函数定义之前就会调到那些函数：要在这里先有值（let / const 有暂时性死区）
   let raf = 0, pendingText = ''; // 草稿：一帧最多画一次
+  let firstAt = 0; // 这一次调用黑板上出现第一个字的时候（performance.now）
   let lastVerify = { turns: 0, discarded: 0 }; // 学习台里：上次写进 sessions/{编号} 的核验轮数
   let lastUsage = ''; // 学习台里：上次写进 sessions/{编号} 的花费
   let turnMemos = []; // 这一轮 memo 块里读懂的条目（执行完黑板指令、记下这一轮以后再写进记忆库）
@@ -1298,7 +1299,9 @@ export async function renderClass(root, meta, desk = null) {
       if (teacher.tools) opts.tools = classTools(staged, { view: !followed });
       let res;
       // 这一次调用花了多少：发出去的字节；它调了几次工具（每次平台多跑一整轮）
-      const cost = (w) => callCost({ bytes: fit.bytes, why: w, tools: staged.calls.length });
+      const t0 = performance.now();
+      firstAt = 0;
+      const cost = (w) => callCost({ bytes: fit.bytes, why: w, tools: staged.calls.length, ms: performance.now() - t0, first: firstAt ? firstAt - t0 : undefined });
       try {
         res = await teacher.call(fit.turns, opts);
       } catch (e) {
@@ -1578,6 +1581,7 @@ export async function renderClass(root, meta, desk = null) {
         bar.setStatus('writing', 'Claude 正在写黑板…');
         const d = ensureDraft();
         const talk = d.keepTalk ? '' : segments.filter((s) => s.type === 'speech').map((s) => s.text).join('\n\n').trim();
+        if (!firstAt && (talk || segments.some((s) => s.type === 'board'))) firstAt = performance.now();
         d.talk.hidden = !talk;
         if (talk) d.talk.innerHTML = mdToHtml(previewMd(talk));
         const ops = segments.filter((s) => s.type === 'board');
