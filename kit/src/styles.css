@@ -1391,6 +1391,13 @@ body.has-keypad .ink-fab, body.has-keypad .ink-bar { display: none; }
 .ec-svg .ec-grid { stroke: rgb(var(--chalk-rgb) / 0.25); stroke-width: 1; stroke-dasharray: 3 4; }
 .ec-svg .ec-mid { stroke: rgb(var(--chalk-rgb) / 0.08); stroke-width: 1; }
 .ec-svg .ec-cur { fill: rgb(var(--yellow-rgb) / 0.1); }
+/* encode 的 mode: do：自己画波形（没画的半格是一小段虚线；点的地方透明） */
+.ecd-svg .ecd-empty { stroke: rgb(var(--chalk-rgb) / 0.35); stroke-width: 2; stroke-dasharray: 2 3; }
+.ecd-svg .ecd-hit { fill: transparent; cursor: pointer; }
+.ecd-svg .ecd-hit:hover { fill: rgb(var(--yellow-rgb) / 0.08); }
+.ecd-svg .ecd-bad { fill: rgb(var(--coral-rgb) / 0.12); }
+.ecd-svg .ecd-badbit { fill: var(--coral); }
+.ecd-stage { touch-action: manipulation; }
 .ec-svg .ec-bit { fill: var(--chalk); font: 600 15px var(--mono); text-anchor: middle; }
 .ec-svg .ec-bit.ec-curbit { fill: var(--yellow); }
 .ec-svg .ec-name { fill: var(--muted); font: 12.5px var(--sans); text-anchor: end; }

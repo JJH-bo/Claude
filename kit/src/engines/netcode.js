@@ -152,6 +152,30 @@ function view(s, input) {
   return `${g}</svg>`;
 }
 
+// —— 学生自己画波形（mode: do，blocks/encodedo.js）：判分和错法诊断，纯函数 ——
+// drawn：每位两个半码元 [[前, 后], …]，没画的是 null。返回 { ok, empty（第几位还没画完）, bad（第几位不对，从 0 数）, misread }
+export function judgeDrawn(input, drawn) {
+  const c = input.codes[0];
+  const want = encodeBits(input.bits, c, { start: input.start, up: input.up });
+  const empty = drawn.findIndex((h) => !h || h[0] == null || h[1] == null);
+  if (empty >= 0) return { ok: false, empty, bad: -1, misread: '' };
+  const bad = want.findIndex((h, i) => h[0] !== drawn[i][0] || h[1] !== drawn[i][1]);
+  if (bad < 0) return { ok: true, empty: -1, bad: -1, misread: '' };
+  // 错法：约定反了、按别的编码画的（整串对得上才算）
+  const same = (w) => w.every((h, i) => h[0] === drawn[i][0] && h[1] === drawn[i][1]);
+  const tries = [
+    ...(c === 'manchester' ? [['flip', c, '像是曼彻斯特的约定反过来了']] : []),
+    ...(c === 'diffman' ? [['diffInvert', c, '像是把差分曼彻斯特的「位开始处有跳变」当成了 1'], ['', 'manchester', '像是画成了曼彻斯特（差分曼彻斯特看位开始处跳不跳）']] : []),
+    ...(c === 'manchester' ? [['', 'diffman', '像是画成了差分曼彻斯特']] : []),
+    ...(c === 'nrzi' ? [['nrziOne', c, '像是按「1 翻转」画的 NRZI'], ['', 'nrz', '像是画成了 NRZ（NRZI 看的是翻不翻转）']] : []),
+    ...(c === 'nrz' ? [['', 'nrzi', '像是画成了 NRZI']] : []),
+  ];
+  const hit = tries.find(([m, code]) => { try { return same(encodeBits(input.bits, code, { start: input.start, up: input.up, mistake: m })); } catch { return false; } });
+  return { ok: false, empty: -1, bad, misread: hit ? hit[2] : '' };
+}
+export const halvesText = (h) => h.map((x) => (x ? `${x[0] ?? '?'}${x[1] ?? '?'}` : '??')).join(' ');
+export { NAMES as ENCODE_NAMES, LEVEL as ENCODE_LEVEL };
+
 export const encodeEngine = {
   name: 'encode', title: '编码波形', parse, run, view,
   quiz(input, r) {

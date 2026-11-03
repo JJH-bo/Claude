@@ -29,6 +29,7 @@ import { elimEngine } from '../engines/elim.js';
 import { elimDo } from './elimdo.js';
 import { parseFields } from '../parse.js';
 import { pvBlock } from './pvdo.js';
+import { encodeDo } from './encodedo.js';
 
 // 代码块语言名 → 组件
 export const blocks = {
@@ -41,6 +42,8 @@ export const blocks = {
   // 一步步走的演示（stepper.js 外壳 + engines/ 里的纯函数引擎，名字在 engines/registry.js）
   ...Object.fromEntries(Object.entries(ENGINES).filter(([k]) => k !== 'elim' && k !== 'pv').map(([k, e]) => [k, stepperBlock(e)])),
   elim: elimBlock(),
+  // encode：mode: do 是学生自己画波形（blocks/encodedo.js）
+  encode: doBlock(ENGINES.encode, encodeDo),
   // 进程同步：信号量 P/V（写了 run: 是演示；没写是学生自己点进程，blocks/pvdo.js）
   pv: pvBlock(),
 };
@@ -49,6 +52,14 @@ export const blocks = {
 function elimBlock() {
   const demo = stepperBlock(elimEngine);
   const f = (el, src, opts) => (/^do$/i.test(String(parseFields(src).fields.mode ?? '').trim()) ? elimDo(el, src) : demo(el, src, opts));
+  f.stepper = true;
+  return f;
+}
+
+// 别的有「学生自己动手」写法的演示组件：mode: do 走自己的画面，其余照演示组件
+function doBlock(engine, doFn) {
+  const demo = stepperBlock(engine);
+  const f = (el, src, opts) => (/^do$/i.test(String(parseFields(src).fields.mode ?? '').trim()) ? doFn(el, src) : demo(el, src, opts));
   f.stepper = true;
   return f;
 }

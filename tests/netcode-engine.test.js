@@ -30,3 +30,23 @@ test('组件：读波形、码元速率、错法', () => {
   assert.throws(() => A.parse({ levels: '11 01', code: 'manchester' }), /中间没有跳变/);
   assert.throws(() => A.parse({ bits: '102' }), /bits:/);
 });
+
+test('mode: do（自己画波形）：第几位不对、没画完、认得出约定反了 / 画成了别的编码', async () => {
+  const { encodeEngine, judgeDrawn, encodeBits } = await import('../kit/src/engines/netcode.js');
+  const input = encodeEngine.parse({ bits: '10110', code: 'manchester' });
+  const want = encodeBits(input.bits, 'manchester', {});
+  assert.deepEqual(judgeDrawn(input, want.map((h) => h.slice())), { ok: true, empty: -1, bad: -1, misread: '' });
+  const half = want.map((h) => h.slice()); half[3] = [null, 0];
+  assert.equal(judgeDrawn(input, half).empty, 3);
+  const one = want.map((h) => h.slice()); one[2] = [1 - one[2][0], 1 - one[2][1]];
+  assert.equal(judgeDrawn(input, one).bad, 2);
+  assert.equal(judgeDrawn(input, one).misread, '');
+  const flip = want.map((h) => [1 - h[0], 1 - h[1]]);
+  assert.match(judgeDrawn(input, flip).misread, /约定反过来了/);
+  // 差分曼彻斯特画成了曼彻斯特
+  const d = encodeEngine.parse({ bits: '0110', code: 'diffman' });
+  assert.match(judgeDrawn(d, encodeBits(d.bits, 'manchester', {}).map((h) => h.slice())).misread, /画成了曼彻斯特/);
+  // NRZI 按「1 翻转」画
+  const z = encodeEngine.parse({ bits: '1101', code: 'nrzi' });
+  assert.match(judgeDrawn(z, encodeBits(z.bits, 'nrzi', { mistake: 'nrziOne' })).misread, /1 翻转/);
+});
