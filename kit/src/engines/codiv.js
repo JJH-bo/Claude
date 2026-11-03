@@ -131,7 +131,7 @@ export const divEngine = {
   table(input, r) {
     const qs = r.rows.filter((x) => x.kind === 'sum' && /上商/.test(x.note));
     return {
-      q: `用${NAME[input.algo]}算，填每一次的余数（双符号位）和上的商。`, qhtml: '', dir: 'row', head: ['余数', '上商'],
+      q: `用${NAME[input.algo]}算，填每一次的余数（双符号位）和上的商。`, dir: 'row', head: ['余数', '上商'],
       rows: qs.map((x, i) => ({ label: `第 ${i + 1} 次`, cells: [{ v: [x.r, x.r.replace('.', '')] }, { v: String(x.q.trim().slice(-1)), num: true }] })),
       extra: [{ label: `[x ÷ y]${input.algo === 'comp' ? '补' : '原'}`, v: [r.quotient, r.quotient.replace('.', '')] }],
     };

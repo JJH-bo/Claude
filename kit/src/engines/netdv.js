@@ -368,9 +368,10 @@ export const dvEngine = {
   },
   // 考卷上那张表：RIP / 新表填每个目的的距离和下一跳；整个网络填 watch 那台路由器每一轮的距离
   table(input, r) {
-    if (input.mode === 'rip') return { q: `把 ${input.router} 更新后的路由表填完整。`, qhtml: '', dir: 'row', head: ['距离', '下一跳'], rows: r.final.map((x) => ({ label: x.dest, cells: [{ v: String(x.d), num: true }, { v: x.hop === '' ? ['直接交付', '-', '直接'] : x.hop }] })) };
-    if (input.mode === 'vec') return { q: `把 ${input.router} 的新路由表填完整（下一跳写邻居的名字）。`, qhtml: '', dir: 'row', head: ['距离', '下一跳'], rows: r.best.map((x) => ({ label: x.dest, cells: x.dest === input.router ? [{ v: '0', given: true }, { v: '—', given: true }] : [{ v: dText(x.d), num: x.d !== Infinity }, { v: x.hops.length ? x.hops : '' }] })) };
-    return { q: `${input.watch} 每一轮交换以后到各路由器的距离（不可达写 ${input.inf}）。`, qhtml: '', dir: 'row', head: r.others, rows: r.rounds.map((x) => ({ label: x.label, cells: r.others.map((y) => ({ v: String(x.table.get(input.watch).get(y).d), num: true, ...(x.given ? { given: true } : {}) })) })) };
+    const intro = this.quiz(input, r).q.replace(/按[^。]*的顺序写出[^。]*。$|最后稳定时[^。]*$/, '');
+    if (input.mode === 'rip') return { q: `${intro}把 ${input.router} 更新后的路由表填完整。`, qhtml: '', dir: 'row', head: ['距离', '下一跳'], rows: r.final.map((x) => ({ label: x.dest, cells: [{ v: String(x.d), num: true }, { v: x.hop === '' ? ['直接交付', '-', '直接'] : x.hop }] })) };
+    if (input.mode === 'vec') return { q: `${intro}把 ${input.router} 的新路由表填完整（下一跳写邻居的名字）。`, qhtml: '', dir: 'row', head: ['距离', '下一跳'], rows: r.best.map((x) => ({ label: x.dest, cells: x.dest === input.router ? [{ v: '0', given: true }, { v: '—', given: true }] : [{ v: dText(x.d), num: x.d !== Infinity }, { v: x.hops.length ? x.hops : '' }] })) };
+    return { q: `${intro}${input.watch} 每一轮交换以后到各路由器的距离（不可达写 ${input.inf}）。`, qhtml: '', dir: 'row', head: r.others, rows: r.rounds.map((x) => ({ label: x.label, cells: r.others.map((y) => ({ v: String(x.table.get(input.watch).get(y).d), num: true, ...(x.given ? { given: true } : {}) })) })) };
   },
   // 常见错法：RIP 忘了加 1、下一跳相同却没替换（只比大小）、不管大小一律替换；新表忘了加代价、只走最近的邻居；
   // 整个网络：以为交换一次就全知道了、以为断链马上全网都知道、代价当成跳数

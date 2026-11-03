@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>演示组件当练习题</title>
+<script src="la-kit.js"></script>
+<script type="text/markdown">
+---
+subject: 组成原理
+unit: 演示组件当练习题
+---
+
+# 演示组件当练习题
+
+`practice` 写 `use: 组件名`：页面每一题换一组数，用那个演示组件判分、看错法。只写 `use:` 用内置的出题；自己写 `pick` 和组件的字段也行。
+
+```practice
+id: pr-ham
+use: hamming
+count: 2
+```
+
+```practice
+id: pr-booth
+use: mul
+level: 2
+count: 2
+```
+
+```practice
+id: pr-lru
+title: LRU 自己填表
+use: paging
+count: 1
+pick v = seq(10, 0, 4)
+refs: \calc{list(v)}
+frames: 3
+algo: lru
+mode: fill
+```
+
+```practice
+id: pr-nv
+use: kmp
+level: 2
+```
+
+```practice
+id: pr-avl
+title: AVL：插入以后先猜旋转
+use: avl
+count: 2
+pick v = seq(6, 1, 30) distinct
+avl: \calc{list(v)}
+ask: rotate
+```
+</script>

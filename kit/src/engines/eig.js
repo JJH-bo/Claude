@@ -187,13 +187,13 @@ export function view(s, input, opts = {}) {
 }
 
 export function quiz(input, r) {
-  return { q: '求 A 的全部特征值（重根写几遍，空格隔开）。', qhtml: '', type: 'seq', answer: perms(r.values).join(' | ') };
+  return { q: '求 A 的全部特征值（重根写几遍，空格隔开）。', qhtml: view(r.steps[0].view, input, { k: 0 }), type: 'seq', answer: perms(r.values).join(' | ') };
 }
 
 export function table(input, r) {
   if (!r.spaces) return null;
   return {
-    q: '每个特征值写出代数重数（是几重根）和几何重数（线性无关的特征向量有几个）；最后判断能不能相似对角化。', qhtml: '', dir: 'row',
+    q: '每个特征值写出代数重数（是几重根）和几何重数（线性无关的特征向量有几个）；最后判断能不能相似对角化。', dir: 'row',
     head: ['代数重数', '几何重数'],
     rows: r.spaces.map((s) => ({ label: `λ = ${s.root.toString()}`, cells: [{ v: String(s.mult), num: true }, { v: String(s.geo), num: true }] })),
     extra: [{ label: '能对角化吗（能 / 不能）', v: r.diagonalizable ? '能' : '不能' }],
@@ -264,6 +264,6 @@ export const schmidtEngine = {
     return out;
   },
   table(input, r) {
-    return { q: '写出正交化以后的每个 β（还没单位化，按公式算出来的，不要约分乘整）。', qhtml: '', dir: 'row', head: input.vs[0].map((_, i) => `第 ${i + 1} 个分量`), rows: r.betas.map((b, t) => ({ label: `β${t + 1}`, cells: b.map((x) => ({ v: x.toString(), num: true })) })) };
+    return { q: '写出正交化以后的每个 β（还没单位化，按公式算出来的，不要约分乘整）。', dir: 'row', head: input.vs[0].map((_, i) => `第 ${i + 1} 个分量`), rows: r.betas.map((b, t) => ({ label: `β${t + 1}`, cells: b.map((x) => ({ v: x.toString(), num: true })) })) };
   },
 };

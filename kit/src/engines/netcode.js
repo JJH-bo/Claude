@@ -155,15 +155,15 @@ function view(s, input) {
 export const encodeEngine = {
   name: 'encode', title: '编码波形', parse, run, view,
   quiz(input, r) {
-    if (input.halves) return { q: `下面是${NAMES[input.codes[0]]}的波形，读出比特串。`, type: 'bin', width: r.bits.length, answer: `0b${r.bits.join('')}` };
+    if (input.halves) return { q: `下面是${NAMES[input.codes[0]]}的波形，读出比特串。`, qhtml: view(r.steps[0].view, input), type: 'bin', width: r.bits.length, answer: `0b${r.bits.join('')}` };
     const c = input.codes[0];
     return { q: `把 ${input.bits.join('')} 编成${NAMES[c]}${c === 'nrzi' || c === 'diffman' ? `（开始之前是${LEVEL[input.start]}电平）` : ''}，按顺序写出每个半码元的电平（高写 1、低写 0，一位两个）。`, type: 'bin', width: 2 * input.bits.length, answer: `0b${r.waves[c].flat().join('')}` };
   },
   // 考卷上那张表：每一位的两个半码元（编码），或者每一位是几（读波形）
   table(input, r) {
-    if (input.halves) return { q: '每一位是几？', qhtml: '', dir: 'col', head: r.bits.map((_, i) => `${i + 1}`), rows: [{ label: '比特', cells: r.bits.map((b) => ({ v: String(b), num: true })) }] };
+    if (input.halves) return { q: '每一位是几？', dir: 'col', head: r.bits.map((_, i) => `${i + 1}`), rows: [{ label: '比特', cells: r.bits.map((b) => ({ v: String(b), num: true })) }] };
     return {
-      q: '每一位的两个半码元是高还是低？（写「高低」或「10」）', qhtml: '', dir: 'col',
+      q: '每一位的两个半码元是高还是低？（写「高低」或「10」）', dir: 'col',
       head: input.bits.map((b, i) => `${i + 1}（${b}）`),
       rows: input.codes.map((c) => ({ label: NAMES[c], cells: r.waves[c].map((h) => ({ v: [pair(h), h.join('')] })) })),
     };

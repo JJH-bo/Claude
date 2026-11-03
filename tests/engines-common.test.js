@@ -116,16 +116,15 @@ test('说明里的演示组件例子：照抄就能用（ask 的种类都有、�
   }
 });
 
-// 新加的演示组件忘了放进上面的 ENGINES，就不会被「例子照抄就能用」查到：按 blocks/index.js 里注册的对一遍
-test('blocks/index.js 里注册的演示组件都在这份测试的 ENGINES 里', () => {
-  const src = readFileSync(new URL('../kit/src/blocks/index.js', import.meta.url), 'utf8');
-  // 一行里可能注册好几个（avl: …, rbt: …）：每个「名字: stepperBlock(」都算
-  // 也认自己包一层的（elim: elimBlock()、pv: pvBlock()：有演示也有学生自己做的画面）
-  const registered = [...src.matchAll(/(\w+):\s*(?:stepperBlock\(|\w+Block\(\))/g)].map((m) => m[1]);
-  assert.ok(registered.length > 30);
-  const missing = registered.filter((n) => !ENGINES[n]);
+// 新加的演示组件忘了放进上面的 ENGINES，就不会被「例子照抄就能用」查到：按 engines/registry.js（blocks/index.js 照它注册）对一遍
+test('engines/registry.js 里的演示组件都在这份测试的 ENGINES 里；blocks/index.js 照它注册', async () => {
+  const { ENGINES: REG } = await import('../kit/src/engines/registry.js');
+  assert.ok(Object.keys(REG).length > 30);
+  const missing = Object.keys(REG).filter((n) => !ENGINES[n]);
   assert.deepEqual(missing, [], `这些组件没放进 tests/engines-common.test.js 的 ENGINES：${missing.join('、')}`);
-  // elim 走 elimBlock()（mode: do 另有画面），也要在
+  for (const [k, e] of Object.entries(REG)) assert.equal(e.name, k, `registry 里 ${k} 对应的引擎叫 ${e.name}`);
+  const src = readFileSync(new URL('../kit/src/blocks/index.js', import.meta.url), 'utf8');
+  assert.match(src, /Object\.entries\(ENGINES\)/);
   assert.ok(ENGINES.elim);
 });
 
@@ -183,4 +182,39 @@ test('每个演示组件在手册里都有说明，quiz、fill、错法诊断都
   }
   assert.deepEqual(missing, [], `这些组件在 CLAUDE-PROJECT.md 第三节没有说明（小节标题里要有组件名）：${missing.join('、')}`);
   assert.deepEqual(gaps, []);
+});
+
+// quiz、fill 时看不到演示的画面：题面要么画着开始的样子（qhtml；fill 不写 qhtml 就画第 0 步），要么在文字里写出了输入。
+// 都没有时学生不知道算什么（2026-11-03 查出 det、eig、elim、alloc、memexp 的 quiz 和二十来张表都是这样）
+test('quiz、fill 的题面看得到输入（画着开始的样子，或者文字里写了）', async () => {
+  const { readdirSync } = await import('node:fs');
+  const all = [...blocks];
+  const pages = ['CLAUDE-PROJECT.md', ...readdirSync('kit/examples').filter((f) => f.endsWith('.html')).map((f) => `kit/examples/${f}`)];
+  for (const f of pages) for (const m of readFileSync(f, 'utf8').matchAll(/^(`{3,})(\w+)\n([\s\S]*?)^\1\s*$/gm)) if (ENGINES[m[2]]) all.push([m[2], m[3]]);
+  const norm = (x) => String(x ?? '').replace(/<[^>]*>|[\s,，、$\\{}]/g, '').toLowerCase();
+  const SKIP = new Set(['id', 'title', 'q', 'note', 'ask', 'mode', 'quiz', 'want', 'algo', 'show', 'given', 'rows', 'cols', 'start', 'speed', 'hint', 'link']);
+  const bad = [];
+  // 看过的、其实写全了的：pt-1 问级数用不上 vaddr；cd-2009 的速率换了单位（200m/μs）；dv-cti 的链路代价没写就是 1；bm-1based 的盘块号写在表的行名里
+  const LOOKED = new Set(['pt-1', 'cd-2009', 'dv-cti', 'bm-1based']);
+  for (const [name, src] of all) {
+    const e = ENGINES[name];
+    const { fields } = parseFields(e.head ? e.head(src) : src);
+    if (fields.q || LOOKED.has(fields.id)) continue; // 老师自己写了题面
+    let input, r;
+    try { input = e.parse(fields, src); r = e.run(input); } catch { continue; }
+    // 输入里最长的那个字段（数据）：题面文字里要有它的开头一段
+    const data = Object.entries(fields).filter(([k, v]) => !SKIP.has(k) && typeof v === 'string').map(([, v]) => v).sort((a, b) => b.length - a.length)[0];
+    if (!data) continue;
+    // 或者：输入里的数大部分在题面文字里（写法换了也算：「页表是 0→5，1→10」）
+    const nums = [...new Set(Object.entries(fields).filter(([k, v]) => !SKIP.has(k) && typeof v === 'string').flatMap(([, v]) => v.match(/\d+(?:\.\d+)?/g) || []))];
+    const said = (q) => norm(q).includes(norm(data).slice(0, 6)) || (nums.length > 0 && nums.filter((x) => String(q).includes(x)).length >= nums.length * 0.6);
+    const where = `${name}（${src.split('\n').find((l) => /^id:/.test(l)) || src.split('\n')[0]}）`;
+    let q = null;
+    try { q = e.quiz?.(input, r, fields) ?? null; } catch { /* 没有 quiz */ }
+    if (q && !q.qhtml && !said(q.q)) bad.push(`${where} 的 quiz：「${String(q.q).slice(0, 40)}」`);
+    let t = null;
+    try { t = e.table?.(input, r, fields) ?? null; } catch { /* 没有表 */ }
+    if (t && t.qhtml === '' && !said(t.q)) bad.push(`${where} 的表：「${String(t.q).slice(0, 40)}」`);
+  }
+  assert.deepEqual([...new Set(bad)], []);
 });

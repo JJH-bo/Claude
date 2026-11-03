@@ -229,7 +229,7 @@ export const faddEngine = {
     rows.push({ label: '尾数相加', cells: [{ v: binAlts(r.mid.sum, mb, g0) }] });
     if (!r.zero) rows.push({ label: '规格化、舍入后', cells: [{ v: binAlts(r.m, mb) }] });
     return {
-      q: '按步骤做，把每一步的结果填进表里（尾数写双符号位补码，移出去的位写在括号里）。', qhtml: '', dir: 'row',
+      q: '按步骤做，把每一步的结果填进表里（尾数写双符号位补码，移出去的位写在括号里）。', dir: 'row',
       head: ['尾数'],
       rows,
       extra: [

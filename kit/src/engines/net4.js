@@ -477,7 +477,7 @@ export const tcpEngine = {
       let k = 0;
       const rows = input.segs.map((g) => ({ label: `第 ${g.i} 个`, cells: [{ v: String(g.seq), num: true, given: input.given === 'seq' && true }, { v: String(g.len), num: true, given: input.given === 'len' }, input.lost.has(g.i) ? { v: '丢失', given: true } : { v: String(r.acks[k++]), num: true }] }));
       for (const g of input.segs.filter((x) => input.lost.has(x.i))) rows.push({ label: `重传第 ${g.i} 个`, cells: [{ v: String(g.seq), given: true }, { v: String(g.len), given: true }, { v: String(r.acks[k++]), num: true }] });
-      return { q: '填出每个报文段的序号、数据长度，和 B 收到它以后发回的确认号。', qhtml: '', dir: 'row', head: ['序号', '数据长度', 'B 的确认号'], rows };
+      return { q: `${this.quiz(input, r, {}).q.replace(/按顺序写出[^。]*。$/, '')}填出每个报文段的序号、数据长度，和 B 收到它以后发回的确认号。`, qhtml: '', dir: 'row', head: ['序号', '数据长度', 'B 的确认号'], rows };
     }
     if (input.mode !== 'cwnd') return null;
     return {

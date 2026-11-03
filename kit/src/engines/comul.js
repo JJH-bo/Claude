@@ -131,7 +131,7 @@ export const mulEngine = {
     const shifts = r.rows.filter((x) => x.kind === 'shift');
     const alts = (t) => [t, t.replace('.', '')];
     return {
-      q: `用${NAME[input.algo]}算，填每次右移以后的部分积和乘数${input.algo === 'booth' ? `（乘数写 ${input.n + 1} 位，不含 y${input.n + 1}）` : ''}。`, qhtml: '', dir: 'row',
+      q: `用${NAME[input.algo]}算，填每次右移以后的部分积和乘数${input.algo === 'booth' ? `（乘数写 ${input.n + 1} 位，不含 y${input.n + 1}）` : ''}。`, dir: 'row',
       head: ['部分积', '乘数'],
       rows: shifts.map((x, i) => ({ label: `第 ${i + 1} 次右移后`, cells: [{ v: alts(x.a) }, { v: [x.q] }] })),
       extra: [{ label: `[x·y]${input.algo === 'booth' ? '补' : '原'}`, v: alts(r.prodText) }],

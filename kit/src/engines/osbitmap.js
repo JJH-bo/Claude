@@ -310,7 +310,7 @@ export const bitmapEngine = {
     }
     if (!rows.length) return null;
     return {
-      q: input.at !== null ? `写出每个盘块对应的位在第几号盘块、块内第几个${noun(input)}、第几位。` : '写出每一行的字号、位号和盘块号（给出的那一格不用填）。分配的按扫描的先后写。',
+      q: (input.at !== null ? `位示图存在磁盘上，从第 ${input.at} 号盘块开始存，盘块大小 ${sizeText(input.block)}，${baseText(input)}（块内的${noun(input)}也是）。` : `位示图的字长是 ${input.n} 位，${input.idle} 表示空闲，${baseText(input)}。`) + (input.at !== null ? `写出每个盘块对应的位在第几号盘块、块内第几个${noun(input)}、第几位。` : '写出每一行的字号、位号和盘块号（给出的那一格不用填）。分配的按扫描的先后写。'),
       qhtml: input.grid ? view(r.steps[0].view, input) : '', dir: 'row',
       head: input.at !== null ? ['盘块号', `块内${noun(input)}号`, '位号'] : ['字号', '位号', '盘块号'],
       rows,

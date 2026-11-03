@@ -38,6 +38,20 @@ explain: $\operatorname{tr}A=\calc{tr(A)}$，所以 $A^3=\calc{A^3}$。
 - `int()` 的上下界可以用前面取过的数：`pick b = int(a + 1, 9)`。`n`、`E`、`I` 都是普通的名字，可以 `pick n = int(3, 6)`、`let E = …`（阶码；单独写 `E` 就是它，`E(3)` 照样是单位矩阵）；只有配了 `formula: n`（答案是含 n 的式子）时不能再取一个叫 n 的数。
 
 
+### practice 的 use：演示组件当练习题
+
+**演示组件当练习题 `use: 组件名`**：页面每一题换一组数，判分、错法诊断用那个演示组件。只写 `use: hamming`（还有 `crc` `mul` `div` `fadd` `frag` `kmp` `huffman` `sort` `paging` `sched` `subnet` `bsearch`）用内置的出题，`level: 2` 更难；同名字段照你写的（`use: paging` 配 `algo: lru`）。别的组件、别的出法：照自定义题型写 `pick`，下面接组件的字段，用 `\calc{…}` 写取到的数：
+
+```practice
+use: avl
+pick v = seq(6, 1, 30) distinct
+avl: \calc{list(v)}
+ask: rotate
+```
+
+- `use:` 的细节：没写 `mode:` 也没写 `ask:` 就是 `mode: quiz`；`mode: fill`、`ask:` 照组件的写法（`mode: do` 不行）。这一组数正好问不到（插了几个数都没失衡，就没有 `rotate`）时页面自己换一组。作答记录照那个组件的写，题目后面带着这一题取的数（`（v=7 3 12 …）`）。`frames` 没有可以换的数，用 `type: custom`。
+- 计算机课的取数：`bits(4)`（一串 0/1，`nonzero` 不全是 0，写出来就是 `1011`）、`seq(8, 0, 5)`（8 个数，`distinct` 不重复）、`word(fifo, lru, opt)`（挑一个词：算法名、方向）、`str(7, ab)`（用 a、b 拼 7 个字母：KMP 的模式串）。写进字段：向量用 `\calc{list(v)}`（写成 `7 0 1 2`），带正负号的二进制真值用 `\calc{sbin(x, 4)}`（`sbin(-13/16, 4)` 是 `-0.1101`，`sbin(-3, 3)` 是 `-011`），`bin(g)` 是不带符号的。向量的小工具：`el(v, 2)`（第 2 个，从 1 数）、`sort(v)`、`sum(v)`、`cumsum(v)`（前缀和：到达时间）。
+
 ### practice 的内置题型（线代）
 
 两组，组内可以混着出（`type: det3, inverse, eigen`），两组不能写在同一个 `practice` 里：

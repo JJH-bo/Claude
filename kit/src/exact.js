@@ -350,6 +350,38 @@ const FUNCS = {
   // 只为写出来的：vmat(A) 写成行列式的竖线 |…|；qf(A) 把对称矩阵写成二次型 x₁² + 2x₁x₂ + …（练习题的题面用）
   vmat: (M) => { square(M, '行列式'); return new Shown(`\\begin{vmatrix}${M.map((r) => r.map((x) => x.toTeX()).join(' & ')).join(' \\\\ ')}\\end{vmatrix}`, exactText(M)); },
   qf: (M) => quadFormShown(M),
+  // 向量的几个小工具（practice 取数用）：el(v, 2) 第 2 个分量（从 1 数）、sort(v) 从小到大、sum(v)、cumsum(v) 前缀和
+  el: (v, i) => { vec(v); const k = int(i, '第几个') - 1; if (k < 0 || k >= v.length) throw new Error(`没有第 ${k + 1} 个分量（一共 ${v.length} 个，从 1 数）`); return v[k]; },
+  sort: (v) => vec(v).slice().sort((a, b) => a.cmp(b)),
+  sum: (v) => vec(v).reduce((s, x) => s.add(x), ZERO),
+  cumsum: (v) => { let s = ZERO; return vec(v).map((x) => (s = s.add(x))); },
+  // sbin(x, n)：二进制真值（带正负号，组成原理的题面、演示组件的 x: 字段用）：整数写 n 位（sbin(-3, 3) = -011），
+  // 纯小数写 n 位小数（sbin(-13/16, 4) = -0.1101）。和 bin() 不同：负数不写成补码
+  sbin: (x, n) => {
+    q(x, 'sbin() 里');
+    const w = Number(bigInt(n === undefined ? new Q(0n) : n, '位数'));
+    const neg = x.n < 0n, a = neg ? x.neg() : x;
+    let digits;
+    if (a.integer) {
+      digits = a.n.toString(2);
+      if (w && digits.length > w) throw new Error(`${x} 用 ${w} 位放不下`);
+      digits = digits.padStart(w || 1, '0');
+    } else {
+      if (!w) throw new Error('小数要写小数位数，比如 sbin(-13/16, 4)');
+      const m = a.mul(new Q(1n << BigInt(w)));
+      if (!m.integer) throw new Error(`${x} 写成 ${w} 位二进制小数写不尽`);
+      if (a.cmp(new Q(1n)) >= 0) throw new Error(`sbin() 只写纯小数（|x| < 1）或整数（现在是 ${x}）`);
+      digits = `0.${m.n.toString(2).padStart(w, '0')}`;
+    }
+    const t = `${neg ? '-' : ''}${digits}`;
+    return new Shown(t, t);
+  },
+  // list(v)：向量写成空格隔开的一串（演示组件的 array:、refs: 这类字段用；practice 的 seq() 取到的就是向量）
+  list: (v) => {
+    if (!Array.isArray(v) || v.some((x) => Array.isArray(x))) throw new Error('list() 里写一个向量，比如 list(v)');
+    const items = v.map((x) => exactText(x));
+    return new Shown(items.join(',\\ '), items.join(' '));
+  },
   // 精确地四舍五入（分数不经过浮点）：dec(61/4) = 15.25，dec(8/3) = 2.67，dec(x, 3)
   dec: (x, k) => decExact(q(x, 'dec() 里'), k === undefined ? 2 : int(k, '位数')),
 };
@@ -373,6 +405,8 @@ class Shown extends Radix {
   constructor(tex, text) { super(text, 0); this.tex = tex; }
   toTeX() { return this.tex; }
 }
+/** 一段只能写出来的文字（practice 的 word() / str() 取到的：lru、abaabc），\calc{w} 写出来就是它 */
+export const textValue = (t) => new Shown(`\\text{${String(t).replace(/[\\{}]/g, '')}}`, String(t));
 function quadFormShown(M) {
   square(M, '二次型');
   if (!M.every((r, i) => r.every((x, j) => x.cmp(M[j][i]) === 0))) throw new Error('qf(A)：二次型的矩阵要对称');

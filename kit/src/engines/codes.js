@@ -126,7 +126,7 @@ const bitRow = (str, split = -1) => [...str].map((c, i) => `<span class="cc-b${i
 function crcTable(input, r) {
   if (input.mode === 'check') return null;
   return {
-    q: '一步步做模 2 除法：每一次异或之后那几位是什么；最后写余数和发送的帧。', qhtml: '', dir: 'row',
+    q: '一步步做模 2 除法：每一次异或之后那几位是什么；最后写余数和发送的帧。', dir: 'row',
     head: ['异或以后'],
     rows: r.ops.map((o, k) => ({ label: `第 ${k + 1} 次（${o.before} ⊕ ${input.gen}）`, cells: [{ v: o.after }] })),
     extra: [{ label: '余数', v: r.rem }, { label: '发送的帧', v: r.frame }],
@@ -136,8 +136,10 @@ function crcTable(input, r) {
 export const crcEngine = {
   name: 'crc', title: 'CRC 循环冗余校验', parse: crcParse, run: crcRun, view: crcView, table: crcTable,
   quiz(input, r) {
-    if (input.mode === 'check') return { q: '这一帧检测出差错了吗？写「有」或「没有」。', type: 'seq', answer: r.ok ? '没有' : '有' };
-    return { q: `求余数（${input.r} 位校验码）。`, type: 'seq', answer: [...r.rem].join(' ') + ' | ' + r.rem };
+    // 题面写出数据和生成多项式（quiz 时看不到演示的画面，不写就不知道算什么）
+    const G = `生成多项式 G = ${input.gen}`;
+    if (input.mode === 'check') return { q: `收到 ${input.recv}，${G}。这一帧检测出差错了吗？写「有」或「没有」。`, type: 'seq', answer: r.ok ? '没有' : '有' };
+    return { q: `信息位 M = ${input.data}，${G}。求余数（${input.r} 位校验码）。`, type: 'seq', answer: [...r.rem].join(' ') + ' | ' + r.rem };
   },
   // 常见错法：信息后面没补 0、补了 r + 1 个（把 G 的位数当成了阶数）
   variants(input) {
@@ -246,12 +248,13 @@ function hamView(s) {
 export const hammingEngine = {
   name: 'hamming', title: '海明码', parse: hamParse, run: hamRun, view: hamView,
   quiz(input, r) {
-    if (input.mode === 'check') return { q: '第几位出错了？（没出错写 0）', type: 'num', answer: String(r.pos) };
-    return { q: '写出海明码（从左往右是 H_n … H_1）。', type: 'seq', answer: `${r.code} | ${[...r.code].join(' ')}` };
+    const par = input.odd ? '奇校验' : '偶校验';
+    if (input.mode === 'check') return { q: `收到海明码 ${input.recv}（${par}，从左往右是 H${input.N} … H1）。第几位出错了？（没出错写 0）`, type: 'num', answer: String(r.pos) };
+    return { q: `信息位 ${input.data}（从左往右是 D${input.data.length} … D1），${par}。写出海明码（从左往右是 H_n … H_1）。`, type: 'seq', answer: `${r.code} | ${[...r.code].join(' ')}` };
   },
   table(input, r) {
-    if (input.mode === 'check') return { q: '每个校验组重新算一遍，写出 S1、S2…，最后写出错的位置（没出错写 0）。', qhtml: '', dir: 'row', head: ['值'], rows: r.S.map((x, i) => ({ label: `S${i + 1}`, cells: [{ v: String(x), num: true }] })), extra: [{ label: '出错的位置', v: String(r.pos), num: true }] };
-    return { q: '写出每个校验位，最后写出整个海明码（H_n … H_1）。', qhtml: '', dir: 'row', head: ['值'], rows: r.P.map((x, i) => ({ label: `P${i + 1}`, cells: [{ v: String(x), num: true }] })), extra: [{ label: '海明码', v: r.code }] };
+    if (input.mode === 'check') return { q: '每个校验组重新算一遍，写出 S1、S2…，最后写出错的位置（没出错写 0）。', dir: 'row', head: ['值'], rows: r.S.map((x, i) => ({ label: `S${i + 1}`, cells: [{ v: String(x), num: true }] })), extra: [{ label: '出错的位置', v: String(r.pos), num: true }] };
+    return { q: '写出每个校验位，最后写出整个海明码（H_n … H_1）。', dir: 'row', head: ['值'], rows: r.P.map((x, i) => ({ label: `P${i + 1}`, cells: [{ v: String(x), num: true }] })), extra: [{ label: '海明码', v: r.code }] };
   },
   // 常见错法：奇偶校验弄反、信息位从高位开始往 H3 放（王道：D1 放在 H3）
   variants(input) {

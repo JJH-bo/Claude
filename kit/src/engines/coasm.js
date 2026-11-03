@@ -363,7 +363,7 @@ export const asmEngine = {
   defaultAsk: (input) => (input.predicts.length ? 'predict' : ''),
   quiz(input, r) {
     if (r.error) throw new Error('代码运行出错，没有 quiz');
-    return { q: `执行完这段代码${input.entry ? `（调用 ${input.entry.name}(${input.entry.args.join(', ')})）` : ''}以后，${input.quiz} 是多少？（十进制）`, type: 'num', answer: String(s32(r.regs[input.quiz])) };
+    return { qhtml: view(r.steps[0].view, input), q: `执行完这段代码${input.entry ? `（调用 ${input.entry.name}(${input.entry.args.join(', ')})）` : ''}以后，${input.quiz} 是多少？（十进制）`, type: 'num', answer: String(s32(r.regs[input.quiz])) };
   },
   // 考卷上那张表：每执行一条指令以后，几个寄存器的值（最多 30 条）
   table(input, r) {
@@ -372,7 +372,7 @@ export const asmEngine = {
     if (!watch.length) throw new Error('这段代码没有改通用寄存器：写 watch: 选要填的寄存器');
     if (r.trace.length > 30) throw new Error(`一共执行了 ${r.trace.length} 条指令，填表太长：最多 30 条（改短一点，或者用 predict 只问几处）`);
     return {
-      q: `每执行一条指令以后，${watch.join('、')} 是多少（十进制）？`, qhtml: '', dir: 'row', head: watch,
+      q: `每执行一条指令以后，${watch.join('、')} 是多少（十进制）？`, dir: 'row', head: watch,
       rows: r.trace.map((t, i) => ({ label: `${i + 1}. 第 ${t.line} 行`, cells: watch.map((w) => ({ v: [String(s32(t.regs[w])), hex8(t.regs[w]), hex8(t.regs[w]).slice(0, -1).replace(/^0+(?=.)/, '') + 'H'], num: false })) })),
     };
   },

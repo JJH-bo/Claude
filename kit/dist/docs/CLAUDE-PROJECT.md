@@ -175,6 +175,7 @@ b = [1, 1, -2]
 - `answer`（线代）：基、特征向量、含 n 的式子 → `components/answer.md`
 - `conjecture`：说出你的发现（由页面里的 Claude 批改；`grade: off` 只记录不批改） → `components/conjecture.md`
 - `practice`：程序出题、程序判分 → `components/practice.md`
+- `practice` / `use`（数据结构、操作系统、组成原理、计网）：演示组件当练习题 → `components/practice.md`
 - `practice`（线代）：practice 的内置题型（线代） → `components/practice.md`
 - `practice`（数据结构）：practice 的内置题型（数据结构） → `components/practice.md`
 - `quiz`：选择题 / 填空题 → `components/quiz.md`

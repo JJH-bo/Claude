@@ -77,10 +77,10 @@ function view(s, input) {
 
 export const memexpEngine = {
   name: 'memexp', title: '存储器扩展', parse, run, view,
-  quiz(input, r) { return { q: '一共要几片芯片？', type: 'num', answer: String(r.total) }; },
+  quiz(input, r) { return { q: '一共要几片芯片？', qhtml: view(r.steps[0].view, input, { k: 0 }), type: 'num', answer: String(r.total) }; },
   table(input, r) {
     return {
-      q: '写出要几片、片内地址线几条、片选几位，和每组的地址范围（起始、结束，十六进制）。', qhtml: '', dir: 'row',
+      q: '写出要几片、片内地址线几条、片选几位，和每组的地址范围（起始、结束，十六进制）。', dir: 'row',
       head: ['起始地址', '结束地址'],
       rows: r.ranges.map((x) => ({ label: `第 ${x.g + 1} 组`, cells: [{ v: [hex(x.lo, input.addr), hex(x.lo, input.addr).slice(0, -1)] }, { v: [hex(x.hi, input.addr), hex(x.hi, input.addr).slice(0, -1)] }] })),
       extra: [{ label: '芯片数', v: String(r.total), num: true }, { label: '片内地址线', v: String(r.lines), num: true }, { label: '片选位数', v: String(r.csBits), num: true }],

@@ -361,11 +361,12 @@ export const pagingEngine = {
   view: pagingView,
   quiz(input, r, fields) {
     const what = String(fields.quiz || 'faults').toLowerCase();
-    const head = `页面引用串 ${input.refs.join(' ')}，分 ${input.frames} 个物理块，用${PAGING[input.algo]}。`;
-    if (what === 'victims') return { q: `${head}依次写出被换出的页。`, type: 'seq', answer: r.victims.join(' ') || '无' };
+    const head = `页面引用串 ${input.refs.join(' ')}，分 ${input.frames} 个物理块，用${PAGING[input.algo]}。${input.init ? '开始时内存里的页如下。' : ''}`;
+    const qhtml = input.init ? pagingView(r.steps[0].view, input) : undefined;
+    if (what === 'victims') return { q: `${head}依次写出被换出的页。`, qhtml, type: 'seq', answer: r.victims.join(' ') || '无' };
     // 错法「一开始调入不算缺页」：缺页次数少算了开头那几次
     const faults = input.noInitial ? r.faults - Math.min(input.frames, new Set(input.refs).size) : r.faults;
-    return { q: `${head}一共缺页多少次（一开始调入也算）？`, type: 'seq', answer: String(faults) };
+    return { q: `${head}一共缺页多少次（一开始调入也算）？`, qhtml, type: 'seq', answer: String(faults) };
   },
   // 考卷上那张表：每次访问一列，各物理块里是哪页（同一列里的物理块不管顺序）、缺没缺页、换出谁
   table(input, r) {
@@ -377,7 +378,8 @@ export const pagingEngine = {
       copy: true,
       head,
       rows: cols.map((c) => ({ label: c.ref, cells: [...c.slots.map((x) => ({ v: x ?? '', group: 'f' })), { v: c.fault ? '√' : '', mark: true }, { v: c.victim ?? '' }] })),
-      qhtml: '',
+      // 有 init 时画开始的样子（哪几页已经在内存里、访问位、指针）
+      qhtml: input.init ? pagingView(r.steps[0].view, input) : '',
     };
   },
   // 常见错法：换成别的置换算法（改进型 CLOCK 只和简单 CLOCK 比：init 里的位别的算法用不上）；「一开始调入不算缺页」；改进型 CLOCK 第 1 轮也清了访问位
