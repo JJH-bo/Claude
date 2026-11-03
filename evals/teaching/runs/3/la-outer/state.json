@@ -45,7 +45,7 @@
   {
    "n": 2,
    "title": "形状怎么定",
-   "talk": "这里缺的是一条规则：乘积的形状只看两头，中间那两个相同的数「对掉」。行乘列，对掉以后剩 $1\\times1$，就是一个数。\n\n上面那个乘积可以点结果看它怎么来的；下面那题填一个答案。"
+   "talk": "算的过程没问题，结果是 4。你标了「没把握」：是哪一点让你不踏实？在下面输入框里用一句话说说就行。"
   }
  ],
  "cur": 2,
@@ -178,6 +178,11 @@
    "role": "student",
    "seq": 6,
    "text": "按乘法规则算：2×1 + (-1)×4 + 3×2 = 4。\n[作答] b3 里的 quiz q-dot3：「换一组 3 维的：$\\mathbf u=(2,-1,3)^{\\mathrm T}$，$\\mathbf v=(1,4,2)^{\\mathrm T}$。$\\mathbf u^{\\mathrm T}\\mathbf v$ 等于多少？」做对了（共 1 次）\n[动作] b3 里的组件 q-dot3：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "role": "claude",
+   "seq": 7,
+   "text": "算的过程没问题，结果是 4。你标了「没把握」：是哪一点让你不踏实？在下面输入框里用一句话说说就行。\n"
   }
  ],
  "turns": [
@@ -271,8 +276,18 @@
     }
    ],
    "msg": "按乘法规则算：2×1 + (-1)×4 + 3×2 = 4。\n[作答] b3 里的 quiz q-dot3：「换一组 3 维的：$\\mathbf u=(2,-1,3)^{\\mathrm T}$，$\\mathbf v=(1,4,2)^{\\mathrm T}$。$\\mathbf u^{\\mathrm T}\\mathbf v$ 等于多少？」做对了（共 1 次）\n[动作] b3 里的组件 q-dot3：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
+  },
+  {
+   "seq": 7,
+   "role": "teacher",
+   "bytes": 144,
+   "talk": "算的过程没问题，结果是 4。你标了「没把握」：是哪一点让你不踏实？在下面输入框里用一句话说说就行。",
+   "ops": [],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 2 块板「形状怎么定」\n\n老师写在板顶的话：算的过程没问题，结果是 4。你标了「没把握」：是哪一点让你不踏实？在下面输入框里用一句话说说就行。\n\n## 形状怎么定\n$(m\\times \\chalk{yellow}{k})(\\chalk{yellow}{k}\\times n)\\;\\to\\; m\\times n$：中间的 $k$ 要相等，结果的形状是两头的 $m\\times n$。\n\n- $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$：$(2\\times\\chalk{yellow}{1})(\\chalk{yellow}{1}\\times2)\\to 2\\times2$\n- $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$：$(1\\times\\chalk{yellow}{2})(\\chalk{yellow}{2}\\times1)\\to 1\\times1$，一行乘一列，只有一个数\n\n【matrix m-bta】\n  id: m-bta\n  title: βᵀα：点一下结果里的数\n  let R = [[3, 1]]\n  let C = [[1], [2]]\n  product R C name=S\n\n【填空题 q-dot3】\n  换一组 3 维的：$\\mathbf u=(2,-1,3)^{\\mathrm T}$，$\\mathbf v=(1,4,2)^{\\mathrm T}$。$\\mathbf u^{\\mathrm T}\\mathbf v$ 等于多少？\n  （写出答案）\n\n# 常驻栏\n## 这节课的记号\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 6,
+ "seq": 7,
  "pendingNotes": []
 }

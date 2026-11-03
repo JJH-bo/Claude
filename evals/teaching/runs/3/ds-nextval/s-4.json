@@ -1,0 +1,1 @@
+{"say": "T[5]=a，退到next[5]=2，T[2]也是a，白比；再退到next[2]=1，T[1]还是a，也白比；再退就是0了。所以写0。", "acts": [{"comp": "q-chain", "value": "0"}], "sure": {"q-chain": false}}

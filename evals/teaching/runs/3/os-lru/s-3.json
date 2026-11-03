@@ -1,0 +1,1 @@
+{"say": "7。前面 7 0 1 都只访问了一次，7 最久没碰。", "acts": [{"comp": "pg-lru", "value": "7"}], "sure": {"pg-lru": true}}
