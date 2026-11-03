@@ -8,6 +8,7 @@
 - **一个学习台（所有东西在一处）：`docs/hub-plan.md`**；记忆分两层（全文 + 目录）、省额度不丢信息：`docs/memory-plan.md`；教材板块（入库、按需读）和学习台自己备课：`docs/textbook-plan.md`；学习台的记录、交互、内部 Claude 改记忆：`docs/desk-plan.md`（记录能力、交互、内部 Claude 改记忆；外内协作的分工；分批和验收）。新对话做学习台先读它。
 - 下一步的总计划（线代和 408 一起做到优秀：验收尺子、外壳升级、线代六章、408 加深）和进度：`docs/quality-plan.md`
 - 教学方向的升级（教学守则：失误归纳成守则不再累加；学习台备课出教案；板放不下自动分屏等不花额度的修复）：`docs/teach-plan.md`
+- 英语组件库全面提升（指着讲到词、错法诊断、选择式的空、一层层拆、意群断句、验收）：`docs/english-plan.md`
 - 攻学习台的上限（学得会、学得牢：信心标定、按证据算掌握、页面自己跑的练习和混练、教学尺子、课堂计划块、学生逐行推导）和进度：`docs/learning-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
@@ -65,7 +66,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - `derive` 的学生版（`mode: do`）：`derivedo.js`（纯函数：读懂学生写的式子、随机取几组数和上一行比、不等时说出两边各等于什么）+ `blocks/derivedo.js`（输入框、预览、逐行打勾）。
 - 表达空间：`sketch`（当场写的 SVG 示意图；`svgsafe.js` 白名单清理、调色板配色，纯函数）、`derive`（分拍板书：一行行写、等号对齐；`derivespec.js` 纯函数；写到第几行是变量 `step`，接 `figureControls`）、`image`（讲义原图：资料包 `images` 按名字找，课堂工具 `view_image` 让课堂 Claude 自己看）。
 - 科目：`subject.js`（front matter 的 `subject:`；`CLAUDE-PROJECT.md` 第三节小节下的 `<!-- 科目：… -->` 标记，课堂只带「通用 + 这门课」的组件说明，`prompt.js` 的 `defaultRules` 按科目换教法）。计算机课要的表达式（`0x1F`、`mod`、位运算、`bin` / `hex`）在 `expr.js` 和 `exact.js` 两边都有。
-- 英语（考研英语一的语法）：`entext.js`（纯函数：英文答案的规范化和比对（大小写、弯引号、缩写、句末标点）、填空模板 `{{a|b}}`、切词、改错定位、成分标注的括号写法 `[S … [RC …]]` 和判分、操练题）+ `blocks/english.js`（`cloze` 填空、`errfind` 点词改错、`parse` 句子成分（能套从句，`mode: show` 只展示）、`drill` 句型操练）。说明书第三节里标「科目：英语」；英语的教法 `prompt.js` 的 `TEACH_EN`；示例页 `kit/examples/en-demo.html`。
+- 英语（考研英语一的语法、长难句；计划和进度 `docs/english-plan.md`）：`entext.js`（纯函数：英文答案的规范化和比对（大小写、弯引号、缩写、句末标点）、填空模板 `{{a|b}}`、常见错答 `!x=提示`（`parseAnswer` / `diagnose`）、选择式的空 `{{[that|*who]}}`（`parseChoices`）、切词、改错定位和常被误点的词 `decoys:`、成分标注的括号写法 `[S … [RC …]]` 和判分、分步拆句 `parseSteps`、意群断句 `parseChunk` / `judgeChunks`、操练题、`board mark` 找词的 `wordsIn` / `wordSpan`）+ `blocks/english.js`（`cloze` 填空、`errfind` 点词改错、`parse` 句子成分（能套从句，`mode: show` 只展示，`steps: V | S O | RC` 一层层拆）、`drill` 句型操练、`chunk` 意群断句（`translate: on` 按意群写译文））。写成常见错答时学生看到针对的提示、记录里 `misread` 给老师。`board mark` 的 `word=` / `words=` / `phrase=` / `blank=` 在画好的文字里找词（`marks.js` 的 `wordGeom`）。说明书第三节里标「科目：英语」；英语的教法 `prompt.js` 的 `TEACH_EN`；示例页 `kit/examples/en-demo.html`。
 - 文字型答案：`textcheck.js`（序列 `type: seq`、二进制 / 十六进制 `type: bin / hex` 的读法和判分，纯函数）+ `textinput.js`（输入框和回显）。
 - 演示组件（一步步走的过程）：`stepper.js` 是外壳（上一步 / 下一步 / 播放、`ask` 先猜再揭晓（含 `order` 按顺序点）、`mode: quiz`、`mode: fill` 自己填表、课堂的 `figure step` 和 `highlight`、记录），`stepperspec.js` 是它不碰 DOM 的部分（问哪几步、判分、填表、错法比对、字段拼写检查 `trackFields`）；`morph.js` 是步与步之间的过渡（`data-key` 一样的滑过去）。每个算法是 `engines/` 里的一个纯函数引擎（`parse` → `run` 出每一步 → `view` 画成 HTML，`data-pick` 给在图上点、`data-cmd` 给 highlight / `board mark item=`），在 `blocks/index.js` 用 `stepperBlock(引擎)` 注册。可选：`table`（fill 的表）、`variants`（常见错法：换成错法的输入，外壳跑一遍拿来和学生的答案比，记录里写「页面看出来：像是……」，只给老师）、`quiz`、`problems`、`head`（字段只在开头一段）。新算法照这个做，引擎配 `node --test`，答案和王道的例子对一遍；错法至少 2 种，答案和对的一样的不列。
   - 通用演示：`engines/frames.js`（`frames`：老师自己写每一帧，能问、能挖空）。

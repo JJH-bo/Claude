@@ -1,0 +1,70 @@
+{
+ "scenario": "en-rel",
+ "subject": "英语",
+ "plan": false,
+ "pack": {
+  "main": {
+   "unit": "非限制性定语从句：逗号 + which / who，不用 that",
+   "goal": "学生能分清限制性和非限制性定语从句，知道非限制性的（逗号后面）不能用 that，并能在长难句里认出来、填对关系词。",
+   "scope": "前置：限制性定语从句、关系代词 who / which / that。本节讲非限制性定语从句（逗号隔开、补充说明），考研英语一的语法和长难句口径。",
+   "plan": "1. 给两三个对比例句（有逗号 / 没逗号），让学生说意思有什么不同。\n2. 填空：逗号后面填关系词，暴露 that 的问题。\n3. 改错，再拆一个真题长难句。"
+  }
+ },
+ "segs": [
+  {
+   "id": "b1",
+   "page": 1,
+   "title": "差两个逗号",
+   "md": "**A.** My brother **who lives in Beijing** is a doctor.\n\n**B.** My brother**, who lives in Beijing,** is a doctor.\n\n```quiz\nid: q-b1\nq: 哪一句暗示说话的人**不止一个**哥哥（有一个在北京，可能还有别的在别处）？\n- [x] A（没有逗号）\n- [ ] B（有逗号）\n- [ ] 两句一样，看不出区别\nexplain: A 里 who lives in Beijing 用来**挑出**是哪一个哥哥（住北京的那个），说明还有别的哥哥；B 里逗号把它隔开，只是**顺便补充**一句：我（唯一的）哥哥是医生，他住北京。\n```"
+  }
+ ],
+ "pages": [
+  {
+   "n": 1,
+   "title": "差两个逗号",
+   "talk": "先看两句只差两个逗号的句子，不用翻译，想一想说话的人家里的情况有什么不同。\n\n选一个就行，我们从你的选择往下说。"
+  }
+ ],
+ "cur": 1,
+ "progress": {},
+ "tries": {},
+ "results": {},
+ "compAt": {
+  "q-b1": {
+   "seg": {
+    "id": "b1"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-b1\nq: 哪一句暗示说话的人**不止一个**哥哥（有一个在北京，可能还有别的在别处）？\n- [x] A（没有逗号）\n- [ ] B（有逗号）\n- [ ] 两句一样，看不出区别\nexplain: A 里 who lives in Beijing 用来**挑出**是哪一个哥哥（住北京的那个），说明还有别的哥哥；B 里逗号把它隔开，只是**顺便补充**一句：我（唯一的）哥哥是医生，他住北京。",
+    "id": "q-b1",
+    "raw": "```quiz\nid: q-b1\nq: 哪一句暗示说话的人**不止一个**哥哥（有一个在北京，可能还有别的在别处）？\n- [x] A（没有逗号）\n- [ ] B（有逗号）\n- [ ] 两句一样，看不出区别\nexplain: A 里 who lives in Beijing 用来**挑出**是哪一个哥哥（住北京的那个），说明还有别的哥哥；B 里逗号把它隔开，只是**顺便补充**一句：我（唯一的）哥哥是医生，他住北京。\n```",
+    "at": 116
+   }
+  }
+ },
+ "ops": [],
+ "history": [
+  {
+   "role": "claude",
+   "seq": 1,
+   "text": "先看两句只差两个逗号的句子，不用翻译，想一想说话的人家里的情况有什么不同。\n\n````board new id=b1 title=\"差两个逗号\"\n**A.** My brother **who lives in Beijing** is a doctor.\n\n**B.** My brother**, who lives in Beijing,** is a doctor.\n\n```quiz\nid: q-b1\nq: 哪一句暗示说话的人**不止一个**哥哥（有一个在北京，可能还有别的在别处）？\n- [x] A（没有逗号）\n- [ ] B（有逗号）\n- [ ] 两句一样，看不出区别\nexplain: A 里 who lives in Beijing 用来**挑出**是哪一个哥哥（住北京的那个），说明还有别的哥哥；B 里逗号把它隔开，只是**顺便补充**一句：我（唯一的）哥哥是医生，他住北京。\n```\n````\n\n选一个就行，我们从你的选择往下说。\n"
+  }
+ ],
+ "turns": [
+  {
+   "seq": 1,
+   "role": "teacher",
+   "bytes": 781,
+   "talk": "先看两句只差两个逗号的句子，不用翻译，想一想说话的人家里的情况有什么不同。\n\n选一个就行，我们从你的选择往下说。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 1 块板「差两个逗号」\n\n老师写在板顶的话：先看两句只差两个逗号的句子，不用翻译，想一想说话的人家里的情况有什么不同。\n\n选一个就行，我们从你的选择往下说。\n\n## 差两个逗号\n**A.** My brother **who lives in Beijing** is a doctor.\n\n**B.** My brother**, who lives in Beijing,** is a doctor.\n\n【选择题 q-b1】\n  哪一句暗示说话的人**不止一个**哥哥（有一个在北京，可能还有别的在别处）？\n  A. A（没有逗号）\n  B. B（有逗号）\n  C. 两句一样，看不出区别\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  }
+ ],
+ "seq": 1,
+ "pendingNotes": []
+}

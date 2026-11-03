@@ -1,0 +1,18 @@
+先看两句只差两个逗号的句子，不用翻译，想一想说话的人家里的情况有什么不同。
+
+````board new id=b1 title="差两个逗号"
+**A.** My brother **who lives in Beijing** is a doctor.
+
+**B.** My brother**, who lives in Beijing,** is a doctor.
+
+```quiz
+id: q-b1
+q: 哪一句暗示说话的人**不止一个**哥哥（有一个在北京，可能还有别的在别处）？
+- [x] A（没有逗号）
+- [ ] B（有逗号）
+- [ ] 两句一样，看不出区别
+explain: A 里 who lives in Beijing 用来**挑出**是哪一个哥哥（住北京的那个），说明还有别的哥哥；B 里逗号把它隔开，只是**顺便补充**一句：我（唯一的）哥哥是医生，他住北京。
+```
+````
+
+选一个就行，我们从你的选择往下说。
