@@ -1,0 +1,1 @@
+{"say": "j=3，next[3]=1，T[3]=a，T[1]=a一样，白比，再退到next[1]=0，停。所以是0。", "acts": [{"comp": "k-nv1", "value": "0"}], "sure": {"k-nv1": true}}

@@ -1,17 +1,21 @@
-# 第 3 块板「[5] 和 5 一样吗」
+# 第 4 块板「算一个 A²」
 
-老师写在板顶的话：形状和数都对。再往前一步：把 $(5,10)^{\mathrm T}$ 和 $\boldsymbol\alpha=(1,2)^{\mathrm T}$ 放一起看——乘 $1\times1$ 矩阵 $[5]$，和直接乘数 $5$，结果有区别吗？在输入框里一句话说说。
+老师写在板顶的话：对，没区别：$1\times1$ 矩阵 $[c]$ 乘上去，效果就是每个数乘 $c$，所以就把它当数 $c$ 用，还可以写到最前面。这条记在常驻栏里。下面回到这节课的 $A$，先算一个具体的 $A^2$。
 
-## [5] 和 5 一样吗
-常驻栏里 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=[\,5\,]$，一个 $1\times1$ 矩阵。
+算出来以后，看看它和 $A$ 长得像不像。
 
-【作答题 q-a11】按矩阵乘法乘
-  按矩阵乘法规则算 $(2\times1)(1\times1)$：$\begin{bmatrix}1\\2\end{bmatrix}\begin{bmatrix}5\end{bmatrix}$ 等于多少？
+## 算一个 A²
+$A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}=\begin{bmatrix}1\\2\end{bmatrix}\begin{bmatrix}3&1\end{bmatrix}=\begin{bmatrix}3 & 1 \\ 6 & 2\end{bmatrix}$
+
+【作答题 q-a2】算 A²
+  按矩阵乘法算 $A^2=AA$，其中 $A=\begin{bmatrix}3 & 1 \\ 6 & 2\end{bmatrix}$。
   （写出答案）
 
 # 常驻栏
 ## 这节课的记号
 $\boldsymbol\alpha=(1,2)^{\mathrm T}$，$\boldsymbol\beta=(3,1)^{\mathrm T}$，都是 $2\times1$ 的列向量
+## 1×1 矩阵当数用
+$\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=[\,c\,]$ 就当数 $c$：$\boldsymbol\alpha\,[\,c\,]=c\,\boldsymbol\alpha$
 
 
 （回复一个 JSON：{"say": "…", "acts": [{"comp": "组件 id", "value": "…"}], "sure": {"组件 id": true/false}}；不会就 {"comp": "…", "giveup": true}）

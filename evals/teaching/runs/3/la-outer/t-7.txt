@@ -1,0 +1,21 @@
+对，没区别：$1\times1$ 矩阵 $[c]$ 乘上去，效果就是每个数乘 $c$，所以就把它当数 $c$ 用，还可以写到最前面。这条记在常驻栏里。下面回到这节课的 $A$，先算一个具体的 $A^2$。
+
+````board pin id=k2 title="1×1 矩阵当数用"
+$\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=[\,c\,]$ 就当数 $c$：$\boldsymbol\alpha\,[\,c\,]=c\,\boldsymbol\alpha$
+````
+
+````board new id=b5 title="算一个 A²"
+$A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}=\begin{bmatrix}1\\2\end{bmatrix}\begin{bmatrix}3&1\end{bmatrix}=\calc{A}$
+
+```answer
+id: q-a2
+title: 算 A²
+q: 按矩阵乘法算 $A^2=AA$，其中 $A=\calc{A}$。
+answer: A*A
+before: A^2 =
+hint: $(1,1)$ 位是 $A$ 的第一行和第一列的点积。
+explain: $A^2=\calc{A*A}$。
+```
+````
+
+算出来以后，看看它和 $A$ 长得像不像。
