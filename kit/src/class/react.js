@@ -1,10 +1,16 @@
-// 预案（docs/board-plan.md 第 1 节）：课堂 Claude 出题时顺手写好「答对 / 答错 / 错成某种样子 / 想不出来」各接什么，
-// 学生作答以后页面当场接上，不调用、不用等。每调用一次要重发整份说明（2～6 万 token），省下来的是整轮。
+// 预案（docs/board-plan.md 第 1 节）：课堂 Claude 出题时顺手写好答案固定时接什么，学生作答以后页面当场接上，不调用、不用等。
+// 每调用一次要重发整份说明（2～6 万 token），学生还要等几十秒，省下来的是整轮。
+// 界线（2026-11-03 学生说的）：教学不预制——答错了怎么引导、想不出来怎么提示、下一步讲什么，都要 Claude 看着这一次的作答当场写，
+// 预制就是模版化；只有答案固定、它当场写也几乎一样的才预写：答对了（一句确认 + 揭开这一轮已经写好的下一小问）、例题看完了。
+// 所以 wrong / misread / giveup 读得懂但不收（写了告诉它为什么），页面只接 right / done。
 // 预案没写到的、学生打字说话、附图、板书、「没把握」，照旧叫 Claude。纯函数，不碰 DOM（tests/class-react.test.js）。
 import { tokenize } from '../tokens.js';
 
 // 情况：答对、答错、页面认出来的错法、想不出来 / 看了答案、steps 揭开了最后一步
 export const REACT_KINDS = ['right', 'wrong', 'misread', 'giveup', 'done'];
+// 页面能替它接的：答案固定、当场写也一样的
+export const LOCAL_KINDS = ['right', 'done'];
+export const LIVE_NOTE = '答错、错法、想不出来怎么接，要看学生这一次的作答当场写（学生要实时的教学，不要预制好的引导），页面不替你接：这一行没用。预案只写答对（right）和看完（done）';
 const ALIAS = { 对: 'right', 答对: 'right', 错: 'wrong', 答错: 'wrong', 错法: 'misread', 想不出来: 'giveup', 放弃: 'giveup', 看完: 'done' };
 // 一条预案说的话最多多长：是一句接话，不是一段讲解（讲解写成藏着的段，用 show= 揭开）
 export const REACT_TEXT_MAX = 300;
@@ -13,7 +19,7 @@ const ID_RE = /^[A-Za-z0-9_\-.~:@+]{1,64}$/;
 /**
  * board react target=q1 的块：一行一条「情况 [选项]: 说的话」。
  *   right show=b4: 对。那换一组数呢？
- *   misread "FIFO" step=2: 你是按谁先进来换的？
+ *   done step=3: 例题看完了，下面这道你来。
  * 返回 { op: 'react', target, cases: [{ kind, key?, step?, show: [], text }], errors? }；一条都没写就是撤掉这个组件的预案（cases 为空）。
  * 开头那行看不懂、一条也没读懂时返回 { error }。
  */
@@ -59,7 +65,7 @@ function parseCaseLine(line) {
     } else if (!t.key && kind === 'misread' && out.key === undefined) out.key = t.value;
     else return { error: `看不懂「${t.key ? `${t.key}=` : ''}${t.value}」` };
   }
-  if (kind === 'misread' && !out.key) return { error: 'misread 后面要写页面认出来的错法里的几个字，比如 misread "FIFO": …' };
+  if (!LOCAL_KINDS.includes(kind)) return { error: LIVE_NOTE };
   for (const id of out.show) if (!ID_RE.test(id)) return { error: `show 的段 id「${id}」不合法` };
   if (!out.text && !out.show.length) return { error: '冒号后面没写要说的话' };
   return out;
@@ -134,6 +140,7 @@ export function planLocal({ items = [], rules, other = false, present = () => tr
     const cls = classify(a, trig);
     if (!cls) return null;
     if (cls.kind === 'passive') continue;
+    if (!LOCAL_KINDS.includes(cls.kind)) return null; // 答错、想不出来：叫 Claude 当场看着作答写
     const rule = a.block ? rules.get(a.block) : null;
     if (!rule || !present(a.block)) return null;
     const used = usedBy.get(a.block) || new Set();

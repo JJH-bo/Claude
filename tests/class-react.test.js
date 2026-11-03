@@ -8,9 +8,6 @@ import { usageOf, usageText, callCost } from '../kit/src/class/usage.js';
 
 const BODY = [
   'right show=b4: 对。再来一个：乘 $(1,0)$ 呢？',
-  'wrong: 先只算第一个分量，再试一次。',
-  'misread "FIFO": 你是按谁先进来换的？',
-  'giveup show=b4,b5: 第一个分量是 $1\\cdot3+1\\cdot(-1)=2$。',
   'done step=3: 看完了，下面你来。',
 ].join('\n');
 
@@ -18,33 +15,40 @@ const rules = (body = BODY, target = 'q1', seq = 3, seg = 'b3') => {
   const r = parseReact(`target=${target}`, body);
   return new Map([[target, { target, seq, seg, cases: r.cases.map((c) => ({ ...c, used: false })) }]]);
 };
+const right = { a: { source: 'record', type: 'answer', ok: true, block: 'q1' }, trig: 'soon' };
+const wrong = { a: { source: 'record', type: 'answer', ok: false, block: 'q1' }, trig: 'soon' };
 
 test('parseReact：一行一条，情况、选项、说的话', () => {
   const r = parseReact('target=q1', BODY);
   assert.equal(r.op, 'react');
   assert.equal(r.target, 'q1');
-  assert.deepEqual(r.cases.map((c) => c.kind), ['right', 'wrong', 'misread', 'giveup', 'done']);
+  assert.deepEqual(r.cases.map((c) => c.kind), ['right', 'done']);
   assert.deepEqual(r.cases[0].show, ['b4']);
   assert.equal(r.cases[0].text, '对。再来一个：乘 $(1,0)$ 呢？', '冒号后面的话里还能有冒号');
-  assert.equal(r.cases[2].key, 'FIFO');
-  assert.deepEqual(r.cases[3].show, ['b4', 'b5']);
-  assert.equal(r.cases[4].step, 3);
+  assert.equal(r.cases[1].step, 3);
+  assert.deepEqual(parseReact('target=q1', 'right show=b4,b5: 好').cases[0].show, ['b4', 'b5']);
   // 省掉 target= 也认；中文冒号、中文的情况名也认
   assert.equal(parseReact('q2', '对：好').cases[0].kind, 'right');
   // 空块：撤掉这个组件的预案
   assert.deepEqual(parseReact('target=q1', '').cases, []);
 });
 
+test('教学不预写：答错、错法、想不出来读得懂但不收，告诉它要当场写；读懂的照用', () => {
+  const r = parseReact('target=q1', 'right: 对\nwrong: 再想想\nmisread "FIFO": 按谁先进来换的？\ngiveup show=b4: 看答案\n想不出来: 提示一下');
+  assert.deepEqual(r.cases.map((c) => c.kind), ['right']);
+  assert.equal(r.errors.length, 4);
+  assert.ok(r.errors.every((e) => /当场写.*只写答对（right）和看完（done）/.test(e)));
+  assert.match(parseReact('target=q1', 'wrong: 再想想').error, /当场写/);
+});
+
 test('parseReact：写错的行报出来，读懂的照用', () => {
   assert.match(parseReact('', 'right: 对').error, /缺少 target/);
   assert.match(parseReact('target=q1', 'maybe: 嗯').error, /看不懂的情况/);
-  assert.match(parseReact('target=q1', 'misread: 嗯').error, /misread 后面要写/);
   assert.match(parseReact('target=q1', 'right 对').error, /情况: 说的话/);
   const r = parseReact('target=q1', 'right: 对\nstep: 嗯');
   assert.equal(r.cases.length, 1);
   assert.equal(r.errors.length, 1);
-  // 错法关键词里带冒号：在引号里不算分隔
-  assert.equal(parseReact('target=q1', 'misread "a:b": 嗯').cases[0].key, 'a:b');
+  assert.match(parseReact('target=q1', 'right step=x: 对').error, /step 要写第几步/);
 });
 
 test('protocol：board react、add … hold、show', () => {
@@ -57,11 +61,12 @@ test('protocol：board react、add … hold、show', () => {
   assert.equal(parseCommand('add id=b1').hold, undefined);
 });
 
-test('说明里的预案例子照抄就能用', () => {
+test('说明里的预案例子照抄就能用，说明写着教学不预写', () => {
   const ex = parseOutput(PROTOCOL_DOC, { final: true }).ops.find((o) => o.op === 'react');
   assert.ok(ex, '说明里有 react 的例子');
-  assert.deepEqual(ex.cases.map((c) => c.kind), ['right', 'wrong', 'misread']);
+  assert.deepEqual(ex.cases.map((c) => c.kind), ['right', 'done']);
   assert.ok(!ex.errors);
+  assert.match(PROTOCOL_DOC, /教学不预写/);
 });
 
 test('classify：作答归到哪种情况', () => {
@@ -80,35 +85,29 @@ test('classify：作答归到哪种情况', () => {
   assert.equal(stepOf({ source: 'record', type: 'steps', detail: '第 2 步' }), 2);
 });
 
-test('planLocal：答错 → 预写的话；同一批里两次答错只有一条预案 → 叫 Claude', () => {
+test('planLocal：答对揭开藏着的段；答错、想不出来一定叫 Claude（就算以前的轮里留着这样的预案）', () => {
   const r = rules();
-  const wrong = { a: { source: 'record', type: 'answer', ok: false, block: 'q1' }, trig: 'soon' };
-  const plan = planLocal({ items: [wrong], rules: r });
-  assert.equal(plan.talk, '先只算第一个分量，再试一次。');
-  assert.deepEqual(plan.show, []);
-  assert.equal(plan.fired[0].seq, 3);
-  assert.equal(planLocal({ items: [wrong, wrong], rules: r }), null);
-});
-
-test('planLocal：认出来的错法先于 wrong；答对揭开藏着的段', () => {
-  const r = rules();
-  const mis = { a: { source: 'record', type: 'stepper', ok: false, misread: '像是按 fifo 换的', block: 'q1' }, trig: 'soon' };
-  assert.equal(planLocal({ items: [mis], rules: r }).fired[0].kind, 'misread');
-  const right = { a: { source: 'record', type: 'answer', ok: true, block: 'q1' }, trig: 'soon' };
   const p = planLocal({ items: [{ a: { source: 'event', type: 'drag', block: 'fig' }, trig: 'later' }, right], rules: r });
   assert.deepEqual(p.show, ['b4']);
+  assert.equal(p.talk, '对。再来一个：乘 $(1,0)$ 呢？');
+  assert.equal(p.fired[0].seq, 3);
   assert.equal(p.fired.length, 1, '拖一拖跟着一起记，不用预案');
+  assert.equal(planLocal({ items: [wrong], rules: r }), null);
+  assert.equal(planLocal({ items: [right, wrong], rules: r }), null, '一批里有答错的就叫 Claude');
+  // 旧版本留下的 wrong / giveup 预案（刷新后从历史重建）：也不用
+  const old = new Map([['q1', { target: 'q1', seq: 1, seg: 'b3', cases: [{ kind: 'wrong', show: [], text: '再想想', used: false }, { kind: 'giveup', show: [], text: '看答案', used: false }] }]]);
+  assert.equal(planLocal({ items: [wrong], rules: old }), null);
+  assert.equal(planLocal({ items: [{ a: { source: 'record', type: 'answer', revealed: true, block: 'q1' }, trig: 'soon' }], rules: old }), null);
 });
 
 test('planLocal：学生说了话、附了图、组件不在了、没写这种情况、别的组件 → 叫 Claude', () => {
-  const r = rules('wrong: 再想想');
-  const right = { a: { source: 'record', type: 'answer', ok: true, block: 'q1' }, trig: 'soon' };
-  const wrong = { a: { source: 'record', type: 'answer', ok: false, block: 'q1' }, trig: 'soon' };
+  const r = rules('done: 看完了');
   assert.equal(planLocal({ items: [right], rules: r }), null, '没写 right');
-  assert.equal(planLocal({ items: [wrong], rules: r, other: true }), null);
-  assert.equal(planLocal({ items: [wrong], rules: r, present: () => false }), null);
-  assert.equal(planLocal({ items: [{ a: { ...wrong.a, block: 'q9' }, trig: 'soon' }], rules: r }), null);
-  assert.equal(planLocal({ items: [wrong, { a: { source: 'event', type: 'sure', sure: false, ok: true, block: 'q1' }, trig: 'soon' }], rules: r }), null);
+  const r2 = rules();
+  assert.equal(planLocal({ items: [right], rules: r2, other: true }), null);
+  assert.equal(planLocal({ items: [right], rules: r2, present: () => false }), null);
+  assert.equal(planLocal({ items: [{ a: { ...right.a, block: 'q9' }, trig: 'soon' }], rules: r2 }), null);
+  assert.equal(planLocal({ items: [right, { a: { source: 'event', type: 'sure', sure: false, ok: true, block: 'q1' }, trig: 'soon' }], rules: r2 }), null);
   // step=3 的 done 只管第 3 步
   const d = rules();
   assert.equal(planLocal({ items: [{ a: { source: 'event', type: 'reveal', step: 2, block: 'q1' }, trig: 'soon' }], rules: d }), null);
@@ -117,18 +116,18 @@ test('planLocal：学生说了话、附了图、组件不在了、没写这种�
 
 test('markFired：每条只用一次；答对了整组收起', () => {
   const r = rules();
-  const wrong = { a: { source: 'record', type: 'answer', ok: false, block: 'q1' }, trig: 'soon' };
-  markFired(r, planLocal({ items: [wrong], rules: r }));
-  assert.equal(planLocal({ items: [wrong], rules: r }), null, '第二次答错叫 Claude');
-  assert.doesNotMatch(armedText(r.get('q1')), /wrong/);
+  const done = { a: { source: 'event', type: 'reveal', step: 3, block: 'q1' }, trig: 'soon' };
+  markFired(r, planLocal({ items: [done], rules: r }));
+  assert.equal(planLocal({ items: [done], rules: r }), null, '第二次叫 Claude');
+  assert.doesNotMatch(armedText(r.get('q1')), /done/);
   assert.match(armedText(r.get('q1')), /right show=b4/);
-  markFired(r, planLocal({ items: [{ a: { source: 'record', type: 'answer', ok: true, block: 'q1' }, trig: 'soon' }], rules: r }));
+  markFired(r, planLocal({ items: [right], rules: r }));
   assert.equal(r.has('q1'), false);
 });
 
 test('reactNote：记给 Claude 的一行', () => {
   const r = rules();
-  const plan = planLocal({ items: [{ a: { source: 'record', type: 'answer', ok: true, block: 'q1' }, trig: 'soon' }], rules: r });
+  const plan = planLocal({ items: [right], rules: r });
   const note = reactNote(plan);
   assert.match(note, /^\[系统\] 页面按你预写的预案接了（q1 答对）/);
   assert.match(note, /揭开了 b4/);
@@ -141,7 +140,7 @@ test('rebuildRules / dropForSeg：刷新后重建，段改写以后作废，用�
     { seq: 1, role: 'student', text: '开始上课。' },
     { seq: 2, role: 'claude', boardOps: [{ op: 'new', id: 'b3', ok: true }, { op: 'react', target: 'q1', seg: 'b3', ok: true, cases }, { op: 'react', target: 'q2', seg: 'b4', ok: true, cases }] },
     { seq: 3, role: 'student', text: '[作答] …' },
-    { seq: 4, role: 'system', kind: 'react', fired: [{ target: 'q1', seq: 2, index: 1, kind: 'wrong' }] },
+    { seq: 4, role: 'system', kind: 'react', fired: [{ target: 'q1', seq: 2, index: 1, kind: 'done' }] },
     { seq: 5, role: 'claude', boardOps: [{ op: 'replace', id: 'b4', ok: true }] },
   ];
   const r = rebuildRules(history);
