@@ -3,8 +3,16 @@
 // 宿主变大小、图重画、矩阵动起来时跟着重新摆；找不到要标的地方时返回中文原因（课堂报给 Claude，组件报成写法错误）。
 import { mdToHtml } from './render.js';
 import { compile, isVec } from './expr.js';
-import { shapeFor, arrowPath, leaderPath, placeNote, union, strokeObstacles } from './markdraw.js';
+import { shapeFor, arrowPath, arcPath, sameLine, leaderPath, placeNote, union, strokeObstacles, roomAround } from './markdraw.js';
+
+// 同一行两处之间的箭头拱起来：旁注写在拱的那一边
+function arcOf(from, to, obs) {
+  if (!from || !sameLine(from, to)) return null;
+  return arcPath(from, to, undefined, roomAround(union([from, to]), obs));
+}
 import { wordsIn, wordSpan, phraseHasPunct } from './entext.js';
+import { findText, pickHit, textPreview } from './textfind.js';
+import { ENCLOSE_STYLES } from './markspec.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 // 颜色都从主题变量取（不同风格的黑板颜色不一样）
@@ -16,14 +24,22 @@ const shown = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
 // 一个元素「有字的地方」：KaTeX 里撑高度的空 span（pstrut、strut）不算，免得框得比字大一圈
 const SKIP = '.pstrut, .strut, .vlist-s, .katex-mathml, .mk-layer';
 const INK = 'svg, img, canvas, .frac-line, .overline-line, .underline-line, .hline, .hdashline, .rule';
+// 直接写在元素里的字（列表的一条、一段话）也量：按文字本身的范围，不按元素的整行宽（不然右边的大括号跑到行尾外面去）
 export function inkRect(el) {
   const rs = [];
   const push = (e) => { const r = e.getBoundingClientRect(); if (r.width > 0 || r.height > 0) rs.push(rect(r)); };
+  const range = document.createRange();
   let budget = 400;
   const walk = (n) => {
-    for (const c of n.children) {
+    for (const c of n.childNodes) {
       if (--budget < 0) return;
-      if (c.matches(SKIP)) continue;
+      if (c.nodeType === 3) {
+        if (!c.nodeValue.trim()) continue;
+        range.selectNodeContents(c);
+        for (const r of range.getClientRects()) if (r.width > 0) rs.push(rect(r));
+        continue;
+      }
+      if (c.nodeType !== 1 || c.matches(SKIP)) continue;
       if (c.matches(INK) || !c.childElementCount) { if (c.matches(INK) || c.textContent.trim()) push(c); continue; }
       walk(c);
     }
@@ -175,6 +191,8 @@ export function locate(root, spec, { scene, name = '这里' } = {}) {
     return vis.length ? { geoms: [{ box: union(vis.map((e) => rect(e.getBoundingClientRect()))) }] } : { hidden: true };
   }
   if (s.kind === 'word' || s.kind === 'words' || s.kind === 'phrase') return wordGeom(root, s, name);
+  if (s.kind === 'text') return textGeom(root, s, name, spec.style === 'dots');
+  if (s.kind === 'li' || s.kind === 'para' || s.kind === 'tr') return partsGeom(root, s, name);
   if (s.kind === 'blank') {
     const blanks = [...root.querySelectorAll('.en-blank')];
     if (!blanks.length) return { error: `${name} 里没有填空（blank= 用在 cloze 上）` };
@@ -231,7 +249,96 @@ function wordGeom(root, s, name) {
     if (line) Object.assign(line, union([line, rect(c)]));
     else lines.push(rect(c));
   }
-  return lines.length ? { geoms: lines.map((box) => ({ box })) } : { hidden: true };
+  return lines.length ? { geoms: [{ box: union(lines), lines }] } : { hidden: true };
+}
+
+// 一段 Range 在屏幕上按行的框（同一行的几块并起来）
+function lineRects(r) {
+  const lines = [];
+  for (const c of r.getClientRects()) {
+    if (c.width < 1 || c.height < 1) continue;
+    const line = lines.find((l) => Math.abs(l.y + l.h / 2 - (c.top + c.height / 2)) < Math.min(l.h, c.height) / 2);
+    if (line) Object.assign(line, union([line, rect(c)]));
+    else lines.push(rect(c));
+  }
+  return lines;
+}
+
+// —— text="…"：板上的任何一段字（textfind.js 找，这里换成屏幕上的位置）——
+// 不算字的地方：公式的读屏副本、标注层自己、输入框、按钮、藏着的、作答后的「有把握吗」
+const NOT_TEXT = '.katex-mathml, .mk-layer, .mk-under, script, style, textarea, input, select, button, [hidden], .sure-ask';
+function textNodes(root) {
+  const out = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (!n.nodeValue || n.parentElement?.closest(NOT_TEXT) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+  });
+  for (let n = walker.nextNode(); n && out.length < 4000; n = walker.nextNode()) out.push(n);
+  return out;
+}
+function textGeom(root, s, name, wantChars = false) {
+  if (!shown(root)) return { hidden: true };
+  const nodes = textNodes(root);
+  const texts = nodes.map((n) => n.nodeValue);
+  const pk = pickHit(findText(texts, s.text), s.n, s.text);
+  if (pk.error) return { error: `${name}：${pk.error}（这里写的是：${textPreview(texts)}）` };
+  const { from, to } = pk.hit;
+  const r = document.createRange();
+  r.setStart(nodes[from[0]], from[1]);
+  r.setEnd(nodes[to[0]], to[1]);
+  const lines = lineRects(r);
+  if (!lines.length) return { hidden: true };
+  // 着重号：每个字的位置（空格不算）
+  let chars;
+  if (wantChars) {
+    chars = [];
+    const cr = document.createRange();
+    for (let i = from[0]; i <= to[0] && chars.length < 160; i++) {
+      const t = nodes[i].nodeValue;
+      const a = i === from[0] ? from[1] : 0, b = i === to[0] ? to[1] : t.length;
+      for (let k = a; k < b; k++) {
+        if (/\s/.test(t[k]) || (t.charCodeAt(k) & 0xfc00) === 0xdc00) continue;
+        const len = (t.charCodeAt(k) & 0xfc00) === 0xd800 ? 2 : 1;
+        cr.setStart(nodes[i], k);
+        cr.setEnd(nodes[i], Math.min(t.length, k + len));
+        const c = cr.getBoundingClientRect();
+        if (c.width > 0) chars.push(rect(c));
+      }
+    }
+  }
+  return { geoms: [{ box: union(lines), lines, ...(chars ? { chars } : {}) }], ...(pk.warn ? { warn: pk.warn } : {}) };
+}
+
+// —— li=1-4 / para=2 / tr=2：列表的第几条、第几段、表格的第几行（组件里面的不数，除非标的就是那个组件）——
+const PART_SEL = { li: 'li', para: 'p', tr: 'table:not([data-mx]) tr' };
+const PART_NAME = { li: '条（列表）', para: '段', tr: '行（表格）' };
+// 只是装内容的框（定义、重点、易错、提示、解答……）：里面的列表、段落照常数；作答、演示这类组件里面的不数
+const CONTENT_BLOCKS = '.block-definition, .block-theorem, .block-key, .block-warning, .block-example, .block-intuition, .block-hint, .block-solution, .block-proof';
+function partsGeom(root, s, name) {
+  const own = root.closest('[data-bid]');
+  const all = [...root.querySelectorAll(PART_SEL[s.kind])].filter((e) => {
+    let c = e.parentElement?.closest('[data-bid]');
+    while (c && c !== own && c.matches(CONTENT_BLOCKS)) c = c.parentElement?.closest('[data-bid]');
+    if (c && c !== own) return false;
+    if (s.kind === 'para' && e.closest('li, .callout-title, .w-title')) return false;
+    if (s.kind === 'tr' && e.closest('thead')) return false;
+    return true;
+  });
+  if (!all.length) return { error: `${name} 里没有${s.kind === 'li' ? '列表' : s.kind === 'para' ? '成段的文字' : '表格'}${s.kind === 'li' ? '（列表是 Markdown 的 1. / - 开头的行）' : ''}` };
+  if (s.b > all.length) return { error: `${name} 一共 ${all.length} ${PART_NAME[s.kind]}，没有第 ${s.b} ${PART_NAME[s.kind].slice(0, 1)}` };
+  const picked = all.slice(s.a - 1, s.b);
+  if (!picked.every(shown)) return { hidden: true };
+  const lines = picked.map((e) => (s.kind === 'tr' ? rect(e.getBoundingClientRect()) : inkRect(e)));
+  const box = union(lines);
+  // 圈、框一组列表：连前面的序号一起圈进去（序号是 ::marker，量不到，按列表的左边距算）
+  let outer;
+  if (s.kind === 'li') {
+    const lefts = picked.map((li) => {
+      const pl = parseFloat(getComputedStyle(li.parentElement).paddingLeft) || 0;
+      return li.getBoundingClientRect().left - Math.min(pl, 30);
+    });
+    outer = { ...box, x: Math.min(box.x, ...lefts), w: box.x + box.w - Math.min(box.x, ...lefts) };
+  }
+  return { geoms: [{ box, lines, ...(outer ? { outer } : {}) }] };
 }
 
 /**
@@ -252,6 +359,7 @@ export function markLayer(host) {
   const items = new Map(); // id → { id, spec, root, scene, name, g, note, fresh, off }
   let raf = 0;
   let full = true; // 下一次要不要重新给旁注挑位置（加了、撤了、大小变了）；图在动时只跟着挪
+  let obsCache = []; // 板上的字（旁注要躲开、圈要留白）：重新挑位置时量一次，图在动时沿用
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => schedule(true)) : null;
   ro?.observe(host);
   const fontsReady = document.fonts?.ready;
@@ -277,6 +385,14 @@ export function markLayer(host) {
       for (const r of range.getClientRects()) add(r);
     }
     scope.querySelectorAll('button, input, textarea, select, img, canvas').forEach((e) => { if (!e.closest('.mk-layer')) add(e.getBoundingClientRect()); });
+    // 列表前面的序号（::marker 量不到）：按列表的左边距和第一行的高度算一块，圈旁边一条时别压到序号
+    scope.querySelectorAll('li').forEach((li) => {
+      const r = li.getBoundingClientRect();
+      if (!r.width) return;
+      const pl = Math.min(30, parseFloat(getComputedStyle(li.parentElement).paddingLeft) || 0);
+      const lh = Math.min(r.height, parseFloat(getComputedStyle(li).lineHeight) || 24);
+      if (pl > 4) add({ left: r.left - pl, top: r.top + 2, width: pl - 6, height: lh - 4 });
+    });
     // 示意图不一样：里面的方块、括号、箭头都是特意画的，旁注压在线上就看不清（scene / graph 的网格线照旧不躲）
     const sk = [...scope.querySelectorAll('.sketch-svg :is(rect, circle, ellipse, polygon, polyline, path, line)')]
       .filter((e) => !e.closest('defs'))
@@ -299,32 +415,58 @@ export function markLayer(host) {
     const size = { w: host.offsetWidth, h: host.offsetHeight };
     // 旁注可以稍微出到宿主上下（一段的下面常常就是空着的黑板），左右不出去（免得横向滚动）
     const area = { x0: 0, y0: -40, x1: size.w, y1: size.h + 140 };
-    const obs = again ? obstacles(hb, k) : [];
+    if (again) obsCache = obstacles(hb, k);
+    const obs = obsCache;
     const taken = [];
     // 先画形状（旁注要躲开所有形状），再放旁注
     const plans = [];
     for (const it of items.values()) {
       const found = locate(it.root, it.spec, { scene: it.scene, name: it.name });
       if (found.hidden || found.error) { setVisible(it, false); continue; }
-      const shapes = found.geoms.map((g, n) => {
-        const geom = g.point ? { point: { x: (g.point.x - hb.left) / k, y: (g.point.y - hb.top) / k } } : g.diag ? { diag: g.diag.map(loc) } : { box: loc(g.box), tight: g.tight, inset: g.inset };
-        return { geom, shape: shapeFor(it.spec.style, geom, `${it.id}:${n}`) };
+      const style = it.spec.style;
+      // 圈、框、大括号：一组东西（几行字、几条列表）合成一个形状；划线、涂色、着重号一行一笔；✓ ✗ 写在最后一行后面
+      const parts = [];
+      for (const g of found.geoms) {
+        if (g.point) { parts.push({ point: { x: (g.point.x - hb.left) / k, y: (g.point.y - hb.top) / k } }); continue; }
+        if (g.diag) { parts.push({ diag: g.diag.map(loc) }); continue; }
+        const lines = (g.lines || [g.box]).map(loc);
+        if (ENCLOSE_STYLES.includes(style) || style === 'arrow') parts.push({ box: loc(style === 'brace' ? g.box : g.outer || g.box), tight: g.tight, inset: g.inset, ...(g.lines && !g.outer && style === 'circle' ? { lines } : {}) });
+        else if (style === 'tick' || style === 'cross') parts.push({ box: lines[lines.length - 1] });
+        else lines.forEach((ln) => parts.push({ box: ln, chars: g.chars?.map(loc).filter((c) => Math.abs(c.y + c.h / 2 - (ln.y + ln.h / 2)) < ln.h / 2) }));
+      }
+      const shapes = parts.map((geom, n) => {
+        if (geom.box) Object.assign(geom, { room: roomAround(geom.box, obs), side: it.spec.side });
+        return { geom, shape: shapeFor(style, geom, `${it.id}:${n}`) };
       });
       shapes.forEach((x) => taken.push(x.shape.bbox));
       plans.push({ it, shapes });
     }
     for (const { it, shapes } of plans) {
+      const style = it.spec.style;
       setVisible(it, true);
       const paths = [];
+      const under = [];
       for (const { shape } of shapes) {
         for (const d of shape.strokes) paths.push({ d, cls: 'mk-line' });
-        for (const d of shape.fills) paths.push({ d, cls: 'mk-fill' });
+        for (const d of shape.dots || []) paths.push({ d, cls: 'mk-dot' });
+        // 涂色画在字下面那一层：字照样清楚
+        for (const d of shape.fills) under.push({ d, cls: 'mk-fill' });
+      }
+      // to=：从这里画箭头指到那里（同一个 target 里的另一段字）
+      let toBox = null;
+      if (it.spec.to) {
+        const tg = textGeom(it.root, it.spec.to, it.name);
+        if (tg.geoms) toBox = loc(tg.geoms[0].lines ? tg.geoms[0].lines[0] : tg.geoms[0].box);
       }
       let noteBox = null;
       if (it.note) {
-        const target = union(shapes.map((x) => x.shape.bbox));
+        // 大括号：旁注写在括号尖的外面；箭头连到别处（to=）：写在两头中间的上面
+        const brace = style === 'brace' && shapes[0]?.shape.bbox;
+        const arc = toBox ? arcOf(union(shapes.map((x) => x.geom.box).filter(Boolean)), toBox, obs) : null;
+        const target = toBox ? union([...shapes.map((x) => x.shape.bbox), toBox, ...(arc ? [arc.bbox] : [])]) : union(shapes.map((x) => x.shape.bbox));
         const w = it.note.offsetWidth, h = it.note.offsetHeight;
-        const at = placeNote(target, { w, h }, area, { side: it.spec.side, taken, far: it.spec.style === 'arrow', obstacles: obs, keep: again ? null : it.place });
+        const side = brace ? (it.spec.side === 'left' ? 'left' : 'right') : toBox ? it.spec.side || (arc?.down ? 'below' : 'above') : it.spec.side;
+        const at = placeNote(brace || target, { w, h }, area, { side, taken, far: style === 'arrow' && !toBox, obstacles: obs, keep: again ? null : it.place });
         it.place = { side: at.side, gap: at.gap, align: at.align };
         it.note.style.left = `${Math.round(at.x)}px`;
         it.note.style.top = `${Math.round(at.y)}px`;
@@ -333,7 +475,10 @@ export function markLayer(host) {
         // 旁注挪到了空的地方、离得远：连一条细线过去（箭头样式自己有箭头）
         if (at.lead && it.spec.style !== 'arrow') paths.push({ d: leaderPath(noteBox, target, it.id), cls: 'mk-lead' });
       }
-      if (it.spec.style === 'arrow') {
+      if (style === 'arrow' && toBox) {
+        const from = union(shapes.map((x) => x.geom.box).filter(Boolean));
+        paths.push({ d: arrowPath(from, toBox, it.id, { room: roomAround(union([from, toBox]), obs) }), cls: 'mk-line' });
+      } else if (style === 'arrow') {
         // 箭头从旁注指过去；没有旁注就从斜上方指过去
         for (const [n, { geom, shape }] of shapes.entries()) {
           const to = geom.point || shape.bbox;
@@ -341,7 +486,7 @@ export function markLayer(host) {
           paths.push({ d: arrowPath(from, to, `${it.id}:${n}`), cls: 'mk-line' });
         }
       }
-      draw(it, paths);
+      draw(it, paths, under);
       it.fresh = false;
     }
   }
@@ -353,31 +498,54 @@ export function markLayer(host) {
     return { x: right ? cx + 36 : (to.x - 46), y: Math.max(0, cy - 40), w: 8, h: 8 };
   }
 
-  function draw(it, paths) {
-    if (!it.g) {
-      it.g = document.createElementNS(NS, 'g');
-      it.g.setAttribute('class', `mk mk-${it.spec.style}`);
-      it.g.style.setProperty('--mk', MARK_COLOR[it.spec.color] || MARK_COLOR.yellow);
-      svg.appendChild(it.g);
+  function group(it, key, parent) {
+    if (!it[key]) {
+      it[key] = document.createElementNS(NS, 'g');
+      it[key].setAttribute('class', `mk mk-${it.spec.style}`);
+      it[key].style.setProperty('--mk', MARK_COLOR[it.spec.color] || MARK_COLOR.yellow);
+      parent.appendChild(it[key]);
     }
-    const els = [...it.g.children];
+    return it[key];
+  }
+  function fill(g, paths) {
+    const els = [...g.children];
     // 条数没变就只改 d：draw-in 动画接着播，不会因为重新摆放而从头再来
     if (els.length !== paths.length || els.some((e, i) => e.getAttribute('class') !== paths[i].cls)) {
-      it.g.replaceChildren(...paths.map((p) => {
+      g.replaceChildren(...paths.map((p) => {
         const e = document.createElementNS(NS, 'path');
         e.setAttribute('class', p.cls);
         e.setAttribute('pathLength', '1');
         return e;
       }));
     }
-    [...it.g.children].forEach((e, i) => e.setAttribute('d', paths[i].d));
+    [...g.children].forEach((e, i) => e.setAttribute('d', paths[i].d));
+  }
+  function draw(it, paths, under = []) {
+    fill(group(it, 'g', svg), paths);
+    if (under.length || it.gu) fill(group(it, 'gu', usvg()), under);
     if (it.fresh) {
       it.g.classList.add('mk-in');
+      it.gu?.classList.add('mk-in');
       it.note?.classList.add('mk-in');
     }
   }
 
+  // 字下面那一层（荧光笔）：第一次要用时才建
+  let under = null, underSvg = null;
+  function usvg() {
+    if (underSvg) return underSvg;
+    under = document.createElement('div');
+    under.className = 'mk-under';
+    under.setAttribute('aria-hidden', 'true');
+    underSvg = document.createElementNS(NS, 'svg');
+    underSvg.setAttribute('class', 'mk-svg');
+    under.appendChild(underSvg);
+    host.prepend(under);
+    return underSvg;
+  }
+
   function setVisible(it, on) {
+    if (it.gu) it.gu.style.display = on ? '' : 'none';
     if (it.g) it.g.style.display = on ? '' : 'none';
     if (it.note) it.note.style.visibility = on ? '' : 'hidden';
   }
@@ -385,6 +553,10 @@ export function markLayer(host) {
   function add(id, spec, { root = host, scene, name, animate = true } = {}) {
     const found = locate(root, spec, { scene, name });
     if (found.error) return { ok: false, error: found.error };
+    if (spec.to && !found.hidden) {
+      const t = textGeom(root, spec.to, name || '这里');
+      if (t.error) return { ok: false, error: `箭头要指到的${t.error}` };
+    }
     remove(id);
     const it = { id, spec, root, scene, name, g: null, note: null, fresh: animate && !reduceMotion(), off: null };
     if (spec.note) {
@@ -401,7 +573,7 @@ export function markLayer(host) {
     full = true;
     if (found.hidden) schedule(true);
     else layout();
-    return { ok: true };
+    return { ok: true, ...(found.warn ? { warn: found.warn } : {}) };
   }
 
   function remove(id) {
@@ -409,6 +581,7 @@ export function markLayer(host) {
     if (!it) return false;
     it.off?.();
     it.g?.remove();
+    it.gu?.remove();
     it.note?.remove();
     items.delete(id);
     schedule(true);
@@ -425,6 +598,7 @@ export function markLayer(host) {
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     layer.remove();
+    under?.remove();
     host.classList.remove('mk-host');
     delete host._marks;
   }

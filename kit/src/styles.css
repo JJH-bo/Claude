@@ -1056,11 +1056,21 @@ body.has-keypad .ink-fab, body.has-keypad .ink-bar { display: none; }
 .lint-note { margin: 8px 0 0; font-size: 13.5px; color: var(--muted); }
 
 /* —— 板书标注（marks.js）：粉笔圈、框、划，旁边写一句。颜色由 --mk 给（主题变量） —— */
-.mk-host { position: relative; }
+/* ==涂色==：荧光笔（写板时就标的重点）。上下各留一点、两头斜着收，像一笔涂过去；跨行时每行各涂一笔 */
+mark.hl-mark { color: inherit; --hl: var(--yellow-rgb); padding: 0 .14em; margin: 0 -.06em; border-radius: .3em .5em .35em .45em;
+  background: linear-gradient(100deg, rgb(var(--hl) / 0) .3em, rgb(var(--hl) / var(--hl-a, .44)) .55em, rgb(var(--hl) / var(--hl-a, .44)) calc(100% - .5em), rgb(var(--hl) / 0) calc(100% - .2em)) 0 62% / 100% 74% no-repeat;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+mark.hl-pink { --hl: var(--pink-rgb); } mark.hl-blue { --hl: var(--blue-rgb); } mark.hl-green { --hl: var(--green-rgb); } mark.hl-red { --hl: var(--coral-rgb); }
+
+/* isolation：字下面那层（荧光笔，z-index -1）画在宿主的底色上、字的下面，不会跑到宿主外面去 */
+.mk-host { position: relative; isolation: isolate; }
 .mk-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.mk-under { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.mk-svg .mk-dot { fill: var(--mk); stroke: none; }
+.mk-svg .mk-in .mk-dot { animation: mkFade .35s ease both; }
 .mk-svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
 .mk-svg .mk-line { fill: none; stroke: var(--mk); stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; filter: var(--rough); }
-.mk-svg .mk-fill { fill: var(--mk); fill-opacity: .24; stroke: none; }
+.mk-svg .mk-fill { fill: var(--mk); fill-opacity: var(--mk-fill-a, .46); stroke: none; }
 .mk-svg .mk-in .mk-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: mkDraw .6s cubic-bezier(.45,.1,.3,1) forwards; }
 .mk-svg .mk-in .mk-fill { animation: mkFade .45s ease both; }
 .mk-svg .mk-lead { fill: none; stroke: var(--mk); stroke-width: 1.6; stroke-linecap: round; stroke-opacity: .8; filter: var(--rough); }
@@ -1111,7 +1121,7 @@ body.has-keypad .ink-fab, body.has-keypad .ink-bar { display: none; }
   .mxw-mx td { min-width: 34px; padding: 5px 8px; font-size: 19px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mk-svg .mk-in .mk-line, .mk-svg .mk-in .mk-lead, .mk-svg .mk-in .mk-fill, .mk-note.mk-in, .mxw-enter { animation: none; stroke-dashoffset: 0; }
+  .mk-svg .mk-in .mk-line, .mk-svg .mk-in .mk-lead, .mk-svg .mk-in .mk-fill, .mk-svg .mk-in .mk-dot, .mk-note.mk-in, .mxw-enter { animation: none; stroke-dashoffset: 0; }
   .mxw-mx td.mxw-flash, .mxw-num.mxw-flash { animation: none; }
   .mxw-item.cmd-flash { animation: none; background-color: rgb(var(--yellow-rgb) / 0.15); }
 }

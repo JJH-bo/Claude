@@ -76,14 +76,162 @@ function stroke(a, b, R, bow = 1.6) {
 }
 
 const PAD = 6;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 /**
- * 一条标注的形状。geom：{ box }（要标的地方的外包框）、{ diag: [cell…] }（主对角线上各格）或 { point }。
- * 返回 { strokes: [d], fills: [d], bbox }：strokes 是线，fills 是涂色；bbox 是画出来的范围（旁注要躲开它）
+ * 要标的东西四周还空着多少（像素）：上下左右离最近的别的字多远。obstacles：板上的字（宿主里的坐标）；
+ * 和 box 重叠的（就是要标的这些字）不算。上下只看横向挨着的，左右只看同一行的。远的（> cap）都当 cap
+ */
+export function roomAround(box, obstacles = [], cap = 40) {
+  const room = { top: cap, bottom: cap, left: cap, right: cap };
+  for (const o of obstacles) {
+    if (!o) continue;
+    // 按中心分：中心在 box 里的是要标的这些字；上下两行的字框常常和这一行叠一两个像素，也算上一行 / 下一行
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    if (cx >= box.x && cx <= box.x + box.w && cy >= box.y && cy <= box.y + box.h) continue;
+    const hx = o.x < box.x + box.w && box.x < o.x + o.w;
+    const vy = cy > box.y && cy < box.y + box.h;
+    if (hx && cy < box.y) room.top = Math.min(room.top, box.y - (o.y + o.h));
+    else if (hx && cy > box.y + box.h) room.bottom = Math.min(room.bottom, o.y - (box.y + box.h));
+    else if (vy && cx < box.x) room.left = Math.min(room.left, box.x - (o.x + o.w));
+    else if (vy && cx > box.x + box.w) room.right = Math.min(room.right, o.x - (box.x + box.w));
+  }
+  for (const k of Object.keys(room)) room[k] = Math.max(0, room[k]);
+  return room;
+}
+
+// 圈、框离字留多少：想要 want，但不压到旁边的字——线落在空隙的中间（空隙小的时候贴着字，宁可贴着自己的字也不压别人的）
+export function padsFor(room, want = { x: 8, y: 6 }) {
+  const r = room || {};
+  const side = (gap, w) => (gap === undefined ? w : clamp(gap * 0.5 - 0.5, 1.5, w));
+  return { top: side(r.top, want.y), bottom: side(r.bottom, want.y), left: side(r.left, want.x), right: side(r.right, want.x) };
+}
+
+// 圆角矩形一周上的点（从左上角的上边开始顺时针，s 是走过的长度）
+function rrPoint(x, y, w, h, r, s) {
+  const st = w - 2 * r, sv = h - 2 * r, q = (Math.PI / 2) * r;
+  const P = 2 * st + 2 * sv + 4 * q;
+  s = ((s % P) + P) % P;
+  const arc = (cx, cy, a0, t) => [cx + r * Math.cos(a0 + (t / q) * (Math.PI / 2)), cy + r * Math.sin(a0 + (t / q) * (Math.PI / 2))];
+  if (s < st) return [x + r + s, y];
+  s -= st; if (s < q) return arc(x + w - r, y + r, -Math.PI / 2, s);
+  s -= q; if (s < sv) return [x + w, y + r + s];
+  s -= sv; if (s < q) return arc(x + w - r, y + h - r, 0, s);
+  s -= q; if (s < st) return [x + w - r - s, y + h];
+  s -= st; if (s < q) return arc(x + r, y + h - r, Math.PI / 2, s);
+  s -= q; if (s < sv) return [x, y + h - r - s];
+  s -= sv; return arc(x + r, y + r, Math.PI, s);
+}
+
+/**
+ * 手画的圈：一个圆角矩形（宽的是两头圆的长圈，方的就是圆），绕一周多一点、收尾稍微偏出去，像粉笔一笔圈出来的。
+ * 以前用椭圆：椭圆要包住宽的一行字，得比字宽出一半、高出一截，就压到旁边和上下行的字（2026-11-03 真课）。
+ * b：圈的外框（已经留好了白）
+ */
+export function loopPath(b, R) {
+  const r = Math.min(b.h / 2, b.w / 2, b.h > 60 ? 18 : 26);
+  const st = b.w - 2 * r, sv = b.h - 2 * r;
+  const P = 2 * st + 2 * sv + 2 * Math.PI * r;
+  const n = Math.max(28, Math.min(120, Math.round(P / 9)));
+  const start = st * (0.06 + R() * 0.12); // 从上边靠左的地方起笔
+  // 绕一周多一点：小圈多绕 6%～11%，大圈多出来的那段最多 40px（不然左上角拖出一长截）
+  const total = P + Math.min(P * (0.06 + R() * 0.05), 26 + R() * 14);
+  const ph1 = R() * 6.28, ph2 = R() * 6.28;
+  const amp = Math.min(1.6, 0.6 + b.h * 0.02);
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  const pts = [];
+  for (let k = 0; k <= n; k++) {
+    const t = k / n;
+    const [px, py] = rrPoint(b.x, b.y, b.w, b.h, r, start + total * t);
+    // 往外的方向（离中心）：抖一点，越画越往外一点，收尾不和起笔重合
+    const dx = px - cx, dy = py - cy;
+    const len = Math.hypot(dx / Math.max(1, b.w / 2), dy / Math.max(1, b.h / 2)) || 1;
+    const nx = dx / Math.max(1, b.w / 2) / len, ny = dy / Math.max(1, b.h / 2) / len;
+    const tail = (P * t > P - 10) ? Math.min(1, (P * t - (P - 10)) / Math.max(1, total - P + 10)) : 0;
+    const off = amp * (Math.sin(t * 6.28 * 2 + ph1) * 0.7 + Math.sin(t * 6.28 * 3 + ph2) * 0.4) * (1 - 0.6 * tail) + 1.4 * tail;
+    pts.push([px + nx * off, py + ny * off]);
+  }
+  return smooth(pts);
+}
+
+/**
+ * 跨几行的半句话：沿着这几行字的形状圈（第一行从中间开始、最后一行到中间结束），不把整段都圈进去。
+ * lines：每一行的框（从上到下，已经留好了白、上下挨着）。返回一笔手画的闭合线
+ */
+export function lassoPath(lines, R) {
+  const ls = [...lines].sort((a, b) => a.y - b.y);
+  // 相邻两行的分界：上一行的底和下一行的顶中间
+  const cut = ls.slice(1).map((l, i) => (ls[i].y + ls[i].h + l.y) / 2);
+  const top = (i) => (i ? cut[i - 1] : ls[0].y);
+  const bot = (i) => (i < ls.length - 1 ? cut[i] : ls[i].y + ls[i].h);
+  // 外轮廓的拐角：右边从上往下，左边从下往上
+  const pts = [];
+  ls.forEach((l, i) => { pts.push([l.x + l.w, top(i)], [l.x + l.w, bot(i)]); });
+  for (let i = ls.length - 1; i >= 0; i--) pts.push([ls[i].x, bot(i)], [ls[i].x, top(i)]);
+  // 去掉挨着的重复点、同一条线上的中间点
+  const poly = pts.filter((p, i) => { const q = pts[(i + pts.length - 1) % pts.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 0.5; });
+  // 拐角削圆：每个拐角换成两条边上离它 r 的两点，再一路加点、抖一抖
+  const out = [];
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const p = poly[i], a = poly[(i + n - 1) % n], b = poly[(i + 1) % n];
+    const la = Math.hypot(a[0] - p[0], a[1] - p[1]) || 1, lb = Math.hypot(b[0] - p[0], b[1] - p[1]) || 1;
+    const r = Math.min(12, la / 2, lb / 2);
+    out.push([p[0] + ((a[0] - p[0]) / la) * r, p[1] + ((a[1] - p[1]) / la) * r], [p[0] + ((b[0] - p[0]) / lb) * r, p[1] + ((b[1] - p[1]) / lb) * r]);
+  }
+  // 从第一行左上角往右起笔，绕一周再多画一小段
+  const dense = [];
+  for (let i = 0; i < out.length; i++) {
+    const p = out[i], q = out[(i + 1) % out.length];
+    const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    const k = Math.max(1, Math.round(len / 14));
+    for (let t = 0; t < k; t++) dense.push([p[0] + ((q[0] - p[0]) * t) / k, p[1] + ((q[1] - p[1]) * t) / k]);
+  }
+  const startAt = dense.findIndex((p) => Math.abs(p[1] - ls[0].y) < 0.6) + 1 || 0;
+  const ring = [...dense.slice(startAt), ...dense.slice(0, startAt)];
+  const extra = ring.slice(0, Math.min(3, ring.length));
+  const ph = R() * 6.28;
+  const wob = (p, i) => [p[0] + Math.sin(i * 0.7 + ph) * 0.9, p[1] + Math.cos(i * 0.9 + ph) * 0.9];
+  return smooth([...ring.map(wob), ...extra.map((p, i) => [p[0] + 1.5, p[1] - 2.2 - i * 0.4])]);
+}
+
+// 大括号（一组要背的东西旁边）：side right 是「}」，left 是「{」
+function bracePath(b, side, R) {
+  const top = b.y - 2, bot = b.y + b.h + 2, mid = (top + bot) / 2 + (R() - 0.5) * 2;
+  const bw = clamp((bot - top) * 0.07, 8, 15);
+  const dir = side === 'left' ? -1 : 1;
+  const x0 = side === 'left' ? b.x - 9 : b.x + b.w + 9;
+  const xm = x0 + dir * bw * 0.5, xt = x0 + dir * bw;
+  const c = Math.min(bw * 0.9, (bot - top) / 5);
+  const jj = () => (R() - 0.5) * 1.2;
+  const d = `M${P([x0, top])} Q${P([xm + jj(), top])} ${P([xm, top + c])} L${P([xm + jj(), mid - c])} Q${P([xm, mid])} ${P([xt, mid])} `
+    + `Q${P([xm, mid])} ${P([xm, mid + c])} L${P([xm + jj(), bot - c])} Q${P([xm + jj(), bot])} ${P([x0, bot])}`;
+  const bx = Math.min(x0, xt) - 2;
+  return { d, bbox: { x: bx, y: top - 2, w: bw + 4, h: bot - top + 4 }, tip: [xt, mid] };
+}
+
+// 一行字下面的波浪线
+function wavePath(x0, x1, y, R) {
+  const pts = [];
+  const per = 8.5, amp = 1.9;
+  const ph = R() * 6.28;
+  for (let x = x0; x <= x1 + 0.1; x += 2) pts.push([x, y + amp * Math.sin(((x - x0) / per) * 6.28 + ph)]);
+  return smooth(pts);
+}
+
+// 圆点（着重号）
+const dotPath = (x, y, r) => `M${P([x - r, y])} a${f(r)} ${f(r)} 0 1 0 ${f(r * 2)} 0 a${f(r)} ${f(r)} 0 1 0 ${f(-r * 2)} 0 Z`;
+
+/**
+ * 一条标注的形状。geom：{ box }（要标的地方的外包框）、{ diag: [cell…] }（主对角线上各格）或 { point }；
+ * 还可以带 room（四周空着多少，roomAround）、chars（着重号：每个字的框）、side（大括号、✓ 放哪边）。
+ * 返回 { strokes: [d], fills: [d], dots: [d], bbox, tip? }：strokes 是线，fills 是涂色（画在字下面），dots 是实心的点；
+ * bbox 是画出来的范围（旁注要躲开它），tip 是旁注最好挨着的那一点（大括号的尖）
  */
 export function shapeFor(style, geom, seed) {
   const R = rng(seed);
   const j = (s = 1.4) => (R() - 0.5) * 2 * s;
+  const none = { strokes: [], fills: [], dots: [] };
   if (geom.diag?.length) {
     // 主对角线：一个斜着的长圈，从第一个对角元圈到最后一个
     const cs = geom.diag.map((c) => [c.x + c.w / 2, c.y + c.h / 2]);
@@ -94,30 +242,64 @@ export function shapeFor(style, geom, seed) {
     const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2;
     const rx = len / 2 + r * 1.05, ry = r;
     const ext = [Math.abs(rx * Math.cos(rot)) + Math.abs(ry * Math.sin(rot)), Math.abs(rx * Math.sin(rot)) + Math.abs(ry * Math.cos(rot))].map((e) => e * 1.1);
-    return { strokes: [ellipse(cx, cy, rx, ry, rot, R)], fills: [], bbox: { x: cx - ext[0], y: cy - ext[1], w: ext[0] * 2, h: ext[1] * 2 } };
+    return { ...none, strokes: [ellipse(cx, cy, rx, ry, rot, R)], bbox: { x: cx - ext[0], y: cy - ext[1], w: ext[0] * 2, h: ext[1] * 2 } };
   }
   if (geom.point) {
     // 图上的一个点：圈一个小圈（箭头直接指过去）
     const { x, y } = geom.point;
     const r = 15;
     const box = { x: x - r, y: y - r, w: r * 2, h: r * 2 };
-    if (style === 'arrow') return { strokes: [], fills: [], bbox: { x: x - 4, y: y - 4, w: 8, h: 8 }, point: geom.point };
-    return { strokes: [ellipse(x, y, r, r * 0.92, j(0.3), R)], fills: [], bbox: box };
+    if (style === 'arrow') return { ...none, bbox: { x: x - 4, y: y - 4, w: 8, h: 8 }, point: geom.point };
+    return { ...none, strokes: [ellipse(x, y, r, r * 0.92, j(0.3), R)], bbox: box };
   }
   const b = geom.box;
   const { x, y, w, h } = b;
+  const room = geom.room || {};
+  const below = clamp((room.bottom ?? 12) * 0.45, 2, 4.5); // 线画在字下面多远：别碰到下一行
   switch (style) {
     case 'circle': {
-      // 公式里左右挨着别的符号，上下比较空：圈得高一点、窄一点，宽度刚好包住这一项的四个角再多 2px，
-      // 不然会压到旁边的字（A² = αβᵀαβᵀ 圈中间的 βᵀα）。单个字母时别太瘦长
-      const ry = h / 2 * 1.35 + PAD * 0.7;
-      const rx = Math.max(w / 2 / Math.sqrt(1 - (h / 2 / ry) ** 2) + 2, ry * 0.85);
-      const cx = x + w / 2, cy = y + h / 2;
-      return { strokes: [ellipse(cx, cy, rx, ry, j(0.04), R)], fills: [], bbox: { x: cx - rx * 1.1, y: cy - ry * 1.1, w: rx * 2.2, h: ry * 2.2 } };
+      const p = padsFor(geom.room, geom.tight ? { x: 4, y: 4 } : { x: 8, y: 6 });
+      const o = { x: x - p.left, y: y - p.top, w: w + p.left + p.right, h: h + p.top + p.bottom };
+      // 跨几行、头尾不齐（半句话从行中间开始、到行中间结束）：沿着字的形状圈
+      const ls = geom.lines;
+      if (ls?.length > 1 && (ls[0].x - x > 24 || x + w - (ls[ls.length - 1].x + ls[ls.length - 1].w) > 24)) {
+        const ex = ls.map((l, i) => ({ x: l.x - p.left, y: l.y - (i ? 0 : p.top), w: l.w + p.left + p.right, h: l.h + (i ? 0 : p.top) + (i === ls.length - 1 ? p.bottom : 0) }));
+        return { ...none, strokes: [lassoPath(ex, R)], bbox: { x: o.x - 5, y: o.y - 5, w: o.w + 10, h: o.h + 10 } };
+      }
+      // 方方的一小块（公式里的一项、一个字母、图上的标签）：椭圆更像随手一圈，也包得住四个角。
+      // 公式里左右挨着别的符号、上下比较空：圈得高一点、窄一点（宽度刚好包住四个角再多 2px），高度不超过上下的空隙
+      if (o.w / o.h < 1.9) {
+        const v = Math.min(room.top ?? 40, room.bottom ?? 40);
+        const ry = Math.min(h / 2 * 1.35 + PAD * 0.7, h / 2 + Math.max(2.5, v * 0.55));
+        const kk = Math.min(0.92, h / 2 / ry);
+        const rx = Math.max(w / 2 / Math.sqrt(1 - kk * kk) + 2, ry * 0.85);
+        const cx = x + w / 2, cy = y + h / 2;
+        return { ...none, strokes: [ellipse(cx, cy, rx, ry, j(0.04), R)], bbox: { x: cx - rx * 1.1, y: cy - ry * 1.1, w: rx * 2.2, h: ry * 2.2 } };
+      }
+      return { ...none, strokes: [loopPath(o, R)], bbox: { x: o.x - 5, y: o.y - 5, w: o.w + 10, h: o.h + 10 } };
+    }
+    case 'brace': {
+      const br = bracePath(b, geom.side === 'left' ? 'left' : 'right', R);
+      return { ...none, strokes: [br.d], bbox: br.bbox, tip: br.tip };
     }
     case 'underline': {
-      const yy = y + h + 4;
-      return { strokes: [stroke([x - 4 + j(), yy + j(1)], [x + w + 4 + j(), yy - 1 + j(1)], R, 2.2)], fills: [], bbox: { x: x - 6, y: y, w: w + 12, h: h + 9 } };
+      const yy = y + h + below;
+      return { ...none, strokes: [stroke([x - 3 + j(0.8), yy + j(0.6)], [x + w + 3 + j(0.8), yy - 0.8 + j(0.6)], R, 1.6)], bbox: { x: x - 6, y, w: w + 12, h: h + below + 4 } };
+    }
+    case 'double': {
+      const y1 = y + h + Math.min(below, 2.5), y2 = y1 + 3.6;
+      return { ...none, strokes: [stroke([x - 3, y1 + j(0.5)], [x + w + 3, y1 + j(0.5)], R, 1), stroke([x - 1, y2 + j(0.5)], [x + w + 2, y2 + j(0.5)], R, 1)], bbox: { x: x - 6, y, w: w + 12, h: h + 10 } };
+    }
+    case 'wave': {
+      const yy = y + h + Math.max(below, 3);
+      return { ...none, strokes: [wavePath(x - 1, x + w + 1, yy, R)], bbox: { x: x - 4, y, w: w + 8, h: h + below + 7 } };
+    }
+    case 'dots': {
+      // 着重号：每个字正下方一个点；没有每个字的位置时按字宽约 1em 排
+      const yy = y + h + Math.max(below, 3) + 1;
+      const cs = geom.chars?.length ? geom.chars : Array.from({ length: Math.max(1, Math.round(w / Math.max(10, h * 0.9))) }, (_, i, a) => ({ x: x + (w / a.length) * i, w: w / a.length }));
+      const r = clamp(h * 0.09, 1.6, 2.4);
+      return { ...none, dots: cs.map((c) => dotPath(c.x + c.w / 2, yy, r)), bbox: { x: x - 2, y, w: w + 4, h: h + below + 8 } };
     }
     case 'strike': {
       // 宽的划一横；窄的（一个数、一项）像 \cancel 斜着划
@@ -125,21 +307,36 @@ export function shapeFor(style, geom, seed) {
       const d = wide
         ? stroke([x - 3, y + h * 0.56 + j(1.5)], [x + w + 3, y + h * 0.46 + j(1.5)], R, 1.5)
         : stroke([x - 2 + j(), y + h + 2 + j()], [x + w + 2 + j(), y - 2 + j()], R, 1.2);
-      return { strokes: [d], fills: [], bbox: { x: x - 4, y: y - 4, w: w + 8, h: h + 8 } };
+      return { ...none, strokes: [d], bbox: { x: x - 4, y: y - 4, w: w + 8, h: h + 8 } };
     }
     case 'highlight': {
-      const p = 4;
-      const d = `M${P([x - p + j(), y + 1 + j()])} L${P([x + w + p + j(), y - 1 + j()])} L${P([x + w + p - 1 + j(), y + h + 1 + j()])} L${P([x - p + 1 + j(), y + h + 2 + j()])} Z`;
-      return { strokes: [], fills: [d], bbox: { x: x - p - 2, y: y - 3, w: w + p * 2 + 4, h: h + 6 } };
+      // 荧光笔：一笔涂过去，上下边稍微不齐、两头斜着收（画在字下面一层，字照样清楚）
+      const t = y + h * 0.1, bt = y + h * 0.96, p = 3;
+      const d = `M${P([x - p + j(0.8), t + j(0.8)])} L${P([x + w * 0.5, t - 0.6 + j(0.6)])} L${P([x + w + p + j(0.8), t + 0.4 + j(0.8)])} `
+        + `L${P([x + w + p - 2 + j(0.8), bt + j(0.8)])} L${P([x + w * 0.5, bt + 0.8 + j(0.6)])} L${P([x - p + 2 + j(0.8), bt + 0.3 + j(0.8)])} Z`;
+      return { ...none, fills: [d], bbox: { x: x - p - 2, y: y - 3, w: w + p * 2 + 4, h: h + 6 } };
+    }
+    case 'tick':
+    case 'cross': {
+      // ✓ / ✗：写在这一句后面（side=left 写在前面）
+      const sz = clamp(h * 1.05, 16, 30);
+      const left = geom.side === 'left';
+      const x0 = left ? x - 8 - sz : x + w + 9;
+      const y0 = y + h / 2 - sz / 2;
+      const d = style === 'tick'
+        ? `M${P([x0 + j(0.8), y0 + sz * 0.52])} Q${P([x0 + sz * 0.22, y0 + sz * 0.7])} ${P([x0 + sz * 0.36, y0 + sz + j(0.6)])} Q${P([x0 + sz * 0.6, y0 + sz * 0.35])} ${P([x0 + sz * 1.08, y0 - sz * 0.08 + j(0.8)])}`
+        : `${stroke([x0, y0 + j(0.8)], [x0 + sz * 0.9, y0 + sz + j(0.8)], R, 1.4)} ${stroke([x0 + sz * 0.92, y0 + j(0.8)], [x0 + j(0.8), y0 + sz * 0.98], R, 1.4)}`;
+      return { ...none, strokes: [d], bbox: { x: x0 - 4, y: y0 - 6, w: sz * 1.1 + 8, h: sz + 10 } };
     }
     case 'arrow':
       // 箭头的线要等旁注放好了才知道从哪画来（arrowPath）；这里只给出要指的范围
-      return { strokes: [], fills: [], bbox: { x: x - 2, y: y - 2, w: w + 4, h: h + 4 } };
+      return { ...none, bbox: { x: x - 2, y: y - 2, w: w + 4, h: h + 4 } };
     default: { // box
       // 矩阵的一行（一列）：上下（左右）收紧，挨着的几行各框各的，框线不打架
       const tx = geom.tight === 'x', ty = geom.tight === 'y';
-      const px = tx ? geom.inset ?? 1 : PAD - 1, py = ty ? geom.inset ?? 1 : PAD - 1;
-      const L = x - px, T = y - py, Rr = x + w + px, B = y + h + py;
+      const pp = padsFor(geom.room, { x: PAD - 1, y: PAD - 1 });
+      const px = tx ? geom.inset ?? 1 : null, py = ty ? geom.inset ?? 1 : null;
+      const L = x - (px ?? pp.left), T = y - (py ?? pp.top), Rr = x + w + (px ?? pp.right), B = y + h + (py ?? pp.bottom);
       // 角上多出去一点。收紧的方向上不出头、抖得也小：不然竖边伸进上下两行的框里，几行的框线叠成一团
       const o = () => (geom.tight ? 1.5 + R() * 2.5 : 3 + R() * 4);
       const ox = () => (tx ? 0 : o()), oy = () => (ty ? 0 : o());
@@ -151,7 +348,7 @@ export function shapeFor(style, geom, seed) {
         stroke([Rr + ox(), B + jy()], [L - ox(), B + jy()], R, bh),
         stroke([L + jx(), B + oy()], [L + jx(), T - oy()], R, bv),
       ].join(' ');
-      return { strokes: [d], fills: [], bbox: { x: L - 7, y: T - 7, w: Rr - L + 14, h: B - T + 14 } };
+      return { ...none, strokes: [d], bbox: { x: L - 7, y: T - 7, w: Rr - L + 14, h: B - T + 14 } };
     }
   }
 }
@@ -164,8 +361,10 @@ function nearest(p, r) {
 /**
  * 箭头：从 from 区域（旁注）指到 to 区域（或一个点）。返回 SVG path（线 + 箭头的两笔）
  */
-export function arrowPath(from, to, seed) {
+export function arrowPath(from, to, seed, { room = null } = {}) {
   const R = rng(`${seed}:arrow`);
+  // 同一行里的两处（主语 → 谓语）：拱过去，不横穿中间的字
+  if (sameLine(from, to)) return arcPath(from, to, R, room).d;
   const toC = to.w !== undefined ? [to.x + to.w / 2, to.y + to.h / 2] : [to.x, to.y];
   const fromC = [from.x + from.w / 2, from.y + from.h / 2];
   const a0 = nearest(toC, from);
@@ -186,6 +385,30 @@ export function arrowPath(from, to, seed) {
   const h1 = [b[0] - hl * (dx * Math.cos(ang) - dy * Math.sin(ang)), b[1] - hl * (dy * Math.cos(ang) + dx * Math.sin(ang))];
   const h2 = [b[0] - hl * (dx * Math.cos(-ang) - dy * Math.sin(-ang)), b[1] - hl * (dy * Math.cos(-ang) + dx * Math.sin(-ang))];
   return `M${P(a)} Q${P(c)} ${P(b)} M${P(h1)} L${P(b)} L${P(h2)}`;
+}
+
+export const sameLine = (from, to) => to.w !== undefined && from.y < to.y + to.h && to.y < from.y + from.h && Math.abs(from.x + from.w / 2 - (to.x + to.w / 2)) > 20;
+
+/**
+ * 同一行两处之间拱起来的箭头：{ d, bbox, down }。往上下哪边拱看哪边空（room：这一行上下空着多少），
+ * 拱多高也按空隙来，不压进上一行（下一行）的字
+ */
+export function arcPath(from, to, R = rng('arc'), room = null) {
+  const down = !!room && room.top < 22 && room.bottom > room.top;
+  const gap = room ? (down ? room.bottom : room.top) : 30;
+  const sgn = down ? 1 : -1;
+  const yA = down ? from.y + from.h + 3 : from.y - 3, yB = down ? to.y + to.h + 3 : to.y - 3;
+  const a = [from.x + from.w / 2, yA], b = [to.x + to.w / 2, yB];
+  const dist = Math.abs(b[0] - a[0]);
+  const rise = clamp(Math.min(dist * 0.16, gap - 5), 5, 22);
+  const c = [(a[0] + b[0]) / 2 + (R() - 0.5) * 6, (down ? Math.max(a[1], b[1]) : Math.min(a[1], b[1])) + sgn * rise * 2];
+  // 末端切线 c → b，箭头的两笔
+  const tx = b[0] - c[0], ty = b[1] - c[1], tl = Math.hypot(tx, ty) || 1, dx = tx / tl, dy = ty / tl;
+  const hl = 10, ang = 0.5;
+  const h1 = [b[0] - hl * (dx * Math.cos(ang) - dy * Math.sin(ang)), b[1] - hl * (dy * Math.cos(ang) + dx * Math.sin(ang))];
+  const h2 = [b[0] - hl * (dx * Math.cos(-ang) - dy * Math.sin(-ang)), b[1] - hl * (dy * Math.cos(-ang) + dx * Math.sin(-ang))];
+  const y0 = down ? Math.min(a[1], b[1]) : Math.min(a[1], b[1]) - rise, y1 = down ? Math.max(a[1], b[1]) + rise : Math.max(a[1], b[1]);
+  return { d: `M${P(a)} Q${P(c)} ${P(b)} M${P(h1)} L${P(b)} L${P(h2)}`, bbox: { x: Math.min(a[0], b[0]) - 4, y: y0 - 4, w: dist + 8, h: y1 - y0 + 8 }, down };
 }
 
 /**

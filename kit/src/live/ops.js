@@ -72,7 +72,7 @@ export function resultLine(id, cmd, res, notes = []) {
   if (res.op === 'mark') what = `画上了 ${(res.marks || []).map((m) => m.id).join('、')}`;
   else if (res.op === 'unmark') what = res.ids?.length ? `擦掉了 ${res.ids.join('、')}` : '板上没有标注，没擦什么';
   else if (res.op === 'figure') what = res.action === 'play' && res.jumped ? '执行了（学生在看旧板，直接跳到了终点）' : '执行了';
-  const part = res.error ? `；没画上的：${res.error}` : '';
+  const part = `${res.error ? `；没画上的：${res.error}` : ''}${res.warn ? `；提醒：${res.warn}` : ''}`;
   return oneLine(`${head}：${what}${part}${tail}`, 300);
 }
 

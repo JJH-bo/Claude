@@ -208,3 +208,6 @@
 :root:is([data-theme="paper"], [data-theme="white"]) .cb-pill { box-shadow: 0 6px 22px rgb(var(--shade-rgb) / 0.16), 0 1px 0 rgb(255 255 255 / 0.7) inset; }
 :root:is([data-theme="paper"], [data-theme="white"]) :is(.cb-menu, .cb-pages, .cb-status) { box-shadow: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.12), 0 12px 32px rgb(var(--shade-rgb) / 0.16); }
 :root:is([data-theme="paper"], [data-theme="white"]) .class-more { box-shadow: inset 0 0 0 1.4px rgb(var(--yellow-rgb) / 0.55), 0 6px 16px rgb(var(--shade-rgb) / 0.14); }
+/* 荧光笔（board mark 的 highlight、==涂色==）：深色黑板上淡了发灰发褐，涂浓一点；浅色纸上浓了压字，淡一点 */
+:root { --mk-fill-a: .46; --hl-a: .44; }
+:root:is([data-theme="paper"], [data-theme="white"]) { --mk-fill-a: .32; --hl-a: .3; }

@@ -10,6 +10,32 @@ import { MARK_COLORS } from './markspec.js';
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false, typographer: false });
 
+// ==要背的== / =={pink}要背的==：写板时就涂上荧光笔（docs/mark-plan.md）。讲着讲着才要指的用 board mark；
+// 写的时候就知道是重点的直接涂，不用再多一条指令。颜色：yellow（默认）pink blue green red，也认中文的黄粉蓝绿红
+const HL_COLORS = { yellow: 'yellow', pink: 'pink', blue: 'blue', green: 'green', red: 'red', 黄: 'yellow', 粉: 'pink', 蓝: 'blue', 绿: 'green', 红: 'red' };
+md.inline.ruler.before('emphasis', 'hlmark', (state, silent) => {
+  const src = state.src, start = state.pos;
+  if (src.charCodeAt(start) !== 0x3d || src.charCodeAt(start + 1) !== 0x3d || src.charCodeAt(start + 2) === 0x3d) return false;
+  let p = start + 2;
+  let color = 'yellow';
+  const m = /^\{([a-z\u4e00-\u9fa5]+)\}/.exec(src.slice(p, p + 12));
+  if (m && HL_COLORS[m[1]]) { color = HL_COLORS[m[1]]; p += m[0].length; }
+  const end = src.indexOf('==', p);
+  if (end < 0 || end === p || end > state.posMax || /\s/.test(src[p]) || /\s/.test(src[end - 1])) return false;
+  if (!silent) {
+    const open = state.push('hl_open', 'mark', 1);
+    open.attrSet('class', `hl-mark hl-${color}`);
+    const max = state.posMax;
+    state.pos = p;
+    state.posMax = end;
+    state.md.inline.tokenize(state);
+    state.posMax = max;
+    state.push('hl_close', 'mark', -1);
+  }
+  state.pos = end + 2;
+  return true;
+});
+
 const MATH_RE = /(`+)[\s\S]*?\1|\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?!\s)((?:\\.|[^$\\\n])+?)(?<!\s)\$/g;
 
 // 把公式先换成占位符，避免被 Markdown 改坏（比如 \\ 和 _）
