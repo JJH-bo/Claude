@@ -16,7 +16,7 @@ import { getStore, getDownloads } from '../live/store.js';
 import { VERSION, KIT_URL } from '../version.js';
 import { COLLECTIONS, MEMORY_COLLECTIONS, ROLE_TEXT, UNDO_DAYS, assertWrite, toDate } from './schema.js';
 import { sessionId, isSessionId, scopeDb, manualEvidence, SESSION_SCOPED, SESSION_KINDS, kindOf } from './session.js';
-import { buildReport, reportLine } from './report.js';
+import { buildReport, reportLine, REPORT_VERSION } from './report.js';
 import { backupFile, backupName, restorePlan, BOARD_COLLECTIONS, SESSION_EXTRA } from './backup.js';
 import { createManualForm } from './manual.js';
 import { createMemOps } from './memops.js';
@@ -30,6 +30,8 @@ import { dueList } from './schema.js';
 import { masteryProposals, masteryPendingWrites } from './mastery.js';
 import { pickDrills, harvestDrills, drillLine, DRILL_N } from './drills.js';
 import { enterDrill } from './drillrun.js';
+import { purgePlan, purgeText } from './purge.js';
+import { needsSkills, skillsPrompt, parseSkills, skillSummary, pointCatalog, lessonLines, SKILLS_VERSION } from './skills.js';
 
 // 正在看哪一科（这台设备记着；分科见 space.js）
 const SPACE_KEY = 'la-desk-space';
@@ -44,10 +46,12 @@ import { suggestBlock } from '../books/plan.js';
 import { renderLive } from '../live/live.js';
 import { renderGuided } from '../guided.js';
 import { createSink } from '../live/sync.js';
-import { checkMemory, memcheckRecord } from './check.js';
+import { checkMemory, memcheckRecord, fingerprint } from './check.js';
 import { sampleMemory, sampleSpaces } from './sample.js';
 
-const CHECK_DELAY = 800; // 一次 batch 写进来好几类：停一下再查，不要每到一类查一遍
+const CHECK_DELAY = 800;
+// 挂着没下课的课，停了这么久没动静，就先按证据算一份暂时的课后报告（fixReports）
+const STALE_MS = 3 * 3600 * 1000; // 一次 batch 写进来好几类：停一下再查，不要每到一类查一遍
 // 课堂每一轮要带的记忆（证据条数多、按需查，不订阅）。sessions 要带：记忆摘要里有「以前学这一块的课」、目录里有以前的课
 // 题库（drills）课堂里用不上，不订阅
 const MEMORY_FOR_CLASS = MEMORY_COLLECTIONS.filter((c) => c !== 'evidence' && c !== 'drills');
@@ -159,10 +163,11 @@ export async function renderDesk(root, meta) {
       loaded.add(c);
       failed.delete(c);
       if (c === 'sessions' || c === 'position') paintClass();
-      if (c === 'sessions') { fixReports(); if (loaded.has('drills') && loaded.has('errors')) fixDrills(); }
+      if (c === 'sessions') { fixReports(); fixSkills(); if (loaded.has('drills') && loaded.has('errors')) fixDrills(); }
       if (c === 'drills' && loaded.has('sessions')) fixDrills();
-      if (c === 'evidence') paintManual();
+      if (c === 'evidence') { paintManual(); if (loaded.has('sessions')) fixReports(); }
       if (c === 'curriculum') manualForm?.refreshBlocks();
+      if (['curriculum', 'weaknesses', 'observations', 'mastery'].includes(c)) fixSkills();
       schedule();
     }, () => { failed.add(c); loaded.add(c); schedule(); });
   }
@@ -302,6 +307,8 @@ export async function renderDesk(root, meta) {
     const last = mine.sessions.filter((x) => x.status === 'closed').sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0))[0];
     // 上一节：日期 + 报告那一行（做了几题、对了几题）；花了多少额度在「以前的课」里看，首页不放
     const lastLine = last ? String(last.report?.line || '') : '';
+    // 上一节没稳的知识点（归过类才有）：这节开头先测
+    const lastNext = last?.skills ? lessonLines(last.skills, pointCatalog(data.sessions, data.mastery)).next : [];
     const main = pack.main;
     const block = main?.block || mine.position.find((d) => d.id === positionId(space))?.block || '';
     // 等我确认的改动单；上一节还没整理完（它的整理单里还有没点的）
@@ -309,8 +316,8 @@ export async function renderDesk(root, meta) {
     const blocksHere = mine.curriculum.filter((b) => (b.level || (String(b.id).replace(/^[A-Z]{2}-/, '').split('.').length === 3 ? 'block' : '')) === 'block').sort((a, b) => cmpId(a.id, b.id));
     box.querySelector('.dk-body').innerHTML = `
       ${openPd.length ? `<p><a class="dk-link dk-to-pending" href="#">还有 ${openPd.length} 条以前留下的没写进去 ↓</a></p>` : ''}
-      ${last ? `<p class="dk-last"><span class="dk-k">上一节</span>${escapeHtml(String(last.date || '').slice(5).replace('-', '/'))}${last.block ? ` ${blockTitle(last.block)}` : ''}${lastLine ? `<span class="muted">：${escapeHtml(lastLine)}</span>` : ''} <a class="dk-link" href="#classes/${escapeHtml(last.id)}">看报告</a></p>` : ''}
-      ${opens.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || blockTitle(x.block) || x.id)}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button></div>`; }).join('')}
+      ${last ? `<p class="dk-last"><span class="dk-k">上一节</span>${escapeHtml(String(last.date || '').slice(5).replace('-', '/'))}${last.block ? ` ${blockTitle(last.block)}` : ''}${lastLine ? `<span class="muted">：${escapeHtml(lastLine)}</span>` : ''} <a class="dk-link" href="#classes/${escapeHtml(last.id)}">看报告</a></p>${lastNext.length ? `<p class="dk-last muted"><span class="dk-k">下次先测</span>${lastNext.map((x) => inline(x.name)).join('；')}</p>` : ''}` : ''}
+      ${opens.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || blockTitle(x.block) || x.id)}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button><button type="button" class="btn btn-sm btn-danger dk-purge" data-sid="${escapeHtml(x.id)}" title="测试开的、不要的课：连黑板和记录一起删掉">删掉</button></div>`; }).join('')}
       <div class="dk-next">${main ? `<p><span class="dk-k">备好的课</span>${inline(main.unit || blockTitle(block) || '（没写标题）')}${main.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>${main.goal ? `<p class="dk-goal muted" title="点一下看全文">${inline(main.goal)}</p>` : ''}`
         : `<p class="muted">${SPACES[space].label}还没有备好的课：在下面选一块，让 Claude 备课（也可以直接开课：课堂里的 Claude 带着记忆，但没有这节课的安排）。</p>`}
         ${blocksHere.length ? planner.prepHtml({ suggested: main?.block || suggestBlock(blocksHere, mine.position.find((d) => d.id === positionId(space))), blocks: blocksHere, main, busy: prepBusy, msg: prepMsg }) : ''}
@@ -333,6 +340,7 @@ export async function renderDesk(root, meta) {
         toast(`${sid} 下课了，课后报告马上补上`);
       } catch (err) { toast(`没结束成：${err?.message || err}`); btn.disabled = false; }
     }));
+    box.querySelectorAll('.dk-purge').forEach((b) => b.addEventListener('click', (e) => purgeClass(e.currentTarget.dataset.sid, e.currentTarget)));
     box.querySelector('.dk-prep-go')?.addEventListener('click', async () => {
       const id = box.querySelector('.dk-prep-block').value;
       const pages = box.querySelector('.dk-prep-pages')?.value || '';
@@ -346,6 +354,45 @@ export async function renderDesk(root, meta) {
       paintClass();
     });
     box.querySelector('.dk-new').addEventListener('click', (e) => { e.currentTarget.disabled = true; newClass(block).catch((err) => { toast(`没开成：${err?.message || err}`); e.currentTarget.disabled = false; }); });
+  }
+
+  // —— 删掉一节课（purge.js）：测试开的、不要的课，连黑板、对话、证据、这节课记下的笔记一起删 ——
+  // 删之前先把自检的指纹里这几条去掉：不然自检会把「历史被删了」当成不守规矩报出来
+  async function purgeClass(sid, btn) {
+    const x = data.sessions.find((d) => d.id === sid);
+    if (!x) { toast('找不到这节课'); return; }
+    const plan = purgePlan(data, sid);
+    const title = `${String(x.date || '').slice(5).replace('-', '/')} ${x.title || blockTitle(x.block) || sid}`.trim();
+    if (!await ask(purgeText(plan, { title }), { ok: '删掉', danger: true })) return;
+    if (btn) btn.disabled = true;
+    const role = (c) => (COLLECTIONS[c]?.writers.includes('me') ? 'me' : 'page');
+    try {
+      if (ledger?.hist && (plan.ledger.length || plan.unlink.length)) {
+        const hist = { ...ledger.hist };
+        for (const k of plan.ledger) delete hist[k];
+        for (const u of plan.unlink) hist[u.path] = fingerprint(u.doc);
+        ledger = { ...ledger, hist };
+        lastLedger = JSON.stringify(ledger);
+        await put('meta', 'ledger', { ...ledger, at: Date.now() });
+      }
+      const rows = (snap) => (snap ? snap.docs.map((d) => d.id) : []);
+      for (const c of plan.scoped) {
+        const ids = await db.collection(`sessions/${sid}/${c}`).get().then(rows, () => []);
+        for (const id of ids) await db.doc(`sessions/${sid}/${c}/${id}`).delete();
+      }
+      for (const u of plan.unlink) { const c = u.path.split('/')[0]; assertWrite(role(c), c); await db.doc(u.path).set(u.doc); }
+      // 课本身最后删：中途断了，课还在列表里，能再点一次删
+      for (const path of plan.docs) {
+        const c = path.split('/')[0];
+        assertWrite(role(c), c);
+        await db.doc(path).delete();
+      }
+      toast(`删掉了：${title}`);
+      if (location.hash.slice(1) === `classes/${sid}`) location.hash = 'classes';
+    } catch (err) {
+      toast(`没删完：${err?.message || err}（再点一次接着删）`);
+      if (btn) btn.disabled = false;
+    }
   }
 
   // —— 练一练（drills.js）：页面挑题、开一节 kind: drill 的练习 ——
@@ -382,14 +429,65 @@ export async function renderDesk(root, meta) {
     }
   }
 
-  // —— 下了课却没有课后报告的（下课时没写成、旧版下的课）：补写，一次最多 3 节 ——
+  // —— 课后报告补写，一次最多 3 节（都是代码算，不调用 Claude）：
+  // - 下了课却没有报告的（下课时没写成、旧版下的课）、报告是旧版算法算的（report.v 比 REPORT_VERSION 小）
+  // - 挂着没下课、已经好几个小时没动静的（真课里一大半的课是这样不了了之的）：先按现有的证据算一份「暂时的」报告，
+  //   课照旧挂着、能接着上；后来又有了动静、再停下来，再算一遍。不然这些课的作答一直没人整理
   const fixing = new Set();
   function fixReports() {
-    const todo = data.sessions.filter((x) => x.status === 'closed' && !x.report && !fixing.has(x.id)).slice(0, 3);
+    const now = Date.now();
+    const lastAct = (x) => Math.max(Number(x.startedAt) || 0, ...data.evidence.filter((e) => e.session === x.id).map((e) => Number(e.at) || 0));
+    const stale = (x) => x.status === 'open' && kindOf(x) !== 'drill' && now - lastAct(x) > STALE_MS && (!x.report || lastAct(x) > (Number(x.report.at) || 0));
+    const todo = data.sessions.filter((x) => !fixing.has(x.id) && ((x.status === 'closed' && (!x.report || (Number(x.report.v) || 1) < REPORT_VERSION)) || (loaded.has('evidence') && stale(x)))).slice(0, 3);
     for (const x of todo) {
       fixing.add(x.id);
       const { id, ...doc } = x;
       writeReport(db, id, { doc, update: (patch) => db.doc(`sessions/${id}`).set({ ...doc, ...patch }) }).catch((e) => console.warn('课后报告没补写成', id, e));
+    }
+  }
+
+  // —— 知识点归类（skills.js）：有了课后报告的课，页面调用一次 Claude，把每道题归到具体的知识点、挂上对得上的弱点。
+  // 一节一节来（一次只跑一节，这次打开学习台最多 4 节）；调用不了 Claude（没权限）就不归，掌握照旧按整块算。
+  // 花费：发出去的只有报告的每道题一行、这一科的课程地图和弱点、小结开头（十几 KB），比上课的一轮小得多
+  const skilled = new Set();
+  let skillBusy = false;
+  async function fixSkills() {
+    if (skillBusy || skilled.size >= 4 || !['sessions', 'curriculum', 'weaknesses', 'observations', 'mastery'].every((c) => loaded.has(c))) return;
+    const x = data.sessions.filter((d) => !skilled.has(d.id) && needsSkills(d)).sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0))[0];
+    if (!x) return;
+    skillBusy = true;
+    skilled.add(x.id);
+    try {
+      const ai = await deskAI();
+      if (!ai) return;
+      const report = await scopeDb(db, x.id).doc('report/main').get().then((r) => (r.exists ? r.data() : null));
+      if (!report?.items?.length) return;
+      const sp = spaceOfDoc('sessions', x, data) || space;
+      const mine = filterSpace(data, sp);
+      const gone = voidedIds(data);
+      const blocks = mine.curriculum.filter((b) => /\.\d+\.\d+$/.test(String(b.id))).sort((a, b) => cmpId(a.id, b.id));
+      const catalog = Object.fromEntries(Object.entries(pointCatalog(data.sessions.filter((d) => d.id !== x.id), data.mastery)).filter(([id]) => spaceOfId(id) === sp));
+      const weak = mine.weaknesses.filter((w) => !['closed', 'merged', 'void'].includes(w.status) && !gone.has(`weaknesses/${w.id}`));
+      const obs = data.observations.filter((o) => o.session === x.id);
+      const summary = obs.find((o) => o.id === x.summary || o.kind === 'summary')?.text || '';
+      const prompt = skillsPrompt({ report, session: x, curriculum: blocks, catalog, weaknesses: weak, summary, notes: obs.filter((o) => o.kind === 'note') });
+      const res = await ai.call(prompt, { model: MODEL, effort: 'medium', modelTier: 'complex', cache: false });
+      const got = parseSkills(res.text, { items: report.items, blocks: blocks.map((b) => b.id), catalog, weaknesses: weak });
+      const skills = {
+        v: SKILLS_VERSION, reportAt: Number(x.report?.at) || report.at || null, at: Date.now(), model: res.modelApplied || '', bytes: new TextEncoder().encode(prompt).length,
+        items: got.items, points: got.points, sum: skillSummary(report, got.items), problems: got.problems.slice(0, 10),
+      };
+      // 读最新的再写（课堂、对话里的 Claude 可能刚改过这一条）
+      const cur = await db.doc(`sessions/${x.id}`).get().then((r) => (r.exists ? r.data() : null));
+      if (!cur) return;
+      assertWrite('page', 'sessions');
+      await db.doc(`sessions/${x.id}`).set({ ...cur, skills });
+    } catch (err) {
+      // 没权限、没网：这次不归了，下次打开学习台再试
+      console.warn('知识点没归成', x.id, err?.message || err?.code || err);
+    } finally {
+      skillBusy = false;
+      setTimeout(fixSkills, 500);
     }
   }
 
@@ -601,7 +699,7 @@ export async function renderDesk(root, meta) {
   });
 
   // —— 首页以外的页面：课程地图、弱点表、错题本、以前的课、统计（pages.js，换页不刷新）——
-  const pagesView = createPages($('.dk-pages'), { getData: sv, db, ops, goto });
+  const pagesView = createPages($('.dk-pages'), { getData: sv, db, ops, goto, purge: (sid, btn) => purgeClass(sid, btn) });
   // 首页「别的科也有到期的」：点了切过去
   $('.dk-today').addEventListener('click', (e) => { const b = e.target.closest('.dk-space-go'); if (b) setSpace(b.dataset.space); });
   function route() {
@@ -801,7 +899,7 @@ export async function writeReport(db, sid, { doc, turns = null, steps = null, up
   assertWrite('page', 'sessions');
   const report = await makeReport(db, sid, { doc, turns, steps });
   await scopeDb(db, sid).doc('report/main').set(report);
-  const patch = { report: { at: report.at, line: reportLine(report), items: report.totals.items, first: report.totals.first, activeMs: report.time.activeMs } };
+  const patch = { report: { v: REPORT_VERSION, at: report.at, line: reportLine(report), items: report.totals.items, first: report.totals.first, activeMs: report.time.activeMs, ...(doc.status === 'open' ? { provisional: true } : {}) } };
   await update(patch);
   // 课上判得了分的题抄进题库（练习用，不调用 Claude）
   if (kindOf(doc) !== 'drill') await harvestSession(db, sid, { doc: { ...doc, ...patch }, report, steps, update: (p) => update({ ...patch, ...p }) }).catch((e) => console.warn('题没抄进题库', sid, e));

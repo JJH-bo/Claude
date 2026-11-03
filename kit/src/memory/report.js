@@ -7,7 +7,8 @@
 import { lessonSheet } from './sheet.js';
 import { usageOf } from '../class/usage.js';
 
-export const REPORT_VERSION = 1;
+// 2：试出来的选择题（guess）、版本号记进 sessions.report.v（旧版算的报告首页打开时按新的算法重算）
+export const REPORT_VERSION = 2;
 export const IDLE_GAP = 10 * 60 * 1000; // 两个动静之间超过 10 分钟：算走开了，不计进时长
 export const REPORT_MAX = 200 * 1024; // 数据库一个文档最多 256 KiB，留点余量
 
@@ -37,6 +38,18 @@ export function itemKey(ev) {
  */
 export const OUTCOMES = ['first', 'ok', 'wrong', 'giveup', 'revealed', 'open'];
 export const OUTCOME_TEXT = { first: '一次对', ok: '改对了', wrong: '错', giveup: '想不出来', revealed: '看了答案', open: '没判' };
+
+/**
+ * 单选题把选项差不多试遍了才对（三个选项第二次才对、四个选项第三次才对）：这次「改对」证明不了会，是试出来的。
+ * 选项数记在作答里（quiz 的 options）；旧的记录没有选项数，按试了三次以上算。多选题、填空不算
+ */
+export function guessed({ kind, multi, options, attempts, ok } = {}) {
+  if (kind !== 'quiz' || multi || ok !== true) return false;
+  const n = Number(attempts) || 0;
+  const opts = Number(options) || 0;
+  if (n < 2) return false;
+  return opts >= 2 ? n >= opts - 1 : n >= 3;
+}
 
 const sureOf = (evs) => { const s = evs.filter((e) => e.kind === 'sure').at(-1); const v = s?.detail?.sure ?? s?.sure; return typeof v === 'boolean' ? v : null; };
 
@@ -77,6 +90,7 @@ function itemOf(key, list, segs) {
     attempts,
     seq: tries.map((ok) => (ok ? '✓' : '✗')).join(''),
     outcome,
+    ...(outcome === 'ok' && guessed({ ...(final || recs.at(-1) || {}), kind: String(recs[0]?.kind || ''), ok: true, attempts }) ? { guess: true } : {}),
     final: !!final,
     giveup,
     revealed,
@@ -191,7 +205,7 @@ export function buildReport({ session = {}, evidence = [], manual = [], observat
     endedAt: num(session.endedAt),
     time,
     totals: {
-      items: items.length, unsure: items.filter((it) => it.sure === false).length, first: count('first'), ok: count('ok'), wrong: count('wrong'), giveup: count('giveup'), revealed: count('revealed'), open: count('open'),
+      items: items.length, unsure: items.filter((it) => it.sure === false).length, guess: items.filter((it) => it.guess).length, first: count('first'), ok: count('ok'), wrong: count('wrong'), giveup: count('giveup'), revealed: count('revealed'), open: count('open'),
       evidence: evs.length, says: says.filter((s) => s.kind === 'say').length, photos: says.filter((s) => s.kind === 'photo' || s.images.length).length, drafts: drafts.length,
       turns: (turns || []).filter((t) => t?.role === 'student' || t?.role === 'claude').length,
     },
@@ -236,7 +250,7 @@ export function reportLine(r) {
   if (!r) return '';
   const min = Math.round((r.time?.activeMs || 0) / 60000);
   const t = r.totals || {};
-  return [min ? `${min} 分钟` : '', t.items ? `${t.items} 题，一次对 ${t.first}${t.wrong ? `，错 ${t.wrong}` : ''}${t.giveup + t.revealed ? `，没做出 ${t.giveup + t.revealed}` : ''}` : '没做题',
+  return [min ? `${min} 分钟` : '', t.items ? `${t.items} 题，一次对 ${t.first}${t.guess ? `，试出来的 ${t.guess}` : ''}${t.wrong ? `，错 ${t.wrong}` : ''}${t.giveup + t.revealed ? `，没做出 ${t.giveup + t.revealed}` : ''}` : '没做题',
     t.drafts ? `${t.drafts} 处草稿没交` : ''].filter(Boolean).join(' · ');
 }
 
@@ -252,7 +266,7 @@ export function reportText(r, { max = 8 * 1024 } = {}) {
     `- 时长约 ${min} 分钟；做了 ${t.items || 0} 题：一次对 ${t.first || 0}、改对 ${t.ok || 0}、错 ${t.wrong || 0}、想不出来 ${t.giveup || 0}、看了答案 ${t.revealed || 0}、程序判不了 ${t.open || 0}。`];
   const tags = (r.byTag || []).filter((x) => x.tag).map((x) => `${x.tag} ${x.items} 题一次对 ${x.first}`);
   if (tags.length) head.push(`- 按块 / 知识点：${tags.join('；')}`);
-  const items = (r.items || []).map((it) => `- ${it.comp}${it.seg ? `（${it.seg}）` : ''}「${cut(it.q, 60)}」：${it.seq || '·'} ${OUTCOME_TEXT[it.outcome] || it.outcome}${it.sure === false ? '（学生标了没把握）' : it.sure === true ? '（有把握）' : ''}${it.last ? `，最后写的 ${cut(it.last, 40)}` : ''}${it.ms ? `，${Math.round(it.ms / 1000)} 秒` : ''}；证据 ${it.evidence.slice(-3).join(',')}`);
+  const items = (r.items || []).map((it) => `- ${it.comp}${it.seg ? `（${it.seg}）` : ''}「${cut(it.q, 60)}」：${it.seq || '·'} ${it.guess ? '把选项试遍了才对（不算会）' : OUTCOME_TEXT[it.outcome] || it.outcome}${it.sure === false ? '（学生标了没把握）' : it.sure === true ? '（有把握）' : ''}${it.last ? `，最后写的 ${cut(it.last, 40)}` : ''}${it.ms ? `，${Math.round(it.ms / 1000)} 秒` : ''}；证据 ${it.evidence.slice(-3).join(',')}`);
   const tail = [];
   if (r.drafts?.length) tail.push(`- 没交的草稿：${r.drafts.map((d) => `${d.comp || ''}「${cut(d.text, 40)}」（${d.id}）`).join('；')}`);
   if (r.says?.length) tail.push(`- 学生说的话：${r.says.filter((s) => s.text).slice(-12).map((s) => `「${cut(s.text, 60)}」（${s.id}）`).join('；')}`);

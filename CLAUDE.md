@@ -12,6 +12,7 @@
 - **学习台自己管自己**（外部 Claude 只做开发；课堂里的 Claude 管学习台，规则和掌握仍要我确认；记忆不冗杂：拦照抄、条数上限、顺着下课整理定期合并）和进度：`docs/autonomy-plan.md`。现在做学习台以它为准（2026-11-03 做完第 1、2 批；之后改成什么都不用我确认，版本 2026-11-03e）。
 - 数学和 408 再提升一轮（演示组件当练习题、演示上的滑块、答案的新写法、学生自己画波形和填过程表、含参数的精确计算、量一遍）和进度：`docs/stem-plan.md`
 - 攻学习台的上限（学得会、学得牢：信心标定、按证据算掌握、页面自己跑的练习和混练、教学尺子、课堂计划块、学生逐行推导）和进度：`docs/learning-plan.md`
+- **课后的数据处理到对我有用**（删课；挂着没下课的课先算暂时的报告、试出来的选择题、按课算掌握、页面结论按新规则重算；下课后一次调用把每道题归到知识点、弱点出现几次、这节课的三行）和进度：`docs/data-plan.md`
 - **黑板不像对话框**（预案 `board react`：学生作答后页面当场接、不调用；拍子：一轮一拍一拍地播；固定画面的板为什么不做）和进度：`docs/board-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
@@ -148,6 +149,11 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - 改动单的列表：同一批的三条以上合成一组（`memo.js` 的 `groupPending`）；给我看的标题把编号换成名字（`pendingTitle(pd, nameOf)`，发给课堂 Claude 的照旧写编号）。
   - 待办 `todo`（`observations` 的 `kind: todo`）：课上被问到教案以外的内容，记下来；备课时 `plan.js` 的 `openTodos` 带上，补上了的写进教案 `todos`（课堂看得到），编号记进 `meta/todos` 的 `done`。
 - 教学守则（`docs/teach-plan.md`）：`lessons`（`T-…`，状态类）是失误归纳出来的「下次照着做」。上课时又犯写 `lesson id=… again=…`（不另记失误），只说板放不下的失误不收（`layoutOnly`）；下课时 `closingPrompt({ slips })`（`slipsToFold`：这一科还没归纳的失误全文）要它全部并进守则（改写、合并 `status=retired into=…`）；一科最多 `LESSONS_MAX` 条、几乎照抄的新守则不收（`similarity`）。`digest.js`：守则紧跟规则全文带，已归纳的失误（`absorbedSlips`）不再带。首页「我改记忆」能改、能不要（`meChange` 的 `lesson` / `lesson-retire`）。
+- 课后的数据（`docs/data-plan.md`）：
+  - 删课 `purge.js`（纯函数 `purgePlan`：删哪些、留哪些、要去掉课号的失误、自检指纹里去掉哪几条；`desk.js` 的 `purgeClass` 执行）：「以前的课」点进去「删掉这节课」、首页没下课那行「删掉」。
+  - `desk.js` 的 `fixReports`：下了课没报告的、`report.v` 比 `REPORT_VERSION` 旧的重算；挂着没下课、`STALE_MS`（3 小时）没动静的先算暂时的报告（`report.provisional`）。`report.js` 的 `guessed`：单选题把选项试遍了才对（`items[].guess`，`quiz` 记 `options`）。
+  - 知识点归类 `skills.js`（纯函数）：`skillsPrompt` / `parseSkills`（每道题 `item 题号 块#短名 [弱点]`，新的先 `point`）/ `skillSummary` 存进 `sessions/{编号}.skills`；`desk.js` 的 `fixSkills` 一节一节调用（Opus 5.5 medium，一次打开最多 4 节，`?dev` 用 `books/devmock.js`）。`retagEvidence`（掌握按真正的块 + 知识点数）、`pointCatalog`（用过的知识点和标题）、`weaknessHits` / `hitText`（弱点出现几次，弱点表和记忆摘要用，不写回）、`lessonLines`（会了 / 还不稳 / 下次先测：「以前的课」、首页「上一节」、记忆摘要里上一节那行）。
+  - `mastery.js`：`walk` 按课分组（还没过只算最后一次失手以后的，过了只看一上来那道）；`startOf` 退回页面自己算之前的状态重算（`by: page`），我和对话里定的不动。
 - 给我看的页面和第 4 批（desk-plan 第 3、4 批）：
   - 开场简报：首页打开时写 `meta/brief`、`brief-cs`、`brief-en`（`views.js` 的 `deskBrief`：接手要知道的 + 这一科记忆库的目录），对话里的 Claude 开场 get 一份。
   - `views.js`（纯函数）：课程地图 `curriculumTree` / `blockDetail`、时间线 `blockTimeline`、弱点表 `weaknessRows`、错题本 `errorRows`、以前的课 `classRows`、统计 `learningStats`（按每节课报告的要点 `sessions.report.activeMs/items/first`）、复现课的资料包 `reviewPack`、启动语 `handoffText`。
