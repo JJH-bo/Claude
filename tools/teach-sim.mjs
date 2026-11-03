@@ -93,6 +93,7 @@ function studentComp(f, progress = 0, st = null) {
     }
     if (f.lang === 'quiz') {
       const { fields, options } = parseQuiz(f.body);
+      if (!options.length) return `【填空题 ${id}】${fields.title || ''}\n  ${fields.q || ''}\n  （写出答案）`;
       return `【选择题 ${id}】${fields.title || ''}\n  ${fields.q || ''}\n${options.map((o, i) => `  ${String.fromCharCode(65 + i)}. ${o.text}`).join('\n')}${options.filter((o) => o.correct).length > 1 ? '\n  （多选）' : ''}`;
     }
     if (f.lang === 'answer' || f.lang === 'practice') {
@@ -274,6 +275,12 @@ function judge(st, act) {
   }
   if (f.lang === 'quiz') {
     const { fields, options } = parseQuiz(f.body);
+    // 填空题（answer: 2，几个都对用 | 隔开；数按数值比）
+    if (!options.length && fields.answer) {
+      const v = boardVars(st);
+      const ok = fields.answer.split('|').map((x) => x.trim()).some((a) => { const x = sameVal(evalExpr(act.value, v), evalExpr(a, v)); return x === null ? norm(a) === norm(act.value) : x; });
+      return { ...base, type: 'quiz', q: fields.q || '', value: act.value, ok, attempts, ...(ok ? {} : { wrong: [act.value] }), final: ok };
+    }
     const pick = pickOption(options.map((o) => o.text), act.value);
     const ok = pick >= 0 ? options[pick].correct : false;
     return { ...base, type: 'quiz', q: fields.q || '', ok, attempts, ...(ok ? {} : { wrong: [act.value] }), final: ok };
