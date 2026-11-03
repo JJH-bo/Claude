@@ -70,7 +70,7 @@ export const viewHash = () => { const h = decodeURIComponent(String(location.has
 const nameIn = (get) => (coll, id) => { const d = (get()?.[coll] || []).find((x) => String(x.id) === String(id)); return d ? String(d.title || d.text || d.q || '') : ''; };
 
 // 顶上那行日期：11月3日 · 周二
-const todayLabel = (d = new Date()) => `${d.getMonth() + 1}月${d.getDate()}日 · 周${'日一二三四五六'[d.getDay()]}`;
+const todayLabel = (d = new Date()) => `${d.getMonth() + 1}月${d.getDate()}日 星期${'日一二三四五六'[d.getDay()]}`;
 
 // 首页以外的页面（pages.js），换页不刷新
 const PAGES = { map: '课程地图', books: '教材', weak: '弱点表', errors: '错题本', classes: '以前的课', stats: '统计' };
@@ -87,7 +87,7 @@ export async function renderDesk(root, meta) {
   const unit = meta.unit || session.title || '学习台';
   root.innerHTML = `
     <header class="dk-head">
-      <div class="dk-brand" title="${escapeHtml(String(unit))}"><h1 class="dk-title">学习台</h1><span class="dk-date">${escapeHtml(todayLabel())}</span></div>
+      <div class="dk-brand" title="${escapeHtml(String(unit))}"><span class="dk-date">${escapeHtml(todayLabel())}</span><h1 class="dk-title">学习台</h1></div>
       <div class="dk-spaces" role="tablist" aria-label="科目">${SPACE_KEYS.map((k) => `<button type="button" role="tab" class="dk-space" data-space="${k}">${SPACES[k].label}</button>`).join('')}</div>
     </header>
     <nav class="dk-nav" aria-label="学习台的页面"><a href="#">首页</a>${Object.entries(PAGES).map(([k, v]) => `<a href="#${k}">${v}</a>`).join('')}<a href="#manage">管理</a></nav>
@@ -794,7 +794,7 @@ export async function renderDesk(root, meta) {
 
   // —— 样子（theme.js）：三种推荐的，加上收起来的另外三种；点了马上换，这台设备记着 ——
   function paintLook() {
-    const cur = document.documentElement.dataset.theme || '';
+    const cur = document.documentElement.dataset.theme || 'graphite'; // 没有 data-theme 就是石墨（夜读）
     const sw = (x) => `<span class="dk-sw" aria-hidden="true" style="background:${x.sw[0]}"><i style="background:${x.sw[1]}"><b style="background:${x.sw[2]}"></b><b style="background:${x.sw[3]}"></b></i></span>`;
     const card = (x) => `<button type="button" class="dk-look-btn" data-theme-id="${escapeHtml(x.id)}" aria-pressed="${x.id === cur}">${sw(x)}<span class="dk-look-t"><b>${escapeHtml(x.name)}</b>${x.note ? `<span class="muted">${escapeHtml(x.note)}</span>` : ''}</span></button>`;
     $('.dk-look .dk-body').innerHTML = `<div class="dk-looks">${PICKS.map(card).join('')}</div>

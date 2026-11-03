@@ -402,7 +402,6 @@
 /* 水墨：主按钮是一笔浓墨（不是彩色的块），学习台那方「学」字印是朱砂 */
 :root[data-theme="ink"] .btn-primary { color: var(--accent-ink); background: linear-gradient(180deg, rgb(var(--chalk-rgb) / 0.92), rgb(var(--chalk-rgb) / 0.82)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 8px 18px -10px rgb(var(--shade-rgb) / 0.6); }
 :root[data-theme="ink"] .btn-primary:disabled { color: var(--chalk); background: rgb(var(--chalk-rgb) / 0.05); box-shadow: none; --frame: rgb(var(--chalk-rgb) / 0.3); }
-:root[data-theme="ink"] .dk-brand::before { background: linear-gradient(160deg, rgb(var(--yellow-rgb)), rgb(var(--yellow-rgb) / 0.8)); box-shadow: 0 8px 18px -10px rgb(var(--yellow-rgb) / 0.7); border-radius: 6px; }
 
 /* 浅色风格：浮起来的东西（输入框、菜单）阴影淡一点，纸上不该有浓黑的影子 */
 :root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) .cb-pill { box-shadow: 0 6px 22px rgb(var(--shade-rgb) / 0.16), 0 1px 0 rgb(255 255 255 / 0.7) inset; }
@@ -416,4 +415,49 @@
   --field-edge: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.14);
   --btn-bg: rgb(255 255 255 / 0.62);
   --btn-bg-hi: rgb(255 255 255 / 0.9);
+  --seg-on: #fff;
 }
+/* 水墨（学习台默认）：卡片是一张更白的宣纸，几乎不要影子，一道很细的边；凹下去的地方是很淡的一层墨 */
+:root[data-theme="ink"] {
+  --panel: #fbfaf6;
+  --panel-edge: inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.1);
+  --lift: 0 1px 1px rgb(var(--shade-rgb) / 0.04), 0 10px 30px -18px rgb(var(--shade-rgb) / 0.22);
+  --field: rgb(var(--chalk-rgb) / 0.045);
+  --field-edge: inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.06);
+  --btn-bg: rgb(var(--chalk-rgb) / 0.06);
+  --btn-bg-hi: rgb(var(--chalk-rgb) / 0.1);
+}
+
+/* —— 水墨的黑板（课堂、实时黑板、自学单元）：iOS 的控件，宣纸上的墨 ——
+   板的标题、组件标题、图上的标注用毛笔楷书；按钮、选项、提示框是圆角的白卡，一道很细的边，不画粉笔框；
+   选中是一层淡墨，对是松绿，错是朱红；步骤的序号是一枚小小的墨点 */
+:root[data-theme="ink"] {
+  /* 字母和数字用公式的字体（KaTeX 自带的斜体和正体，和板上的公式一样），汉字是毛笔楷书 */
+  --hand: "KaTeX_Math", "KaTeX_Main", "Ma Shan Zheng", "Kaiti SC", "STKaiti", "KaiTi", serif;
+  --card-frame-a: 0.12;
+  --btn-frame-a: 0.2;
+}
+:root[data-theme="ink"] :is(.btn, .q-opt, .callout, .fold, .fc-face, .widget.act, .lint)::before { border-width: 0.5px; border-style: solid; border-radius: inherit; filter: none; }
+:root[data-theme="ink"] .btn { border-radius: 12px; --frame: transparent; }
+:root[data-theme="ink"] .btn:not(.btn-primary):not(.btn-danger) { background: var(--btn-bg); }
+:root[data-theme="ink"] .btn:not(.btn-primary):not(.btn-danger):hover { background: var(--btn-bg-hi); }
+:root[data-theme="ink"] .btn-primary { --frame: transparent; }
+:root[data-theme="ink"] .q-opt { border-radius: 12px; background: #fbfaf6; box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.05); --frame: rgb(var(--chalk-rgb) / 0.14); }
+:root[data-theme="ink"] .q-opt:hover { background: #fff; }
+:root[data-theme="ink"] .q-opt.is-picked { background: rgb(var(--chalk-rgb) / 0.06); --frame: rgb(var(--chalk-rgb) / 0.5); }
+:root[data-theme="ink"] .q-opt.is-right { background: rgb(var(--green-rgb) / 0.08); --frame: rgb(var(--green-rgb) / 0.6); }
+:root[data-theme="ink"] .q-opt.is-wrong { background: rgb(var(--coral-rgb) / 0.07); --frame: rgb(var(--coral-rgb) / 0.55); }
+:root[data-theme="ink"] .callout { border-radius: 16px; background: #fbfaf6; box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); --frame: rgb(var(--chalk-rgb) / 0.1); }
+:root[data-theme="ink"] .fold { border-radius: 14px; --frame: rgb(var(--chalk-rgb) / 0.12); }
+/* 常驻栏（这节课的记号）：一张白卡，不是虚线框 */
+:root[data-theme="ink"] .class-pin::before { border: 0.5px solid rgb(var(--chalk-rgb) / 0.12); border-radius: 14px; filter: none; }
+:root[data-theme="ink"] .class-pin { background: #fbfaf6; border-radius: 14px; box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.04); }
+:root[data-theme="ink"] .class-pin .stage-body > h2 { color: rgb(var(--yellow-rgb)); }
+/* 步骤序号：一枚墨点，白字 */
+:root[data-theme="ink"] .st-n { isolation: isolate; color: var(--accent-ink); font: 600 16px/1 var(--sans); }
+:root[data-theme="ink"] .st-n::before { z-index: -1; inset: 4px; border: 0; border-radius: 50%; background: var(--chalk); filter: none; }
+/* 快捷回答、输入框：iOS 的白胶囊 */
+:root[data-theme="ink"] .cb-q::before { border-radius: 999px; border: 0.5px solid rgb(var(--chalk-rgb) / 0.14); background: rgb(251 250 246 / 0.96); box-shadow: 0 2px 8px -2px rgb(var(--shade-rgb) / 0.12); }
+:root[data-theme="ink"] .cb-pill::before { border: 0.5px solid rgb(var(--chalk-rgb) / 0.14); border-radius: 26px; filter: none; }
+:root[data-theme="ink"] .cb-pill { background: rgb(251 250 246 / 0.9); }
+:root[data-theme="ink"] .cb-send { background: var(--chalk); color: var(--accent-ink); }

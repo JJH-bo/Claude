@@ -16,15 +16,16 @@ import classBoardCss from './class/board.css';
 import { renderDesk, classHash } from './memory/desk.js';
 import deskCss from './memory/desk.css';
 import themesCss from './themes.css';
-import { themeOf, storedTheme, applyTheme } from './theme.js';
+import { themeOf, storedTheme, applyTheme, DESK_DEFAULT } from './theme.js';
 import { VERSION } from './version.js';
 import './confidence.js';
 
 // 粉笔手写体：数字和字母用 Caveat（1 和 7 容易分辨），中文用龙藏体。
 // Google Fonts 是 artifact 唯一允许的外部样式来源；加载不到时退回系统楷体
 // 学习台的标题和大数字用思源宋体（Noto Serif SC）：书桌上的东西像一本排得好的书，黑板上的照旧是粉笔手写体。
+// 水墨风格里黑板的标题是毛笔楷书（马善政），别的风格用不到就不会下载。
 // Google Fonts 的中文字体按字切成小块，只下载用到的字
-const HAND_FONT = 'https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Long+Cang&family=Noto+Serif+SC:wght@600;700;900&display=swap';
+const HAND_FONT = 'https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Long+Cang&family=Noto+Serif+SC:wght@600;700;900&family=Ma+Shan+Zheng&display=swap';
 
 // 粉笔质感滤镜：给线条加颗粒和毛边
 const CHALK_FILTER = `<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -88,7 +89,7 @@ function renderAll() {
       const theme = themeOf(meta.theme);
       if (theme === null) console.warn(`不认识的 theme「${meta.theme}」，用默认的石墨。可以写 chalk（墨绿黑板）、paper（纸本）、celadon（青瓷）、candle（烛光）、dusk（暮色）、ink（水墨）、midnight（深蓝）、white（白板）`);
       else if (theme) document.documentElement.dataset.theme = theme;
-    } else applyTheme(storedTheme());
+    } else applyTheme(storedTheme(/^(desk|学习台)$/i.test(meta.mode || '') ? DESK_DEFAULT : ''));
     session.reset(meta.unit || lessonTitle(body));
     session.subject = meta.subject || '线性代数';
     if (/^(class|课堂)$/i.test(meta.mode || '')) renderClass(article, meta);

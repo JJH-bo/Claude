@@ -8,35 +8,38 @@
 .la-lesson.is-desk[data-space="en"] { --sp-rgb: var(--pink-rgb); }
 .is-desk { --sp: rgb(var(--sp-rgb)); }
 /* 顶上：学习台 + 今天的日期在左，科目切换在右（窄了换到下一行） */
-.dk-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; margin: 6px 0 18px; }
-.dk-brand { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 14px; min-width: 0; }
-/* 学习台三个字用宋体，前面一方这一科颜色的「印」 */
-.dk-brand::before { content: "学"; grid-row: span 2; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; font: 900 26px/1 var(--display); color: var(--accent-ink); background: linear-gradient(160deg, var(--sp), rgb(var(--sp-rgb) / 0.72)); box-shadow: inset 0 1px 0 var(--shine), 0 10px 22px -10px rgb(var(--sp-rgb) / 0.8); transition: background .3s, box-shadow .3s; }
-.la-lesson .dk-title { margin: 0; padding: 0; font: 700 30px/1.15 var(--display); letter-spacing: 0.12em; }
+/* —— iOS 的版式（2026-11-03 我说喜欢水墨、喜欢 iOS）——
+   大标题（上面一行小字日期，下面一行宋体大字，像「图书」App）；科目是 iOS 的分段控件（灰底上一块白的滑块）；
+   页面是一排胶囊（选中的是一笔浓墨）；卡片是分组的白卡，行与行之间一道细线，能点进去的行右边一个「›」 */
+.dk-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 20px; margin: 10px 0 16px; }
+.dk-brand { display: grid; gap: 2px; min-width: 0; }
+.dk-date { font: 600 13px/1.3 var(--sans); color: rgb(var(--yellow-rgb)); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.la-lesson .dk-title { display: flex; align-items: center; gap: 12px; margin: 0; padding: 0; font: 700 34px/1.15 var(--display); letter-spacing: 0.06em; color: var(--chalk); }
+/* 一方小小的印，跟着这一科的颜色 */
+.la-lesson .dk-title::before { content: "学"; flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; font: 900 19px/1 var(--display); letter-spacing: 0; color: var(--accent-ink); background: var(--sp); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.16); transition: background .3s; }
 .la-lesson .dk-title::after { content: none; }
-.dk-date { margin-top: 4px; font: 500 13px/1.3 var(--sans); color: var(--muted); letter-spacing: 0.1em; font-variant-numeric: tabular-nums; }
-/* 科目：一组分段按钮，前面一个这一科颜色的小圆点；选中的那一科整个亮起来 */
-.dk-spaces { display: inline-flex; gap: 4px; padding: 5px; border-radius: 16px; background: var(--field); box-shadow: var(--field-edge); }
-.dk-space { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; min-width: 80px; padding: 0 16px; border: 0; border-radius: 11px; background: transparent; color: var(--muted); font: 600 16px/1 var(--sans); letter-spacing: 0.04em; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
-.dk-space::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--c) / 0.55); transition: background .2s, box-shadow .2s; }
+/* 科目：iOS 分段控件 */
+.dk-spaces { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 3px; border-radius: 12px; background: rgb(var(--chalk-rgb) / 0.07); }
+.dk-space { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; min-width: 84px; padding: 0 16px; border: 0; border-radius: 9px; background: transparent; color: rgb(var(--chalk-rgb) / 0.72); font: 600 15px/1 var(--sans); cursor: pointer; transition: background .2s, color .2s, box-shadow .2s; -webkit-tap-highlight-color: transparent; }
+.dk-space::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--c) / 0.75); }
 .dk-space[data-space="math"] { --c: var(--blue-rgb); }
 .dk-space[data-space="cs"] { --c: var(--green-rgb); }
 .dk-space[data-space="en"] { --c: var(--pink-rgb); }
 .dk-space:hover { color: var(--chalk); }
-.dk-space[aria-selected="true"] { color: var(--chalk); background: linear-gradient(180deg, rgb(var(--c) / 0.22), rgb(var(--c) / 0.12)); box-shadow: inset 0 0 0 1px rgb(var(--c) / 0.45), 0 6px 16px -8px rgb(var(--c) / 0.6); }
-.dk-space[aria-selected="true"]::before { background: rgb(var(--c)); box-shadow: 0 0 0 3px rgb(var(--c) / 0.22); }
+.dk-space[aria-selected="true"] { color: var(--chalk); background: var(--seg-on); box-shadow: 0 3px 8px rgb(var(--shade-rgb) / 0.12), 0 0 0 0.5px rgb(var(--shade-rgb) / 0.06); }
+.dk-space[aria-selected="true"]::before { background: rgb(var(--c)); }
 .dk-space:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
-/* 页面：一排标签，当前页下面一道这一科的颜色 */
-.dk-nav { display: flex; gap: 2px; margin: 0 0 20px; border-bottom: 1px solid var(--faint); overflow-x: auto; scrollbar-width: none; }
+/* 页面：一排胶囊，能横着滑 */
+.dk-nav { display: flex; gap: 8px; margin: 0 0 22px; padding: 2px 0; overflow-x: auto; scrollbar-width: none; }
 .dk-nav::-webkit-scrollbar { display: none; }
-.dk-nav a { flex: none; display: inline-flex; align-items: center; min-height: 46px; padding: 0 14px; color: var(--muted); font: 500 15.5px/1 var(--sans); text-decoration: none; white-space: nowrap; transition: color .15s, box-shadow .2s; }
-.dk-nav a:hover { color: var(--chalk); }
-.dk-nav a[aria-current="true"] { color: var(--chalk); font-weight: 600; box-shadow: inset 0 -2.5px 0 var(--sp); }
+.dk-nav a { flex: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 15px; border-radius: 999px; background: rgb(var(--chalk-rgb) / 0.06); color: rgb(var(--chalk-rgb) / 0.78); font: 500 15px/1 var(--sans); text-decoration: none; white-space: nowrap; transition: background .2s, color .2s; }
+.dk-nav a:hover { background: rgb(var(--chalk-rgb) / 0.1); }
+.dk-nav a[aria-current="true"] { background: var(--chalk); color: var(--accent-ink); font-weight: 600; }
 .dk-status { font: 16px/1.6 var(--sans); }
-.dk-home { display: grid; gap: 16px; }
-.dk-col { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.dk-home { display: grid; gap: 18px; }
+.dk-col { display: grid; gap: 18px; align-content: start; min-width: 0; }
 /* 卡片：浮起来的一块（亮面 + 上沿高光 + 影子），不画框线 */
-.dk-card { position: relative; min-width: 0; margin: 0; padding: 20px 22px; border-radius: 20px; background: var(--panel); box-shadow: var(--panel-edge), var(--lift); }
+.dk-card { position: relative; min-width: 0; margin: 0; padding: 18px 20px; border-radius: 18px; background: var(--panel); box-shadow: var(--panel-edge), var(--lift); }
 .dk-pages .dk-card { margin: 0 0 16px; }
 .dk-card p { margin: 6px 0; font-size: 15.5px; line-height: 1.6; }
 /* 上课是首页最要紧的一张：左上角透出一点这一科的颜色 */
@@ -425,3 +428,68 @@
 .dk-hero-more { display: inline-flex; gap: 4px; margin-left: auto; }
 .dk-hero-more .link-btn { min-height: 44px; padding: 0 10px; color: var(--muted); font-size: 14px; }
 .dk-hero-more .dk-purge:hover { color: var(--coral); }
+
+/* —— iOS 的控件（学习台里）——
+   按钮：圆角矩形，不画粉笔框；普通的是一层淡墨（字是墨色），要紧的是实心（水墨里是一笔浓墨），小的文字按钮是重点色 */
+.is-desk .btn { border-radius: 12px; font-weight: 600; letter-spacing: 0; }
+.is-desk .btn::before { border-color: transparent; }
+.is-desk .btn:not(.btn-primary):not(.btn-danger) { background: var(--btn-bg); color: var(--chalk); }
+.is-desk .btn:not(.btn-primary):not(.btn-danger):hover { background: var(--btn-bg-hi); }
+.is-desk .btn-danger { background: rgb(var(--coral-rgb) / 0.1); color: var(--coral); }
+.is-desk .btn-sm { border-radius: 10px; }
+.is-desk .btn-lg { border-radius: 14px; }
+.is-desk .link-btn, .is-desk .dk-link { color: rgb(var(--yellow-rgb)); text-decoration: none; font-weight: 500; }
+/* 卡片里的行：一道细线（左边缩进一点，像 iOS 的分组列表），能点进去的右边一个「›」 */
+.is-desk .dk-row, .is-desk .dk-blk, .is-desk .dk-err, .is-desk .dk-class-row, .is-desk .dk-edit-row, .is-desk .dk-crow, .is-desk .bk-chunk, .is-desk .bk-maprow { border-bottom: 0; box-shadow: inset 0 -0.5px 0 rgb(var(--chalk-rgb) / 0.12); }
+.is-desk :is(.dk-row, .dk-blk, .dk-err, .dk-class-row, .dk-edit-row, .dk-crow, .bk-chunk, .bk-maprow):last-child { box-shadow: none; }
+.is-desk :is(.dk-blk-row, .dk-err-row, .dk-class-row) { position: relative; padding-right: 22px; }
+.is-desk :is(.dk-blk-row, .dk-err-row, .dk-class-row)::after { content: ""; position: absolute; right: 2px; top: 50%; width: 8px; height: 14px; margin-top: -7px; background: rgb(var(--chalk-rgb) / 0.3); -webkit-mask: var(--chev) center / contain no-repeat; mask: var(--chev) center / contain no-repeat; transition: transform .2s; }
+.is-desk :is(.dk-blk-row, .dk-err-row)[aria-expanded="true"]::after { transform: rotate(90deg); }
+.is-desk .dk-class-row { grid-template-columns: 5.5em 1fr auto; }
+/* 收起来的一段：右边一个「›」，展开时转下来（不再是「展开 / 收起」两个字） */
+.is-desk .dk-fold > summary::after, .is-desk .dk-soft > summary::after { content: ""; flex: none; width: 8px; height: 14px; margin-left: auto; padding: 0; border-radius: 0; background: rgb(var(--chalk-rgb) / 0.32); -webkit-mask: var(--chev) center / contain no-repeat; mask: var(--chev) center / contain no-repeat; transition: transform .2s; }
+.is-desk .dk-fold[open] > summary::after, .is-desk .dk-soft[open] > summary::after { content: ""; transform: rotate(90deg); }
+.is-desk .dk-soft > summary { list-style: none; gap: 10px; }
+.is-desk .dk-soft > summary::-webkit-details-marker { display: none; }
+/* 标签：iOS 的小胶囊 */
+.is-desk .dk-tag, .is-desk .dk-st { border-radius: 999px; font-weight: 600; }
+/* 表单：灰的圆角框（不要框线），聚焦时一圈重点色 */
+.is-desk :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea) { border: 0 !important; border-radius: 10px !important; background: rgb(var(--chalk-rgb) / 0.055) !important; box-shadow: none !important; color: var(--chalk); }
+.is-desk :is(select, input, textarea):focus-visible { outline: 0; box-shadow: 0 0 0 3px rgb(var(--yellow-rgb) / 0.28) !important; }
+.is-desk .mm-f > span, .is-desk .dk-k { color: var(--muted); }
+/* 勾选框换成 iOS 的开关 */
+.is-desk .dk-check-row input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 51px; height: 31px; margin: 0; border-radius: 999px; background: rgb(var(--chalk-rgb) / 0.14); cursor: pointer; transition: background .2s; }
+.is-desk .dk-check-row input[type="checkbox"]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgb(0 0 0 / 0.15), 0 1px 1px rgb(0 0 0 / 0.16); transition: transform .22s cubic-bezier(.3, .7, .4, 1); }
+.is-desk .dk-check-row input[type="checkbox"]:checked { background: var(--green); }
+.is-desk .dk-check-row input[type="checkbox"]:checked::after { transform: translateX(20px); }
+.is-desk .dk-check-row { justify-content: space-between; flex-direction: row-reverse; }
+/* 卡片标题：宋体（像「图书」App 的标题），后面没有手画线 */
+.la-lesson.is-desk .dk-h { font: 700 20px/1.3 var(--display); letter-spacing: 0.04em; margin-bottom: 12px; }
+.is-desk .dk-sub { color: var(--muted); }
+/* 首页主角：水墨里右上角晕开一团很淡的墨，像宣纸上落了一笔 */
+.dk-class::after { content: ""; position: absolute; right: -40px; top: -60px; width: 320px; height: 260px; pointer-events: none; border-radius: 50%; background: radial-gradient(closest-side, rgb(var(--sp-rgb) / 0.1), transparent); filter: blur(6px); }
+.dk-class { overflow: hidden; }
+.dk-class > .dk-body { position: relative; z-index: 1; }
+.dk-stat { background: var(--panel); box-shadow: var(--panel-edge), 0 1px 2px rgb(var(--shade-rgb) / 0.05); }
+:root[data-theme="ink"] .dk-class { background: var(--panel); }
+:root[data-theme="ink"] .dk-stat { background: rgb(var(--chalk-rgb) / 0.035); box-shadow: none; }
+
+/* 水墨：主角卡的右上角是远山——两层淡墨的山脊，上浓下淡，像宣纸上晕开的一笔（不碰正文） */
+:root[data-theme="ink"] .dk-class::after, :root[data-theme="ink"] .dk-class::before {
+  content: ""; position: absolute; right: 0; top: 18px; width: min(62%, 460px); height: 170px; border-radius: 0; filter: none; pointer-events: none;
+  -webkit-mask: var(--m) right top / 100% 100% no-repeat; mask: var(--m) right top / 100% 100% no-repeat;
+}
+:root[data-theme="ink"] .dk-class::before {
+  --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 170' preserveAspectRatio='none'%3E%3Cpath d='M0 118 C38 96 62 70 98 80 C128 88 146 52 186 46 C222 40 244 78 282 70 C316 63 344 26 400 38 L400 170 L0 170Z'/%3E%3C/svg%3E");
+  background: linear-gradient(to bottom, rgb(var(--chalk-rgb) / 0.09), transparent 80%);
+}
+:root[data-theme="ink"] .dk-class::after {
+  --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 170' preserveAspectRatio='none'%3E%3Cpath d='M40 170 C70 140 100 112 138 120 C170 127 196 96 232 92 C266 88 292 118 326 110 C356 103 378 84 400 88 L400 170Z'/%3E%3C/svg%3E");
+  background: linear-gradient(to bottom, rgb(var(--chalk-rgb) / 0.14), transparent 72%);
+  top: 40px; height: 150px;
+}
+:root[data-theme="ink"] .dk-rv { background: var(--field); }
+:root[data-theme="ink"] .dk-deck { background: linear-gradient(160deg, rgb(var(--pink-rgb) / 0.08), rgb(var(--pink-rgb) / 0.03)), var(--panel);
+  box-shadow: inset 0 0 0 0.5px rgb(var(--pink-rgb) / 0.3), 0 7px 0 -4px var(--panel), 0 7px 0 -3.5px rgb(var(--pink-rgb) / 0.22), 0 13px 0 -8px var(--panel), 0 13px 0 -7.5px rgb(var(--pink-rgb) / 0.14); }
+:root[data-theme="ink"] .dk-gl, :root[data-theme="ink"] .dk-look-btn:not([aria-pressed="true"]) { box-shadow: var(--field-edge); }
+:root[data-theme="ink"] .la-lesson .dk-title::before { background: rgb(var(--yellow-rgb)); border-radius: 5px; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.22), inset 0 0 0 3px rgb(var(--yellow-rgb)); }
