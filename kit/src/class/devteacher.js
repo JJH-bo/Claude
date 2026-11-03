@@ -156,6 +156,24 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
     };
   }
 
+  // 英语第 7 批（docs/english-plan.md）：要背的写进内容（==…==、remember 框）、讲着讲着框一大块（mark part=）、生词（gloss）、翻译按要点判（translate）
+  if (!isSystem && /测试\s*[:：]?\s*要背/.test(said)) {
+    const n = nextSeq(turns, memo);
+    const body = [
+      '**一般现在时里什么时候加 -s**：主语是第三人称单数时，谓语动词加 -s；==be 动词除外==。',
+      fence('remember', ['title: 第三人称单数（完整清单，就这四类）', '1. he / she / it', '2. 不定代词：everyone、something、nobody', '3. 不可数名词', '4. 可数名词单数（单个的人名、地名也算）'].join('\n')),
+      'Pearson also predicts a breakthrough in computer-human links, as well as in medicine. (2001, Translation)',
+      fence('gloss', 'breakthrough = 突破\npredict = 预言\nas well as = 和……一样；也'),
+      fence('translate', ['id: tr-dev', 'title: 翻译', 'src: By 1830 the former Spanish and Portuguese colonies had become independent nations.', 'points:', '- by 1830 = 到…为止 | 截至', '- had become = 已经 | 已', '- independent nations = 独立', '- !开始变成 = had become 是「已经成为」，不是「开始变成」', 'order: by 1830 < had become', 'answer: 到 1830 年为止，以前西班牙和葡萄牙的殖民地已经成为独立的国家。'].join('\n')),
+    ].join('\n\n');
+    return {
+      kind: 'remember',
+      text: join('（模拟老师）要背的用粉色：一个词句是荧光底，一整块是一个粉框。例句里不认识的词点一下看意思；最后翻一句。',
+        board(`new id=b${n} title="什么时候加 -s"`, body),
+        board(`mark target=b${n} part=1 color=pink note="先看这句"`, '')),
+    };
+  }
+
   // 预案（docs/board-plan.md）：出一道题，只预写答对了接什么（揭开藏着的下一题）；答错、想不出来照常叫老师当场写。
   // 答对时页面当场接，不再调用模拟老师（开发面板的调用记录不涨）；答错时调用记录涨一次
   if (!isSystem && /测试\s*[:：]?\s*预案/.test(said)) {

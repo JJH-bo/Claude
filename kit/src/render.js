@@ -53,7 +53,7 @@ function maskMath(src, store) {
 // 代码 `…` 里的不动。换成占位符，unmask 时放回去
 const CJK_PUNCT = /[\u3000-\u303f\uff00-\uffef\u2018-\u201f\u2026\u2014]/;
 function forgive(text, store) {
-  if (!/\\(?:chalk|hl)\{|\*\*/.test(text)) return text;
+  if (!/\\(?:chalk|hl|bei)\{|\*\*|==/.test(text)) return text;
   const raw = (html) => { store.push({ raw: html }); return `\uE001${store.length - 1}\uE002`; };
   return text.split(/(`+[\s\S]*?`+)/).map((part, i) => {
     if (i % 2) return part;
@@ -61,6 +61,9 @@ function forgive(text, store) {
       if (cmd === 'chalk' && !MARK_COLORS.includes(name)) return body;
       return raw(`<span data-${cmd === 'chalk' ? 'lkc' : 'lkmark'}="${escapeHtml(name)}">${md.renderInline(body)}</span>`);
     });
+    // 要背的（docs/english-plan.md 第 7 批）：==……== 和写在公式外面的 \bei{……} 画成粉色荧光笔的底（在字底下，不压字）
+    t = t.replace(/\\bei\{([^{}\n]{1,300})\}/g, (m, body) => raw(`<mark class="lk-bei">${md.renderInline(body)}</mark>`));
+    t = t.replace(/(^|[^=])==(?=[^\s=])([^=\n]{1,300}?)(?<=[^\s=])==(?!=)/g, (m, pre, body) => `${pre}${raw(`<mark class="lk-bei">${md.renderInline(body)}</mark>`)}`);
     t = t.replace(/(^|[^*])\*\*(?=\S)([^*\n]{1,200}?)\*\*(?!\*)/g, (m, pre, body, at, all) => {
       const after = all[at + m.length] || '';
       const before = pre || '';
@@ -88,7 +91,8 @@ function unmask(html, store) {
 //   \hl{名字}{…}：给一项起名字（板书标注 mark term=名字 靠它找到这一项），本身不画东西
 //   \chalk{颜色}{…}：这一项用彩色粉笔写（颜色跟着风格走，见 styles.css 的 [data-lkc]）
 // 两个都展开成 \htmlData，所以 trust 只放行 \htmlData（\htmlClass、\href 这类照旧不认）
-const MACROS = { '\\hl': '\\htmlData{lkmark=#1}{#2}', '\\chalk': '\\htmlData{lkc=#1}{#2}' };
+//   \bei{…}：要背的，粉色荧光笔的底（和公式外面的 ==…== 一样）
+const MACROS = { '\\hl': '\\htmlData{lkmark=#1}{#2}', '\\chalk': '\\htmlData{lkc=#1}{#2}', '\\bei': '\\htmlData{lkbei=1}{#1}' };
 const trust = (ctx) => ctx.command === '\\htmlData';
 
 // \calc{表达式}：页面精确地算出来再写进公式。变量：整节课的 let 块（session.vars），

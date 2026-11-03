@@ -64,6 +64,9 @@ const TEACH_EN = doc`
 - 出题时把最典型的一两种错答写进去（ˋ{{had started|!has started=…}}ˋ、ˋfix: is | !were=…ˋ、ˋdecoys:ˋ）：学生写错时页面给针对的提示，你在记录里看到「页面看出来」，就知道是哪条规则没想到。完形、语法选择用选择式的空 ˋ{{[that=…|*who]}}ˋ。
 - 学生答错时，先弄清是哪条规则没想到（看作答记录：页面写着第几个词开始不对、哪一处成分标错了），针对那一条说，不整句重讲。
 - 指着讲：说「看这个词」时，用 ˋboard mark target=… phrase="…"ˋ 把它圈出来、划出来（也能 ˋword=3ˋ、ˋwords=4-7ˋ、ˋblank=2ˋ），旁边写一句；句子结构可以用 ˋparseˋ 的答案形式直接写在板上（学生看括号就懂层次）。
+- 要背的（清单、例外、固定搭配）：词句写 ˋ==…==ˋ（粉色荧光笔的底，不压字），一整块放进 ˋrememberˋ 框（一个粉框圈住）。学生说过「一大段没必要每个都圈，直接一个大圈，还挡住字了」。讲着讲着要框一大块时用 ˋboard mark target=… part=2-4ˋ（段里第 2～4 部分：段落、列表、表、框、组件各算一部分），框在字外面。说「圈出来了」之前确认这一轮真的写了（ˋ\hlˋ 本身不画东西）。
+- 生词：例句里学生可能不认识的词写进 ˋglossˋ 块（一行「词 = 意思」），学生点了才看，页面当场显示、不调用你；不要在题面里直接写「生词：…」。黑板现状里的「点开了生词」说明这个词不认识。
+- 翻译用 ˋtranslateˋ（不用 ˋconjectureˋ）：写下决定意思的两三个要点，页面按要点判、记进证据；通不通顺你看原文接着说。
 - 语法术语用中文（主语、谓语、宾语、定语从句、非谓语……），第一次出现时附英文；例句、答案用英文，讲解用中文。
 - 不要求背诵规则原文：能在句子里认出来、能用对就行。
 - 语气平实，像坐在旁边的家教；不用夸张的表扬。
@@ -937,8 +940,11 @@ function recordText(a, type) {
     case 'parse':
     case 'drill':
     case 'chunk':
+    case 'translate':
     case 'link': {
-      const kind = { cloze: '填空', errfind: '改错', parse: '句子成分', drill: '操练', chunk: '意群断句', link: '连线' }[type];
+      const kind = { cloze: '填空', errfind: '改错', parse: '句子成分', drill: '操练', chunk: '意群断句', link: '连线', translate: '翻译' }[type];
+      // 翻译：译文原文给老师（要点页面判了，通不通顺老师看）
+      if (type === 'translate' && !a.final) return `[作答] ${where(a, kind)}：${a.q ? `「${short(a.q, 160)}」` : ''}译成「${short(a.value, 400) || '（空）'}」${mark(a.ok, a.attempts)}${a.detail ? `（页面按要点判：${short(a.detail, 160)}）` : ''}${a.misread ? `；页面看出来：${short(a.misread, 160)}` : ''}`;
       // 断句后写的译文（判不了分）：原样给老师
       if (type === 'chunk' && a.detail === '译文') return `[作答] ${where(a, kind)}：按意群写的译文：\n${short(a.text, 1200)}`;
       const q = a.q ? `「${short(a.q, 120)}」` : '';
@@ -1005,6 +1011,7 @@ function eventText(a, type) {
       const sure = get('sure'), ok = get('ok');
       return `[动作] ${where(a, '组件', { title: false })}${subText}：学生标了「${sure ? '有把握' : '没把握'}」${sure === false && ok === true ? '——这题答对了，但没把握，按没过处理（红线 5）' : sure === true && ok === false ? '——答错了却有把握：多半是一个误解，先弄清学生是怎么想的' : ''}`;
     }
+    case 'gloss': return `[动作] 点开了生词「${short(get('word'), 40)}」看意思（${short(get('gloss'), 40)}）：这个词学生不认识`;
     case 'done': return `[动作] 点了 ${typeof a.step === 'string' ? a.step : '这一段'}${stepTitle ? `「${short(stepTitle, 30)}」` : ''}的「这段做完了」`;
     case 'ask': return `[动作] 问了：「${short(get('question'), 200)}」`;
     case 'open': return '[动作] 打开了课堂页面';
@@ -1274,7 +1281,7 @@ const okOf = (a) => (typeof a?.ok === 'boolean' ? a.ok : typeof a?.detail?.ok ==
 export function reportable(a) {
   if (!a || typeof a !== 'object') return false;
   const type = typeOf(a);
-  if (a.source === 'event') return type === 'reveal' || type === 'drag' || type === 'sure';
+  if (a.source === 'event') return type === 'reveal' || type === 'drag' || type === 'sure' || type === 'gloss';
   if (type === 'ask' || type === 'findbug-hint') return false;
   if (a.final && !a.revealed && !a.giveup) return false;
   return true;
@@ -1292,6 +1299,8 @@ export function actionTrigger(a, { lastStep = false } = {}) {
   if (urgent) return 'now';
   if (a.source === 'event' && typeOf(a) === 'reveal' && !lastStep) return 'later';
   if (a.source === 'event' && typeOf(a) === 'drag') return 'later';
+  // 点开生词看意思：页面当场显示了，不单独调用，跟着下一条告诉老师（知道学生哪几个词不认识）
+  if (a.source === 'event' && typeOf(a) === 'gloss') return 'later';
   // 有没有把握：答对了却说没把握，老师要马上知道（红线 5，按没过处理）；别的跟着下一条一起说，不单独调用
   if (a.source === 'event' && typeOf(a) === 'sure') return sureOf(a) === false && okOf(a) === true ? 'soon' : 'later';
   return 'soon';

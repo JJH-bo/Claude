@@ -33,6 +33,7 @@ import { enterDrill } from './drillrun.js';
 import { recallToday, spaceCounts } from './recall.js';
 import { runRecall } from './recallrun.js';
 import { purgePlan, purgeText } from './purge.js';
+import { vocabRecalls } from './vocab.js';
 import { needsSkills, skillsPrompt, parseSkills, skillSummary, pointCatalog, lessonLines, SKILLS_VERSION } from './skills.js';
 
 // 正在看哪一科（这台设备记着；分科见 space.js）
@@ -989,9 +990,23 @@ export async function writeReport(db, sid, { doc, turns = null, steps = null, up
   await scopeDb(db, sid).doc('report/main').set(report);
   const patch = { report: { v: REPORT_VERSION, at: report.at, line: reportLine(report), items: report.totals.items, first: report.totals.first, activeMs: report.time.activeMs, ...(doc.status === 'open' ? { provisional: true } : {}) } };
   await update(patch);
+  // 课上点开看过意思的生词收进「要记的」（vocab.js，不调用 Claude）
+  await harvestVocab(db, sid, { doc }).catch((e) => console.warn('生词没收进要记的', sid, e));
   // 课上判得了分的题抄进题库（练习用，不调用 Claude）
   if (kindOf(doc) !== 'drill') await harvestSession(db, sid, { doc: { ...doc, ...patch }, report, steps, update: (p) => update({ ...patch, ...p }) }).catch((e) => console.warn('题没抄进题库', sid, e));
   return report;
+}
+
+/** 这节课点开过的生词 → 新的记忆点（同一个词已经在记的不加） */
+export async function harvestVocab(db, sid, { doc }) {
+  const rows = (snap) => (snap ? snap.docs.map((d) => ({ id: d.id, ...d.data() })) : []);
+  const evidence = await db.collection('evidence').where('session', '==', sid).get().then(rows, () => []);
+  if (!evidence.some((e) => e.kind === 'gloss')) return 0;
+  const recall = await db.collection('recall').get().then(rows, () => []);
+  const out = vocabRecalls({ evidence, recall, session: { ...doc, id: sid } });
+  assertWrite('page', 'recall');
+  for (const r of out) await db.doc(`recall/${r.id}`).set(r.doc);
+  return out.length;
 }
 
 /** 只算不写（下课时放进给课堂 Claude 的输入；writeReport 也用它） */

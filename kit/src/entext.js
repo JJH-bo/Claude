@@ -467,3 +467,119 @@ export function parseRegrade(text) {
     return typeof j.ok === 'boolean' ? { ok: j.ok, why: String(j.why || '').slice(0, 200) } : null;
   } catch { return null; }
 }
+
+/* ---------------- 翻译按要点判（docs/english-plan.md 第 7 批） ----------------
+ * 翻译判不了通不通顺，但判得了「该译出来的意思译出来没有」：老师写下这句的几个要点（英文那几个词 = 中文里要有的说法，几种说法用 | 隔开），
+ * 页面查学生的译文里有没有。没译出来时只说是哪几个英文词（不给中文答案）；!错的说法 = 提示：常见的误译；order：要点在中文里的先后。
+ * 通顺、地道交给课堂 Claude 看（作答照常发给它）。
+ */
+
+// 去掉空白和标点再比：学生多打一个逗号、空格不算错
+const zhNorm = (s) => String(s ?? '').toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '');
+// 「到…为止」：省略号是中间可以有别的字（最多 15 个）
+function zhPattern(alt) {
+  const parts = String(alt).split(/…+|\.{3,}|⋯+/).map(zhNorm).filter(Boolean);
+  if (!parts.length) return null;
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(parts.map(esc).join('.{0,15}'), 'u');
+}
+
+/** 要点那几行（- by 1830 = 到…为止 | 截至；- !开始变成 = 提示）和 order 一行 → { points, wrongs, order, problems } */
+export function parsePoints(lines = [], orderLine = '') {
+  const points = [];
+  const wrongs = [];
+  const problems = [];
+  for (const raw of lines) {
+    const line = String(raw).replace(/^\s*[-*]\s*/, '').trim();
+    if (!line) continue;
+    const m = /^(.+?)\s*[=＝]\s*(.+)$/.exec(line);
+    if (!m) { problems.push(`要点「${line.slice(0, 30)}」要写成「英文那几个词 = 中文说法 | 另一种说法」`); continue; }
+    if (m[1].startsWith('!') || m[1].startsWith('！')) {
+      const alts = m[1].slice(1).split(/[|｜]/).map((x) => x.trim()).filter(Boolean);
+      const re = alts.map(zhPattern).filter(Boolean);
+      if (!re.length) problems.push(`误译「${line.slice(0, 30)}」没写错的说法`);
+      else wrongs.push({ alts, re, why: m[2].trim() });
+      continue;
+    }
+    const alts = m[2].split(/[|｜]/).map((x) => x.trim()).filter(Boolean);
+    const re = alts.map(zhPattern).filter(Boolean);
+    if (!re.length) { problems.push(`要点「${m[1]}」没写中文说法`); continue; }
+    points.push({ label: m[1].trim(), alts, re });
+  }
+  const order = [];
+  if (String(orderLine || '').trim()) {
+    const names = String(orderLine).split(/\s*[<＜]\s*/).map((x) => x.trim()).filter(Boolean);
+    const idx = names.map((n) => points.findIndex((p) => p.label.toLowerCase() === n.toLowerCase()));
+    if (names.length < 2 || idx.some((i) => i < 0)) problems.push(`order 要写成「要点 < 要点」，用要点左边的英文：${points.map((p) => p.label).join('、') || '（还没有要点）'}`);
+    else for (let i = 1; i < idx.length; i++) order.push([idx[i - 1], idx[i]]);
+  }
+  if (!points.length) problems.push('translate 至少要有一个要点（points: 下面一行一条：- 英文那几个词 = 中文说法）');
+  return { points, wrongs, order, problems };
+}
+
+/** 判一份译文：{ ok, empty, hits: [bool], missing: [英文 label], misread: 提示 | null, orderBad: [前, 后] | null } */
+export function judgeTranslation(text, { points = [], wrongs = [], order = [] } = {}) {
+  const t = zhNorm(text);
+  if (!t) return { ok: false, empty: true, hits: points.map(() => false), missing: points.map((p) => p.label), misread: null, orderBad: null };
+  const at = points.map((p) => { let best = -1; for (const re of p.re) { const m = re.exec(t); if (m && (best < 0 || m.index < best)) best = m.index; } return best; });
+  const hits = at.map((x) => x >= 0);
+  const missing = points.filter((_, i) => !hits[i]).map((p) => p.label);
+  const w = wrongs.find((x) => x.re.some((re) => re.test(t)));
+  let orderBad = null;
+  for (const [a, b] of order) if (hits[a] && hits[b] && at[a] > at[b]) { orderBad = [points[a].label, points[b].label]; break; }
+  return { ok: !missing.length && !w && !orderBad, empty: false, hits, missing, misread: w ? w.why : null, orderBad };
+}
+
+/** 给学生看的一句（不给中文答案）：要点几个对了、哪几个英文词的意思没译出来 / 顺序 / 常见误译 */
+export function translationHint(r, n) {
+  if (r.empty) return '先写出译文。';
+  const parts = [];
+  if (r.misread) parts.push(r.misread);
+  if (r.missing.length) parts.push(`${r.missing.map((x) => `「${x}」`).join('、')}的意思还没译出来`);
+  if (r.orderBad) parts.push(`「${r.orderBad[0]}」的意思要译在「${r.orderBad[1]}」前面`);
+  return `要点 ${n - r.missing.length} / ${n}${parts.length ? `：${parts.join('；')}` : ''}`;
+}
+
+/* ---------------- 生词（点一下看意思） ----------------
+ * 课堂 Claude 在段里写一个 gloss 块：一行一个「词 = 意思」。页面在这一段的英文里找到这些词，画一道虚线，点一下当场显示意思，
+ * 不调用 Claude；点过的词记一条动作，下课时进「要记的」（记忆点，按 1 → 3 → 7 → 14 → 30 天想一遍）。
+ */
+
+/** gloss 块的文字 → { items: [{ word, gloss }], problems } */
+export function parseGloss(src) {
+  const items = [];
+  const problems = [];
+  for (const raw of String(src ?? '').split('\n')) {
+    const line = raw.replace(/^\s*[-*]\s*/, '').trim();
+    if (!line || /^(id|title)\s*[:：]/i.test(line)) continue;
+    const m = /^([A-Za-z][A-Za-z' .\-/]*?)\s*[=＝:：]\s*(.+)$/.exec(line);
+    if (!m) { problems.push(`看不懂「${line.slice(0, 30)}」：一行写一个「英文词 = 中文意思」，比如 breakthrough = 突破`); continue; }
+    const word = m[1].trim().replace(/\s+/g, ' ');
+    if (items.some((x) => x.word.toLowerCase() === word.toLowerCase())) continue;
+    items.push({ word, gloss: m[2].trim() });
+  }
+  if (!items.length && !problems.length) problems.push('gloss 块是空的：一行写一个「英文词 = 中文意思」');
+  return { items, problems };
+}
+
+/**
+ * 在一段英文里找这些词：返回 [{ index, length, item }]（按出现的先后，不重叠）。
+ * 单个词也认常见的变形（predict → predicts / predicted / predicting），词组按原样（中间的空白多少不论），不分大小写
+ */
+export function glossMatches(text, items = []) {
+  const t = String(text ?? '');
+  if (!t || !items.length) return [];
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sorted = [...items].sort((a, b) => b.word.length - a.word.length);
+  const src = sorted.map((it) => {
+    const w = esc(it.word).replace(/\\? /g, '\\s+');
+    return /\s/.test(it.word) ? `(${w})` : `(${w}(?:s|es|d|ed|ing)?)`;
+  }).join('|');
+  const re = new RegExp(`(?<![A-Za-z'])(?:${src})(?![A-Za-z'])`, 'gi');
+  const out = [];
+  for (let m; (m = re.exec(t));) {
+    const k = m.slice(1).findIndex((x) => x !== undefined);
+    out.push({ index: m.index, length: m[0].length, item: sorted[k] });
+  }
+  return out;
+}

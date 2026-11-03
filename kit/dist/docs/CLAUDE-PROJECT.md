@@ -156,9 +156,9 @@ b = [1, 1, -2]
 
 ### 其他组件
 
-- 提示框：`definition`、`theorem`、`key`（重点）、`warning`（易错）、`example`、`intuition`（直觉）。第一行可以写 `title: …`，后面是普通 Markdown。
-- 折叠内容：`hint`、`solution`、`proof`，默认折叠。
-- 记忆卡：`card`，写 `front:` 和 `back:`，点一下翻面。
+- 提示框：`definition`、`theorem`、`key`（重点）、`warning`（易错）、`example`、`intuition`（直觉）、`remember`（要背）。第一行可写 `title: …`。要背的词句写 `==…==`。
+- 折叠：`hint`、`solution`、`proof`。
+- 记忆卡 `card`：`front:`、`back:`，点一下翻面。
 
 ### 组件一览（写法要单独读）
 
@@ -249,6 +249,8 @@ b = [1, 1, -2]
 - `parse`（英语）：句子成分标注（长难句，能套从句） → `components/parse.md`
 - `chunk`（英语）：意群断句（长难句、翻译） → `components/chunk.md`
 - `link`（英语）：连线（点一个词，再点它连着的那个词） → `components/link.md`
+- `translate`（英语）：翻译（页面按要点判） → `components/translate.md`
+- `gloss`（英语）：生词（点一下看意思） → `components/gloss.md`
 - `drill`（英语）：句型操练（一题一题做，页面判分） → `components/drill.md`
 
 ## 四、读学习记录
@@ -474,6 +476,7 @@ b = [1, 1, -2]
   - `step=2`：`steps` 的第 2 步（学生已经走到的）。
   - `label=Ax`、`item=4`：图里标签是 Ax 的东西、第 4 条命令画的东西（演示组件里是第 4 个格子 / 结点）；`at=[1, 2]`：`scene` 里坐标 (1, 2) 那个点。图被拖动、`figure set` 之后，标注跟着挪。
   - `word=3`（第 3 个英文词）、`words=4-7`（第 4 到 7 个词）、`phrase="who lives next door"`（这几个词；出现几次时 `phrase="that#2"`）、`blank=2`（`cloze` 的第 2 个空）：英语句子里的词。target 是英语组件时数的是那句英文，target 是一段时数的是整段的英文。phrase 里可以带标点（`phrase=", which"`、只圈逗号 `phrase=",#2"`）。一个词默认圈，一段词默认划线。
+  - `part=2`、`part=2-4`：这一段的第 2 部分、第 2 到 4 部分（一个段落、一个列表、一张表、一个框、一个组件各算一部分，标题不算），默认框起来，框在字外面。要背的一大块一个框圈住，不要一项一项去圈。
 - `style=`：`circle` 圈、`box` 框、`underline` 下划线、`highlight` 涂底色、`strike` 划掉（约去的项）、`arrow` 箭头（从旁注指过去）。不写时：项、元素、点用圈，行、列、子块、整段用框，对角线用斜着的长圈。
 - `color=`：`yellow`（默认）`pink` `blue` `green` `orange` `purple` `red` `white`。`note="…"`：旁边写一句（要短，最多 80 个字，可以有 `$公式$`）；`side=right|left|above|below` 指定写在哪边。`id=` 不写时页面自动编 m1、m2……
 - 写公式时就要圈、要划的，直接写进公式（`\boxed{…}`、`\cancel{…}`、彩色粉笔 `\chalk{pink}{…}`）；讲着讲着才要指的，用 mark。

@@ -538,6 +538,9 @@ body.has-keypad { padding-bottom: 250px; }
 .callout-warning { --frame: rgb(var(--coral-rgb) / 0.75); } .callout-warning .callout-title { color: var(--coral); }
 .callout-example { --frame: rgb(var(--green-rgb) / 0.65); } .callout-example .callout-title { color: var(--green); }
 .callout-intuition { --frame: rgb(var(--pink-rgb) / 0.7); } .callout-intuition .callout-title { color: var(--pink); }
+.callout-remember { --frame: rgb(var(--pink-rgb) / 0.85); background: rgb(var(--pink-rgb) / 0.08); } .callout-remember .callout-title { color: var(--pink); }
+/* 要背的：==……==、\bei{……}。粉色荧光笔涂在字的下半截，在字底下、不压字；换行时每一行各涂各的 */
+mark.lk-bei, [data-lkbei] { color: inherit; background: linear-gradient(transparent 52%, rgb(var(--pink-rgb) / 0.42) 52%, rgb(var(--pink-rgb) / 0.42) 94%, transparent 94%); border-radius: 2px; padding: 0 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 
 /* —— 折叠 —— */
 .fold { border-radius: 14px; --frame: rgb(var(--chalk-rgb) / 0.3); }
@@ -2448,6 +2451,21 @@ g.sv-new.sv-flash > rect, g.sv-new.sv-flash > circle, g.sv-new.sv-flash > path {
 .en-fix-in, .dr-in { min-height: 44px; padding: 8px 10px; border: 1px solid var(--faint); border-radius: 10px; background: rgb(var(--glow-rgb) / 0.04); color: var(--chalk); font: 16px/1.4 var(--sans); box-sizing: border-box; }
 .en-fix-in { flex: 1; max-width: 18em; }
 .dr-in { width: 100%; margin: 6px 0 12px; resize: vertical; }
+/* translate：翻译，页面按要点判 */
+.tr-in { width: 100%; min-height: 88px; margin: 6px 0 12px; padding: 8px 10px; resize: vertical; border: 1px solid var(--faint); border-radius: 10px; background: rgb(var(--glow-rgb) / 0.04); color: var(--chalk); font: 16px/1.6 var(--sans); box-sizing: border-box; }
+.tr-in.is-right { border-color: var(--green); } .tr-in.is-wrong { border-color: var(--coral); }
+.tr-ref { margin: 8px 0 4px; }
+/* gloss：生词。词下面一道虚线，点一下旁边出意思；点过的变粉 */
+.lk-gloss { text-decoration: underline dotted rgb(var(--chalk-rgb) / 0.6); text-decoration-thickness: 2px; text-underline-offset: 5px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.lk-gloss.is-seen { text-decoration-color: rgb(var(--pink-rgb) / 0.8); }
+.lk-glossbox { font: 15px/1.5 var(--sans); color: rgb(var(--chalk-rgb) / 0.75); margin: 2px 0 6px; }
+.lk-glossall { min-height: 44px; padding: 0 6px 0 0; border: 0; background: none; color: var(--pink); font: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 4px; }
+.lk-glosslist { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.lk-gchip { min-height: 44px; padding: 0 12px; border: 1px solid rgb(var(--chalk-rgb) / 0.22); border-radius: 22px; background: none; color: var(--chalk); font: 16px/1 var(--sans); cursor: pointer; }
+.lk-gchip.is-open { border-color: rgb(var(--pink-rgb) / 0.6); }
+.lk-gmean { color: var(--pink); }
+.lk-gbubble { position: absolute; z-index: 60; max-width: min(320px, calc(100vw - 16px)); padding: 10px 14px; border-radius: 12px; background: rgb(var(--board-3-rgb) / 0.97); color: var(--chalk); font: 16px/1.5 var(--sans); box-shadow: 0 10px 30px rgb(var(--shade-rgb) / 0.45), inset 0 0 0 1px rgb(var(--pink-rgb) / 0.45); }
+.lk-gbubble b { color: var(--pink); font-weight: 600; }
 .dr-q { font: 18px/1.6 var(--sans); color: var(--chalk); }
 .dr-n { font: 13.5px/1.4 var(--sans); }
 .dr-sum { margin-top: 8px; font: 600 15px/1.4 var(--sans); color: var(--chalk); }

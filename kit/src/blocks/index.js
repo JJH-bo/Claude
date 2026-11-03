@@ -22,7 +22,8 @@ import { sketch } from './sketch.js';
 import { derive } from './derive.js';
 import { image } from './image.js';
 import { code } from './code.js';
-import { cloze, errfind, parse, drill, chunk, link as enLink } from './english.js';
+import { cloze, errfind, parse, drill, chunk, link as enLink, translate } from './english.js';
+import { gloss } from './gloss.js';
 import { stepperBlock } from '../stepper.js';
 import { ENGINES } from '../engines/registry.js';
 import { elimEngine } from '../engines/elim.js';
@@ -38,7 +39,7 @@ export const blocks = {
   array, shellsort, sortpass, steps, recognize, findbug, graph, space,
   let: letBlock, matrix, sketch, derive, image, code,
   // 英语（语法）：填空、改错、句子成分、句型操练（判分在 entext.js）
-  cloze, errfind, parse, drill, chunk, link: enLink,
+  cloze, errfind, parse, drill, chunk, link: enLink, translate, gloss,
   // 一步步走的演示（stepper.js 外壳 + engines/ 里的纯函数引擎，名字在 engines/registry.js）
   ...Object.fromEntries(Object.entries(ENGINES).filter(([k]) => k !== 'elim' && k !== 'pv').map(([k, e]) => [k, stepperBlock(e)])),
   elim: elimBlock(),

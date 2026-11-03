@@ -182,6 +182,7 @@ export function locate(root, spec, { scene, name = '这里' } = {}) {
     const b = blanks[s.k - 1];
     return shown(b) ? { geoms: [{ box: rect(b.getBoundingClientRect()) }] } : { hidden: true };
   }
+  if (s.kind === 'part') return partGeom(root, s, name);
   if (s.kind === 'at') {
     if (!scene?.toClient) return { error: `${name} 不是 scene 图，不能用 at=[x, y] 指点` };
     let p;
@@ -193,6 +194,25 @@ export function locate(root, spec, { scene, name = '这里' } = {}) {
     return c ? { geoms: [{ point: c }] } : { hidden: true };
   }
   return { error: `不认识的标注位置「${s.kind}」` };
+}
+
+// —— 段里的第几部分（docs/english-plan.md 第 7 批）：一个段落、一张表、一个列表、一个框、一个组件各算一部分，标题不算。
+// 要背的一大块用一个框圈住（2026-11-03：「没必要每个都圈，直接全部一个大圈」）；框画在字外面，不压字
+const PART_SKIP = 'h1, h2, h3, h4, script, style, .block-gloss';
+export function segParts(root) {
+  const body = root.querySelector(':scope .stage-body') || root;
+  return [...body.children].filter((e) => !e.matches(PART_SKIP) && e.getClientRects().length && !e.hidden);
+}
+const partName = (e) => {
+  const t = (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+  const kind = e.matches('ul, ol') ? `列表（${e.children.length} 条）` : e.matches('table') ? '表格' : e.matches('.block') ? (e.querySelector('.callout') ? '框' : '组件') : '段落';
+  return `${kind}「${t}${t.length >= 14 ? '…' : ''}」`;
+};
+function partGeom(root, s, name) {
+  const parts = segParts(root);
+  if (!parts.length) return { error: `${name} 里没有能按部分标的内容（part= 用在黑板的段上）` };
+  if (s.b > parts.length) return { error: `${name} 一共 ${parts.length} 部分：${parts.map((e, i) => `${i + 1} ${partName(e)}`).join('；')}` };
+  return { geoms: [{ box: union(parts.slice(s.a - 1, s.b).map((e) => rect(e.getBoundingClientRect()))) }] };
 }
 
 // —— 英语句子里的词（docs/english-plan.md 第 1 批）：在画好的文字里找词，组件不用另外标记，普通段里的英文也能圈 ——

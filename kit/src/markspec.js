@@ -17,7 +17,7 @@ const DIAG = new Set(['diag', 'diagonal', '对角线', '主对角线']);
 const NAME_RE = /^[A-Za-z0-9_-]{1,40}$/;
 const ID_RE = /^[A-Za-z0-9_\-.~:@+]{1,64}$/;
 const validId = (id) => ID_RE.test(id) && id !== '.' && id !== '..';
-const SEL_LIST = 'term=名字、row=2、col=3、diag、entry=2,3、block=1,2、step=2、label=Ax、item=4、at=[1, 2]、word=3、words=4-7、phrase="who lives"、blank=2';
+const SEL_LIST = 'term=名字、row=2、col=3、diag、entry=2,3、block=1,2、step=2、label=Ax、item=4、at=[1, 2]、word=3、words=4-7、phrase="who lives"、blank=2、part=2-4';
 // 矩阵的部位（matrix 组件里只能标这些）
 export const MATRIX_SELS = ['row', 'col', 'diag', 'entry', 'block', 'all'];
 export const MAX_NOTE = 80;
@@ -71,6 +71,12 @@ function readMark(src, inherit = {}, component = false) {
         const m = /^(\d+)\s*[-–~～到]\s*(\d+)$/.exec(v);
         if (!m || !(+m[1] >= 1) || +m[2] < +m[1]) throw new Error('words 后面写从第几个词到第几个词，比如 words=4-7');
         setSel('words', { a: +m[1], b: +m[2] });
+      }
+      else if (k === 'part' || k === 'parts') {
+        // 段里的第几部分（一个段落、一张表、一个列表、一个框、一个组件；标题不算）：要背的一大块一个框圈住
+        const m = /^(\d+)(?:\s*[-–~～到]\s*(\d+))?$/.exec(v);
+        if (!m || !(+m[1] >= 1) || (m[2] && +m[2] < +m[1])) throw new Error('part 后面写段里的第几部分，或者从第几到第几部分，比如 part=2、part=2-4');
+        setSel('part', { a: +m[1], b: +(m[2] || m[1]) });
       }
       else if (k === 'phrase') {
         const m = /^(.*?)(?:#(\d+))?$/.exec(v);
@@ -212,6 +218,7 @@ const SEL_TEXT = {
   words: (s) => `第 ${s.a}–${s.b} 个词`,
   phrase: (s) => `「${s.text}」${s.n ? `（第 ${s.n} 次）` : ''}`,
   blank: (s) => `第 ${s.k} 个空`,
+  part: (s) => (s.a === s.b ? `第 ${s.a} 部分` : `第 ${s.a}–${s.b} 部分`),
 };
 const STYLE_TEXT = { circle: '圈', box: '框', underline: '下划线', highlight: '涂色', strike: '划掉', arrow: '箭头' };
 
