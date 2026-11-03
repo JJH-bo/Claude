@@ -121,8 +121,23 @@ for (let i = 0; i < steps.length; i++) {
 const n = await calls();
 const lintAfter = (await logNow()).slice(logBefore);
 const tag = `s${steps.length}`;
+// 截和 iPad 一样大的屏：先回到最上面截一张，板比一屏长就往下滚一屏（扣掉底部的条）再截，直到底（不截整页长图：
+// 固定在底部的输入条会被画到长图中间，看着和真的不一样）
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.waitForTimeout(400);
 await page.screenshot({ path: path.join(dir, `shot-${tag}.png`) });
-await page.screenshot({ path: path.join(dir, `shot-${tag}-full.png`), fullPage: true });
+for (let i = 2; i <= 4; i++) {
+  const more = await page.evaluate(() => {
+    const se = document.scrollingElement;
+    const bar = document.querySelector('.class-bar')?.getBoundingClientRect().height || 120;
+    if (se.scrollTop + innerHeight >= se.scrollHeight - 4) return false;
+    window.scrollBy(0, innerHeight - bar - 60);
+    return true;
+  });
+  if (!more) break;
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(dir, `shot-${tag}-${i}.png`) });
+}
 // 最后一步调用了老师、而 t-n 还没写：把这一次页面发给老师的写出来
 if (n > k) {
   const input = await lastInput();

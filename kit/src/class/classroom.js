@@ -42,6 +42,7 @@ import { spaceOfId } from '../memory/space.js';
 import { textbookForClass, readChunks, searchChunks } from '../books/textbook.js';
 import { planLocal, markFired, reactNote, armedText, rebuildRules, dropForSeg } from './react.js';
 import { beatPlan, shouldPlay, DEFERRED_OPS } from './beats.js';
+import { ENGINES } from '../engines/registry.js';
 import { ROWS as CV_ROWS, COLS as CV_COLS, MAX_ROW as CV_MAX, placeBlock, defaultSize, mapText, atText, rowsFor } from './canvas.js';
 
 export const MODEL = 'claude-opus-5-5';
@@ -64,7 +65,7 @@ const QUICK_SAY = { 没懂: '没懂。', 想不出来: '想不出来。', 换个
 export async function renderClass(root, meta, desk = null) {
   // 版面模式（canvas.js，docs/canvas-plan.md）：课堂 Claude 自己排板。先在开关后面试：features.js 的 canvas，或地址带 ?canvas
   const CANVAS = FEATURES.canvas || /[?&]canvas\b/.test(location.search);
-  if (CANVAS) root.classList.add('is-canvas');
+  if (CANVAS) { root.classList.add('is-canvas'); document.body.classList.add('class-canvas'); }
   session.mode = 'class';
   session.live = true; // 共用 live 的行为：猜想默认不批改、作答逐次记录、组件要有 id
   session.stages = [];
@@ -170,6 +171,7 @@ export async function renderClass(root, meta, desk = null) {
   // 拍子（beats.js）：正在播的这一轮。{ page, n（几拍）, max（播到第几拍）, segs: 拍 → [段 id], deferred: [{ b, op }], told（这一轮的记录）}
   let beat = null;
   let cvRow = 80, cvGap = 12, cvCell = null; // 版面：一格多高、格子间距、一格约多大（给 Claude 看）
+  let cvMoving = new Set(); // 这一轮后面还要 move 的段：先当它们已经让开了（同一轮里两块对调，前一块不会被后一块挡住）
 
   // 察觉卡住的开关（学生在「⋯」里可以开；记在这台设备上）。每提醒一次就是一整轮调用，默认关（docs/desk-plan.md 第 7 节）。
   // 本地试用带 ?stuck=秒数 时自动开
@@ -812,6 +814,7 @@ export async function renderClass(root, meta, desk = null) {
       const seg = segs.get(op.id);
       if (!CANVAS) return { op: 'move', id: op.id, ok: false, error: '这节课没开版面，move 用不了' };
       if (!seg?.sec || seg.place === 'pin') return { op: 'move', id: op.id, ok: false, error: seg ? `${op.id} 在常驻栏里，不能挪` : `黑板上没有 ${op.id}` };
+      cvMoving.delete(seg.id);
       const r = layoutSeg(seg, op.at, notes);
       saveSeg(seg);
       return { op: 'move', id: op.id, ok: true, at: atText(r.at), page: seg.page || undefined };
@@ -850,9 +853,10 @@ export async function renderClass(root, meta, desk = null) {
 
   // —— 版面（canvas.js）：段按 at= 摆进格子；比格子大先缩小，还放不下就在块里滑；记下实际要几行给 Claude 看 ——
   const WIDE_NO = new Set(['scene', 'graph', 'space', 'image', 'sketch', 'predict']);
+  const ZOOMABLE = new Set([...WIDE_NO, 'matrix', 'derive', 'code', 'trace', 'frames']);
   function langsOf(md) { return [...String(md).matchAll(/^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*([A-Za-z][\w-]*)/gm)].map((m) => m[1].toLowerCase()); }
   function layoutSeg(seg, want, notes, { auto = false } = {}) {
-    const others = [...segs.values()].filter((s) => s !== seg && s.page === seg.page && s.place !== 'pin' && !s.hidden && !s.held && !s.pending && s.at && s.sec);
+    const others = [...segs.values()].filter((s) => s !== seg && s.page === seg.page && s.place !== 'pin' && !s.hidden && !s.pending && s.at && s.sec && !cvMoving.has(s.id));
     const r = placeBlock(others.map((s) => s.at), want, defaultSize(langsOf(seg.md), seg.md.length));
     if (r.moved) notes?.push(`${seg.id} 的 at=${atText(want)} 和板上别的段重叠，页面挪到了 at=${atText(r.at)}（要换地方先 move 或 hide 挡着的段）。`);
     else if (auto && r.auto) notes?.push(`${seg.id} 没写 at=，页面放在了 at=${atText(r.at)}。`);
@@ -865,7 +869,9 @@ export async function renderClass(root, meta, desk = null) {
     if (!sec || !seg.at) return;
     sec.style.gridColumn = `${seg.at.c1} / ${seg.at.c2 + 1}`;
     sec.style.gridRow = `${seg.at.r1} / ${seg.at.r2 + 1}`;
-    if (!sec.querySelector(':scope > .cv-zoom')) {
+    // ⤢ 只给图、演示这类要看细节、要拖的块（字和题不用放大，角上不多一个钮）
+    const zoomable = langsOf(seg.md).some((l) => ZOOMABLE.has(l) || ENGINES[l]);
+    if (zoomable && !sec.querySelector(':scope > .cv-zoom')) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'cv-zoom';
@@ -897,8 +903,8 @@ export async function renderClass(root, meta, desk = null) {
     // 估小了、下面又空着：先往下加长（一屏以内），加长了不够再缩小
     const want = rowsFor(need + (sec.clientHeight - avail), cvRow, cvGap);
     const rows = seg.at.r2 - seg.at.r1 + 1;
-    // 藏着的段不占地方（揭开时再找位置）
-    const others = want > rows ? [...segs.values()].filter((x) => x !== seg && x.page === seg.page && x.place !== 'pin' && !x.hidden && !x.held && x.at).map((x) => x.at) : [];
+    // 藏着的段占着它的位置（那是老师给下一步留的地方）：别的段不往那里长
+    const others = want > rows ? [...segs.values()].filter((x) => x !== seg && x.page === seg.page && x.place !== 'pin' && !x.hidden && x.at).map((x) => x.at) : [];
     const free = (a) => !others.some((o) => o.c1 <= a.c2 && a.c1 <= o.c2 && o.r1 <= a.r2 && a.r1 <= o.r2);
     // 字多的段（推导、步骤、题）旁边空着：先往旁边加宽，变矮了就不用往下长（图按比例画，加宽反而更高，不加宽）
     if (want > rows && !seg.widened && !langsOf(seg.md).some((l) => WIDE_NO.has(l))) {
@@ -972,7 +978,7 @@ export async function renderClass(root, meta, desk = null) {
   function canvasState() {
     if (!CANVAS) return null;
     if (!cvCell) sizeCanvas();
-    const blocks = [...segs.values()].filter((s) => s.page === bv.cur && s.place !== 'pin' && !s.hidden && !s.held && s.at).map((s) => ({ id: s.id, at: s.at }));
+    const blocks = [...segs.values()].filter((s) => s.page === bv.cur && s.place !== 'pin' && !s.hidden && s.at).map((s) => ({ id: s.id, at: s.at }));
     return { map: mapText(blocks), cell: cvCell };
   }
 
@@ -1385,6 +1391,7 @@ export async function renderClass(root, meta, desk = null) {
     opTurn = { seq: turnSeq + 1, by: mock ? 'mock' : res.modelApplied || '' };
     // 拍子（beats.js）：说一句、写一段、再说一句……一拍一拍地播。重写写错的段那一轮不播
     const opSegs = segments.filter(isOp);
+    cvMoving = new Set(opSegs.filter((s) => s.op.op === 'move').map((s) => s.op.id));
     const plan = beatPlan(segments, isOp);
     const play = FEATURES.beats && !keepTalk && shouldPlay(plan, opSegs.map((s) => s.op));
     const deferred = []; // 到了那一拍才执行的指令 { b, op }
@@ -1444,6 +1451,7 @@ export async function renderClass(root, meta, desk = null) {
         if (t.getBoundingClientRect().top < 0) t.scrollIntoView({ behavior: smooth, block: 'start' });
       }
     }
+    cvMoving = new Set();
     const told = addTurn({ role: 'claude', text: res.text, boardOps, page: bv.cur || undefined, talkPage, modelApplied: res.modelApplied, truncated: !!res.truncated, tools: toolCalls.length ? toolCalls : undefined, cost });
     if (beat) { beat.told = told; focusBeat(pages.get(beat.page), 0, { scroll: false }); }
     // 版面：板顶那句话变长变短，格子跟着一屏重新分（下一轮的黑板现状里写着）

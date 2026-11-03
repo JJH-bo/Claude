@@ -112,12 +112,22 @@
 .is-canvas .class-app:not(.has-pins) .class-stage { width: 100%; }
 .class-page-body.is-canvas {
   display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: var(--cv-row, 80px);
-  gap: var(--cv-gap, 12px); margin-top: 8px;
+  gap: var(--cv-gap, 12px) 28px; margin-top: 8px;
 }
+/* 板上的东西直接写在黑板上，不框成一块块（2026-11-03 我说：每块都被框着，感觉还是一块块）：段没有底色、没有边，
+   靠留白分开；段里组件自带的卡片框也拿掉（题、步骤、选择题只留自己的输入框和按钮） */
 .class-page-body.is-canvas > .class-seg {
-  position: relative; margin: 0; min-width: 0; min-height: 0; overflow: hidden; padding: 6px 12px 8px;
-  border-radius: 14px; background: rgb(var(--chalk-rgb) / 0.025); box-shadow: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.07);
+  position: relative; margin: 0; min-width: 0; min-height: 0; overflow: hidden; padding: 2px 4px 4px;
 }
+.class-page-body.is-canvas .widget.act { padding: 2px 0 0; background: none; box-shadow: none; }
+.class-page-body.is-canvas .widget.act::before { display: none; }
+.class-page-body.is-canvas .block { margin: 6px 0; }
+/* 段的标题和段里组件的标题常常是一回事：留段的（粉笔字的板书标题），组件的不再写一遍 */
+.class-page-body.is-canvas .stage-body > h2 + .block .w-title { display: none; }
+.class-page-body.is-canvas .st-item { padding-left: 40px; }
+/* 揭开以后「你的想法」里已经有学生写的那句：上面的输入框不再占地方（同一句话不出现两遍） */
+.class-page-body.is-canvas .st-item.is-revealed:has(> .st-compare .st-mine) > .st-input { display: none; }
+.class-page-body.is-canvas .st-mine { background: none; border-radius: 0; padding: 0 0 0 12px; border-left: 2px dashed rgb(var(--chalk-rgb) / 0.3); }
 .class-page-body.is-canvas > .class-seg.cv-scroll { overflow-y: auto; }
 .class-page-body.is-canvas .stage-body > :first-child { margin-top: 2px; }
 .class-page-body.is-canvas .stage-body > h2 { font-size: 24px; margin: 4px 44px 6px 0; padding-top: 0; }

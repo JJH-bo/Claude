@@ -324,7 +324,11 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
     onMeasure?.(lastFit);
     return lastFit;
   }
+  // 「下面还有」：2026-11-03 我说挡东西、其实没什么用，去掉了（一直藏着；代码留着，免得别处找不到它）
   function syncMoreHint() {
+    if (!more.hidden) { more.hidden = true; bar?.syncCtrl?.(); }
+    return;
+    // eslint-disable-next-line no-unreachable
     const p = pages.get(viewPage);
     if (!p || p.sec.hidden) { if (!more.hidden) { more.hidden = true; bar?.syncCtrl?.(); } return; }
     const bottom = p.sec.getBoundingClientRect().bottom;
