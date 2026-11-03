@@ -1,0 +1,62 @@
+{
+  "unit": "CSMA/CD：争用期和最短帧长",
+  "subject": "计网",
+  "steps": [
+    {
+      "id": "k1",
+      "seq": 1,
+      "pin": true,
+      "title": "已知",
+      "md": "数据率 10 Mb/s（每 μs 发 10 bit），A、B 相距 2 km，信号传播速率 200 m/μs，CSMA/CD。A 在 0 时刻开始发。"
+    },
+    {
+      "id": "s1",
+      "seq": 2,
+      "page": 1,
+      "title": "A 最晚何时发现",
+      "md": "```let\nL = 2000\nv = 200\nC = 10\n```\n\nB 侦听时信道空闲，就在 A 的信号快到 B 的那一刹那也开始发。先凭你对信号传播的理解填一个数。\n\n```answer\nid: q-detect\ntitle: 最晚何时发现\nq: 数据率 10 Mb/s，A、B 相距 2 km，信号传播速率 200 m/μs。A 在 0 时刻开始发送，B 在 A 的信号到达之前一刹那也开始发送。A 最晚在什么时刻检测到冲突？\ntype: num\nanswer: 2*L/v\nafter: \\ \\mu s\nhint: 先算信号从 A 走到 B 要多久。A 要「听到」冲突，得有东西传回到 A。\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "看时间图",
+      "md": "横着是位置，往下是时间。走到关键的地方会先让你猜：B 什么时候发现冲突？A 呢？\n\n```csma\nid: cd-line\ntitle: A 和 B 的信号\nrate: 10Mb/s\ndist: 2km\nbsend: last\nask: tau, detect\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "B 早一点发呢",
+      "md": "拖滑块改 B 开始发的时刻，看 A 发现冲突的时刻怎么变。B 什么时候发，A 发现得最晚？拖过 10 μs 以后又发生了什么？\n\n```csma\nid: cd-bsend\ntitle: 拖 B 开始发的时刻\nrate: 10Mb/s\ndist: 2km\nbsend: \\calc{t}μs\nvary: t = 0..12 step 1 μs\nstart: end\n```\n\n```conjecture\nid: cj-2tau\ntitle: 为什么最晚是 2τ\nq: A 最晚要 2τ 才发现冲突，这 2τ 是哪两段时间加起来的？一句话。\nrubric: 要点 (1) B 最晚在 τ（A 的信号刚要到 B）时开始发；(2) B 的信号还要再走 τ 才回到 A。只说「来回」不说 B 何时开始发算部分正确。\nanswer: A 的信号走到 B 要 τ，B 最晚在这时开始发；B 的信号再走 τ 回到 A，A 才发现，合起来 2τ。\nplaceholder: 一段是……，另一段是……\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "最短帧长",
+      "md": "A 要是在发现冲突之前就把帧发完了，它会以为发成功了。\n\n```answer\nid: q-minframe\ntitle: 最短帧长\nq: 数据率 10 Mb/s，相距 2 km，传播速率 200 m/μs。为了让 A 在发完之前一定能检测到冲突，帧最短要多少 bit？\ntype: num\nanswer: 2*L/v*C\nafter: \\ \\text{bit}\nhint: 帧至少要发多久？这段时间里一共发出多少 bit？\nexplain: 争用期 $2\\tau=\\calc{2*L/v}\\ \\mu s$，每 μs 发 $\\calc{C}$ bit，最短帧长 $=\\calc{2*L/v*C}$ bit。\n```"
+    },
+    {
+      "id": "k2",
+      "seq": 6,
+      "pin": true,
+      "title": "争用期",
+      "md": "$\\tau$ = 距离 ÷ 传播速率；争用期 $2\\tau$；最短帧长 = $2\\tau$ × 数据率。"
+    },
+    {
+      "id": "s5",
+      "seq": 7,
+      "page": 5,
+      "title": "拖动距离",
+      "md": "拖距离滑块，看最短帧长跟着怎么变。拖到 1 km、2 km、4 km、8 km 各停一下。\n\n```csma\nid: cd-dist\ntitle: 距离和最短帧长\nrate: 10Mb/s\ndist: \\calc{d}km\nvary: d = 1..10 step 1 km\nstart: end\n```\n\n```conjecture\nid: cj-rule\ntitle: 你看出的规律\nq: 距离变成原来的几倍，最短帧长就怎样？为什么？一句话。\nrubric: 要点 (1) 最短帧长和距离成正比（距离变成 k 倍，最短帧长也变成 k 倍）；(2) 原因：τ 和距离成正比，最短帧长 = 2τ × 数据率，数据率不变。只说出 (1) 算部分正确。\nanswer: 成正比：距离 ×k，τ ×k，2τ × 数据率也 ×k。\nplaceholder: 距离变成 k 倍，最短帧长……，因为……\n```"
+    },
+    {
+      "id": "s6",
+      "seq": 8,
+      "page": 6,
+      "title": "反过来用",
+      "md": "```answer\nid: q-500\ntitle: 换个距离\nq: 其余不变，两站相距 500 m。最短帧长是多少 bit？\ntype: num\nanswer: 2*500/v*C\nafter: \\ \\text{bit}\nhint: 距离变成原来的几分之几？\n```\n\n```csma\nid: cd-df\ntitle: 帧长减少 100 bit\nq: 数据率 10 Mb/s、传播速率 200 m/μs 不变，要让最短帧长减少 100 bit，两站的最远距离要怎么变？\nrate: 10Mb/s\ndframe: -100bit\nask: dchange\n```"
+    }
+  ]
+}

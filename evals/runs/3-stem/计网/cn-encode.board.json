@@ -1,0 +1,41 @@
+{
+  "unit": "差分曼彻斯特编码",
+  "subject": "计网",
+  "steps": [
+    {
+      "id": "k1",
+      "seq": 1,
+      "pin": true,
+      "title": "差分曼彻斯特",
+      "md": "每一位中间都跳变（只用来同步）。\n位开始处**有跳变是 0、没有是 1**。开始之前是低电平。"
+    },
+    {
+      "id": "s1",
+      "seq": 2,
+      "page": 1,
+      "title": "看哪里定 0 和 1",
+      "md": "```quiz\nid: q-where\nq: 差分曼彻斯特里，一位是 0 还是 1，看的是哪里？\n- [x] 这一位开始的地方，电平有没有跳\n- [ ] 这一位中间是往上跳还是往下跳\n- [ ] 这一位前半个码元是高还是低\nexplain: 中间那一跳每一位都有，只管同步；0 和 1 看位开始处：和上一位的末尾比，跳了是 0，没跳是 1。前半个码元是高是低，要看上一位是怎么结束的。\n```\n\n先看一小串怎么画：每一位画出来之前，先猜它的前半个码元是高还是低。\n\n```encode\nid: ec-demo\ntitle: 0110 的差分曼彻斯特\nbits: 0110\ncode: diffman\nask: level\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "自己画 10110010",
+      "md": "开始之前是低电平。一位一位画：每半个码元点上半格是高、下半格是低。画完页面会指出第几位不对。\n\n```encode\nid: ec-do\ntitle: 画 10110010\nbits: 10110010\ncode: diffman\nmode: do\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "反过来读波形",
+      "md": "下面是一段差分曼彻斯特波形（开始之前是低电平），每位两个半码元。读出它表示的比特串。\n\n```encode\nid: ec-read\ntitle: 读出比特\nlevels: 10 10 01 10 01 01\ncode: diffman\nmode: quiz\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "再画几串",
+      "md": "页面随机给 8 位，每一位填前后两个半码元的高低。做对 3 题。\n\n```practice\nid: pr-enc\ntitle: 差分曼彻斯特练 3 道\nuse: encode\ncount: 3\npick b = bits(8)\nbits: \\calc{b}\ncode: diffman\nmode: fill\n```"
+    }
+  ]
+}

@@ -49,3 +49,13 @@ test('按格写的矩阵答案：拆格、逐格比，指出哪一格不对', ()
   assert.equal(bad.first.r, 0);
   assert.equal(bad.first.c, 1);
 });
+
+test('formula: a 的答案用到含参数 a 的量（answer: det(A)，A 里有 a）：代值时把 a 代进去（验收第三批 la-param 碰到的）', async () => {
+  const { compareFormula, normalizeFormula } = await import('../kit/src/formula.js');
+  const v = withParam();
+  v.A = calcValue('[[1, 1, a], [1, a, 1], [a, 1, 1]]', v).value;
+  const f = formulaSpec('det(A)', 'a', v);
+  assert.ok(compareFormula(f.expected, normalizeFormula('-(a-1)^2(a+2)', { names: f.names }), f).ok);
+  assert.ok(compareFormula(f.expected, normalizeFormula('-a^3+3a-2', { names: f.names }), f).ok);
+  assert.match(compareFormula(f.expected, normalizeFormula('(a-1)^2(a+2)', { names: f.names }), f).msg, /应该是/);
+});

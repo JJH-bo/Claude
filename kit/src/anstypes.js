@@ -78,6 +78,7 @@ export function parseNumSet(text) {
   if (!s) throw new Error('还没写');
   s = s.replace(/（/g, '(').replace(/）/g, ')').replace(/［/g, '[').replace(/］/g, ']').replace(/｛/g, '{').replace(/｝/g, '}').replace(/，/g, ',').replace(/；/g, ';');
   s = s.replace(/^[a-zA-Zλμαβγθ]\s*(∈|属于|in)\s*/i, ''); // a ∈ (-∞, 1) 只看后面
+  s = s.replace(/==/g, '=').replace(/⩽/g, '≤').replace(/⩾/g, '≥'); // 写成表达式的 a == 1 也认
   const terms = splitTop(s, /^(\s*(∪|或|or|\|\||U(?=\s*[([{])))\s*/i);
   let set = [];
   for (const term of terms) {

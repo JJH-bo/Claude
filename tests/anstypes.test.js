@@ -81,3 +81,8 @@ test('ans(编号)：换成变量名；answer 里引用了就变成一条 check�
   assert.ok(!bad.ok);
   assert.match(bad.msg, /按你前面那一题写的答案算/);
 });
+
+test('数集：写成表达式的 a == 1 或 a == -2 也认（验收第三批 la-param 碰到的）', () => {
+  assert.equal(setText(parseNumSet('a == 1 或 a == -2')), '{-2} ∪ {1}');
+  assert.ok(intervalSpec('a == 1 或 a == -2').check('{1, -2}').ok);
+});
