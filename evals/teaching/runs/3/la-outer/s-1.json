@@ -1,0 +1,1 @@
+{"say": "列在前行在后，应该是 2×2 的矩阵吧。", "acts": [{"comp": "q-shape1", "value": "B"}], "sure": {"q-shape1": true}}

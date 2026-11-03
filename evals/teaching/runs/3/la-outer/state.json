@@ -1,0 +1,115 @@
+{
+ "scenario": "la-outer",
+ "subject": "线代",
+ "plan": false,
+ "pack": {
+  "main": {
+   "unit": "秩一矩阵的幂：A = αβᵀ 时 Aⁿ = (βᵀα)ⁿ⁻¹ A",
+   "goal": "学生自己推出 A = αβᵀ（α、β 是 n 维列向量）时 A² = (βᵀα)A，进而 Aⁿ = (βᵀα)ⁿ⁻¹A，并会用 tr(A) = βᵀα 算具体的题。",
+   "scope": "前置：矩阵乘法、转置、结合律。本节只讲秩一矩阵 αβᵀ 的幂，不讲特征值。考研常考：给 α=(1,2,3)ᵀ、β=(1,−1,2)ᵀ 求 Aⁿ。",
+   "plan": "1. 先算一个具体的 2×2 例子 A=αβᵀ，让学生看出 A² 是 A 的倍数。\n2. 用结合律推一般情形：A² = α(βᵀα)βᵀ，关键是 βᵀα 是一个数。\n3. 推到 Aⁿ，再用 tr(A)=βᵀα。\n4. 练一道 3 维的真题。"
+  }
+ },
+ "segs": [
+  {
+   "id": "k1",
+   "place": "pin",
+   "title": "这节课的记号",
+   "md": "```let\na = [1, 2]\nb = [3, 1]\nA = a*b'\n```\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量"
+  },
+  {
+   "id": "b1",
+   "page": 1,
+   "title": "先看形状",
+   "md": "$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 都是 $2\\times1$ 的列向量，$\\boldsymbol\\beta^{\\mathrm T}$ 是 $1\\times2$ 的行。\n\n```quiz\nid: q-shape1\nq: $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？\n- [ ] 一个数（$1\\times1$）\n- [x] $2\\times2$ 的矩阵\n- [ ] $2\\times1$ 的列向量\n- [ ] 乘不了\nexplain: $(2\\times1)(1\\times2)$：外面的两个数决定形状，是 $2\\times2$。\n```"
+  }
+ ],
+ "pages": [
+  {
+   "n": 1,
+   "title": "先看形状",
+   "talk": "好，今天看秩一矩阵（rank-one matrix）$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 的幂。先从形状开始：同样两个向量，乘的顺序一换，出来的东西完全不同。\n\n不用算具体的数，选一个就行。"
+  }
+ ],
+ "cur": 1,
+ "progress": {},
+ "tries": {
+  "q-shape1": 1
+ },
+ "results": {
+  "q-shape1": [
+   {
+    "source": "record",
+    "block": "q-shape1",
+    "step": "b1",
+    "type": "quiz",
+    "q": "$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？",
+    "ok": true,
+    "attempts": 1,
+    "final": true
+   }
+  ]
+ },
+ "compAt": {
+  "q-shape1": {
+   "seg": {
+    "id": "b1"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-shape1\nq: $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？\n- [ ] 一个数（$1\\times1$）\n- [x] $2\\times2$ 的矩阵\n- [ ] $2\\times1$ 的列向量\n- [ ] 乘不了\nexplain: $(2\\times1)(1\\times2)$：外面的两个数决定形状，是 $2\\times2$。",
+    "id": "q-shape1",
+    "raw": "```quiz\nid: q-shape1\nq: $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？\n- [ ] 一个数（$1\\times1$）\n- [x] $2\\times2$ 的矩阵\n- [ ] $2\\times1$ 的列向量\n- [ ] 乘不了\nexplain: $(2\\times1)(1\\times2)$：外面的两个数决定形状，是 $2\\times2$。\n```",
+    "at": 107
+   }
+  }
+ },
+ "ops": [],
+ "history": [
+  {
+   "role": "claude",
+   "seq": 1,
+   "text": "好，今天看秩一矩阵（rank-one matrix）$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 的幂。先从形状开始：同样两个向量，乘的顺序一换，出来的东西完全不同。\n\n````board pin id=k1 title=\"这节课的记号\"\n```let\na = [1, 2]\nb = [3, 1]\nA = a*b'\n```\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量\n````\n\n````board new id=b1 title=\"先看形状\"\n$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 都是 $2\\times1$ 的列向量，$\\boldsymbol\\beta^{\\mathrm T}$ 是 $1\\times2$ 的行。\n\n```quiz\nid: q-shape1\nq: $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？\n- [ ] 一个数（$1\\times1$）\n- [x] $2\\times2$ 的矩阵\n- [ ] $2\\times1$ 的列向量\n- [ ] 乘不了\nexplain: $(2\\times1)(1\\times2)$：外面的两个数决定形状，是 $2\\times2$。\n```\n````\n\n不用算具体的数，选一个就行。\n"
+  },
+  {
+   "role": "student",
+   "seq": 2,
+   "text": "列在前行在后，应该是 2×2 的矩阵吧。\n[作答] b1 里的 quiz q-shape1：「$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？」做对了（共 1 次）\n[动作] b1 里的组件 q-shape1：学生标了「有把握」"
+  }
+ ],
+ "turns": [
+  {
+   "seq": 1,
+   "role": "teacher",
+   "bytes": 948,
+   "talk": "好，今天看秩一矩阵（rank-one matrix）$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 的幂。先从形状开始：同样两个向量，乘的顺序一换，出来的东西完全不同。\n\n不用算具体的数，选一个就行。",
+   "ops": [
+    "pin",
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 1 块板「先看形状」\n\n老师写在板顶的话：好，今天看秩一矩阵（rank-one matrix）$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 的幂。先从形状开始：同样两个向量，乘的顺序一换，出来的东西完全不同。\n\n不用算具体的数，选一个就行。\n\n## 先看形状\n$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 都是 $2\\times1$ 的列向量，$\\boldsymbol\\beta^{\\mathrm T}$ 是 $1\\times2$ 的行。\n\n【选择题 q-shape1】\n  $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？\n  A. 一个数（$1\\times1$）\n  B. $2\\times2$ 的矩阵\n  C. $2\\times1$ 的列向量\n  D. 乘不了\n\n# 常驻栏\n## 这节课的记号\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 2,
+   "role": "student",
+   "say": "列在前行在后，应该是 2×2 的矩阵吧。",
+   "acts": [
+    {
+     "comp": "q-shape1",
+     "ok": true,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-shape1",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "列在前行在后，应该是 2×2 的矩阵吧。\n[作答] b1 里的 quiz q-shape1：「$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？」做对了（共 1 次）\n[动作] b1 里的组件 q-shape1：学生标了「有把握」"
+  }
+ ],
+ "seq": 2,
+ "pendingNotes": []
+}

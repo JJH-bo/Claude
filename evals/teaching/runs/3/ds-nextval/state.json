@@ -1,0 +1,119 @@
+{
+ "scenario": "ds-nextval",
+ "subject": "数据结构",
+ "plan": false,
+ "pack": {
+  "main": {
+   "unit": "KMP：next 数组和 nextval 数组",
+   "goal": "学生能手算模式串的 next 和 nextval（王道口径：从 1 数，next[1] = 0），说清 nextval 为什么要比较 T[j] 和 T[next[j]]，并能用在匹配上。",
+   "scope": "前置：朴素匹配、next 数组（最长相等前后缀 + 1）。本节讲 nextval（王道口径）。常考：求 abaabcac、aaaab 的 nextval。",
+   "plan": "1. 复习 next：短的模式串先算一遍。\n2. 用 kmp 演示组件看 nextval 怎么一格格从 next 来。\n3. 关键格（T[j] 和 T[next[j]] 相等的那一格）先让学生猜。\n4. 自己算一个完整的 nextval，再换一个串确认。"
+  }
+ },
+ "segs": [
+  {
+   "id": "k1",
+   "place": "pin",
+   "title": "口径（王道）",
+   "md": "位置从 1 数；$next[1]=0$；$next[j]$ = $T[1..j-1]$ 最长相等前后缀的长度 $+1$。"
+  },
+  {
+   "id": "b1",
+   "page": 1,
+   "title": "热身：求 next",
+   "md": "```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: aabaac\nshow: next\nmode: quiz\n```"
+  }
+ ],
+ "pages": [
+  {
+   "n": 1,
+   "title": "热身：求 next",
+   "talk": "好，先热个身：nextval 是从 next 来的，我们先把 next 算一遍。下面这个串，你写出它的 next 数组。\n\n六个数按位置 1 到 6 写，空格隔开就行。"
+  }
+ ],
+ "cur": 1,
+ "progress": {},
+ "tries": {
+  "q-next1": 1
+ },
+ "results": {
+  "q-next1": [
+   {
+    "source": "record",
+    "block": "q-next1",
+    "step": "b1",
+    "type": "stepper",
+    "engine": "kmp",
+    "title": "写出 next 数组",
+    "q": "写出模式串 aabaac 的 next 数组（从 j = 1 开始）。",
+    "value": "0 1 2 1 2 3",
+    "ok": true,
+    "attempts": 1,
+    "detail": "写出结果",
+    "final": true
+   }
+  ]
+ },
+ "compAt": {
+  "q-next1": {
+   "seg": {
+    "id": "b1"
+   },
+   "f": {
+    "lang": "kmp",
+    "body": "id: q-next1\ntitle: 写出 next 数组\npattern: aabaac\nshow: next\nmode: quiz",
+    "id": "q-next1",
+    "raw": "```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: aabaac\nshow: next\nmode: quiz\n```",
+    "at": 0
+   }
+  }
+ },
+ "ops": [],
+ "history": [
+  {
+   "role": "claude",
+   "seq": 1,
+   "text": "好，先热个身：nextval 是从 next 来的，我们先把 next 算一遍。下面这个串，你写出它的 next 数组。\n\n````board pin id=k1 title=\"口径（王道）\"\n位置从 1 数；$next[1]=0$；$next[j]$ = $T[1..j-1]$ 最长相等前后缀的长度 $+1$。\n````\n\n````board new id=b1 title=\"热身：求 next\"\n```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: aabaac\nshow: next\nmode: quiz\n```\n````\n\n六个数按位置 1 到 6 写，空格隔开就行。\n"
+  },
+  {
+   "role": "student",
+   "seq": 2,
+   "text": "算出来是 0 1 2 1 2 3，应该对吧？\n[作答] b1 里的 kmp q-next1「写出 next 数组」：写出结果，「写出模式串 aabaac 的 next 数组（从 j = 1 开始）。」做对了（共 1 次）\n[动作] b1 里的组件 q-next1：学生标了「有把握」"
+  }
+ ],
+ "turns": [
+  {
+   "seq": 1,
+   "role": "teacher",
+   "bytes": 472,
+   "talk": "好，先热个身：nextval 是从 next 来的，我们先把 next 算一遍。下面这个串，你写出它的 next 数组。\n\n六个数按位置 1 到 6 写，空格隔开就行。",
+   "ops": [
+    "pin",
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 1 块板「热身：求 next」\n\n老师写在板顶的话：好，先热个身：nextval 是从 next 来的，我们先把 next 算一遍。下面这个串，你写出它的 next 数组。\n\n六个数按位置 1 到 6 写，空格隔开就行。\n\n## 热身：求 next\n【演示 kmp q-next1】写出 next 数组\n  输入：pattern: aabaac\n  写出模式串 aabaac 的 next 数组（从 j = 1 开始）。\n  （写出结果）\n\n# 常驻栏\n## 口径（王道）\n位置从 1 数；$next[1]=0$；$next[j]$ = $T[1..j-1]$ 最长相等前后缀的长度 $+1$。\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 2,
+   "role": "student",
+   "say": "算出来是 0 1 2 1 2 3，应该对吧？",
+   "acts": [
+    {
+     "comp": "q-next1",
+     "ok": true,
+     "type": "stepper"
+    },
+    {
+     "comp": "q-next1",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "算出来是 0 1 2 1 2 3，应该对吧？\n[作答] b1 里的 kmp q-next1「写出 next 数组」：写出结果，「写出模式串 aabaac 的 next 数组（从 j = 1 开始）。」做对了（共 1 次）\n[动作] b1 里的组件 q-next1：学生标了「有把握」"
+  }
+ ],
+ "seq": 2,
+ "pendingNotes": []
+}
