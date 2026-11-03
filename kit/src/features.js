@@ -15,4 +15,6 @@ export const FEATURES = {
   // 板比一屏长时切成几屏左右翻（boardview.js 的 fitScreens，2026-11-02 加的）。2026-11-03 我说不喜欢：
   // 一个点被切成好几屏、每屏一点点，还不如以前那样稍长一点上下滑。关掉，板照旧往下长、上下滑着看；代码留着
   screens: false,
+  // 课堂老师一轮里「说一句、写一段、再说一句、圈一下」时一拍一拍地播（class/beats.js，docs/board-plan.md 第 2 节）
+  beats: true,
 };

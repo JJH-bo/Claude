@@ -6,6 +6,7 @@
 import { tokenize, unquote } from '../tokens.js';
 import { parseMarkHead, parseMarkBlock, parseUnmark } from '../markspec.js';
 import { parseMemoLines } from '../memory/memo.js';
+import { parseReact } from './react.js';
 
 // ```board add id=b7 title="…"：行首最多 3 个空格，` 或 ~ 至少 3 个，可有空格，然后是 board 和指令
 const OPEN_RE = /^([ \t]{0,3})(`{3,}|~{3,})[ \t]*board(?=\s|$)\s*(.*)$/i;
@@ -142,9 +143,10 @@ const tidy = (s) => s.replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
 /* ---------------- 指令 ---------------- */
 
 // 段指令：new / add / replace / pin 带内容（可以有标题）；hide / unpin 只要 id
-export const SEGMENT_OPS = ['new', 'add', 'replace', 'hide', 'pin', 'unpin'];
-const NO_TITLE = new Set(['hide', 'unpin']);
-const OP_LIST = 'new / add / replace / hide / pin / unpin / figure / mark / unmark / memo / plan';
+// show：揭开预先写好、藏着的段（add … hold）
+export const SEGMENT_OPS = ['new', 'add', 'replace', 'hide', 'show', 'pin', 'unpin'];
+const NO_TITLE = new Set(['hide', 'show', 'unpin']);
+const OP_LIST = 'new / add / replace / hide / show / pin / unpin / figure / mark / unmark / react / memo / plan';
 
 /**
  * 解析 board 后面那一行：
@@ -169,6 +171,11 @@ export function parseCommand(header) {
     const r = parseUnmark(m[2]);
     return r.error ? { error: r.error } : { op: 'unmark', ...r };
   }
+  // 预案（react.js）：学生作答以后页面当场接的话，一行一条写在块里
+  if (name === 'react') {
+    const r = parseReact(m[2]);
+    return r.error ? { error: r.error } : { op: 'react', head: m[2].trim(), target: r.target };
+  }
   // 学习台里改记忆（memory/memo.js）：一行一条，写在块里
   if (name === 'memo') return { op: 'memo' };
   // 老师自己的教学计划（学生看不到，docs/learning-plan.md 第 5 节）：块里是几行字
@@ -184,6 +191,7 @@ export function blockCommand(header, body = '') {
   const op = parseCommand(header);
   if (op.op === 'memo') return memoOp(body);
   if (op.op === 'plan') return planOp(body);
+  if (op.op === 'react') return parseReact(op.head, body);
   return op.op === 'mark' ? markOp(op, body) : op;
 }
 
@@ -215,10 +223,12 @@ function markOp(op, body) {
 
 function segmentCommand(op, rest) {
   const toks = tokenize(rest);
-  let id, title, point;
+  let id, title, point, hold = false;
   for (let k = 0; k < toks.length; k++) {
     const t = toks[k];
     if (t.key === 'id') id = t.value;
+    // add id=b9 hold：先画好藏着，等预案（react 的 show=）或 board show 揭开
+    else if (!t.key && !t.quoted && t.value === 'hold') hold = true;
     // 学习台里：这一段练的是哪个知识点（mastery 编号 # 后面那段），学生在这段的作答记成它的证据
     else if (t.key === 'point') point = t.value;
     else if (t.key === 'title') {
@@ -239,6 +249,10 @@ function segmentCommand(op, rest) {
   if (!id) return { error: `${op} 缺少 id，比如 ${op} id=${eg}` };
   if (!validId(id)) return { error: `id「${id}」不合法：${ID_RULE}` };
   const out = { op, id };
+  if (hold) {
+    if (op !== 'add') return { error: `hold 只能写在 add 上（先画好藏着，等预案揭开），${op} 不能 hold` };
+    out.hold = true;
+  }
   if (!NO_TITLE.has(op) && title !== undefined) out.title = title.trim();
   if (point !== undefined && !NO_TITLE.has(op)) {
     if (!/^[A-Za-z0-9_-]{1,40}$/.test(point)) return { error: `point「${point}」只能用字母、数字、- 和 _（写掌握状态编号 # 后面那段，比如 point=tr）` };

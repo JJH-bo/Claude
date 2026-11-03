@@ -9,6 +9,9 @@
 //   node tools/teach-sim.mjs transcript <目录>                         整节课的记录 transcript.md（评卷人看）
 //   node tools/teach-sim.mjs score <目录…>                             页面能算的指标（score.json）
 //
+// 预案（board react，docs/board-plan.md）：学生作答落在老师预写的情况里时，页面自己接、不调用老师——
+// student 命令打印「页面按预案接了」，这时**不跑老师**，学生接着看 view.md 再答一轮；接过的几轮跟着下一次发给老师。
+//
 // 学生的 JSON：{ "say": "对老师说的话（可空）", "acts": [{ "comp": "组件 id", "value": "答案或选项的文字" } | { "comp": "…", "giveup": true }],
 //               "sure": { "组件 id": true | false } }
 import fs from 'node:fs';
@@ -24,6 +27,7 @@ import { parseFields } from '../kit/src/parse.js';
 import { calcFields, commonSpec, resolveAsks, parseAskField, checkAsk, askAnswerText } from '../kit/src/stepperspec.js';
 import { textAnswerSpec } from '../kit/src/textspec.js';
 import { toExact } from '../kit/src/exact.js';
+import { planLocal, markFired, reactNote, dropForSeg, armedText } from '../kit/src/class/react.js';
 
 const [cmd, dir, arg, ...rest] = process.argv.slice(2);
 const read = (f) => fs.readFileSync(f, 'utf8');
@@ -365,7 +369,7 @@ function judge(st, act) {
 
 function boardForPrompt(st) {
   return {
-    segs: st.segs.map((s) => ({ ...s, blocks: fencesOf(s.md).filter((f) => f.id && f.lang !== 'let').map((f) => ({ id: f.id, kind: f.lang, results: st.results[f.id] || [] })) })),
+    segs: st.segs.map((s) => ({ ...s, blocks: fencesOf(s.md).filter((f) => f.id && f.lang !== 'let').map((f) => ({ id: f.id, kind: f.lang, results: st.results[f.id] || [], react: armedText(st.reacts?.[f.id]) || undefined })) })),
     pages: st.pages, cur: st.cur, view: st.cur, screen: { w: 820, h: 1180, board: { w: 780, h: 900 } },
   };
 }
@@ -384,9 +388,17 @@ function apply(st, text) {
       }
     };
     if (op.op === 'new') { st.cur = st.pages.length + 1; st.pages.push({ n: st.cur, title: op.title || '', talk: '' }); st.segs.push({ id: op.id, page: st.cur, title: op.title || '', md: sg.body }); newPage = true; check(sg.body, op.id); }
-    else if (op.op === 'add') { if (!st.pages.length) { st.cur = 1; st.pages.push({ n: 1, title: op.title || '', talk: '' }); } st.segs.push({ id: op.id, page: st.cur, title: op.title || '', md: sg.body }); check(sg.body, op.id); }
-    else if (op.op === 'replace') { const s = seg(op.id); if (s) { s.md = sg.body; if (op.title) s.title = op.title; for (const f of fencesOf(sg.body)) { delete st.progress[f.id]; delete st.results[f.id]; } check(sg.body, op.id); } else notes.push(`[系统] replace 的 ${op.id} 不在黑板上`); }
-    else if (op.op === 'hide') { const s = seg(op.id); if (s) s.hidden = true; }
+    else if (op.op === 'add') { if (!st.pages.length) { st.cur = 1; st.pages.push({ n: 1, title: op.title || '', talk: '' }); } st.segs.push({ id: op.id, page: st.cur, title: op.title || '', md: sg.body, ...(op.hold ? { held: true } : {}) }); check(sg.body, op.id); }
+    else if (op.op === 'replace') { const s = seg(op.id); if (s) { s.md = sg.body; if (op.title) s.title = op.title; for (const f of fencesOf(sg.body)) { delete st.progress[f.id]; delete st.results[f.id]; } dropRules(st, op.id); check(sg.body, op.id); } else notes.push(`[系统] replace 的 ${op.id} 不在黑板上`); }
+    else if (op.op === 'hide') { const s = seg(op.id); if (s) s.hidden = true; dropRules(st, op.id); }
+    else if (op.op === 'show') { const s = seg(op.id); if (s) { s.held = false; s.hidden = false; } else notes.push(`[系统] show 的 ${op.id} 不在黑板上`); }
+    else if (op.op === 'react') {
+      const at = st.segs.find((s) => !s.hidden && fencesOf(s.md).some((f) => f.id === op.target));
+      st.reacts ||= {};
+      if (!at) notes.push(`[系统] 指令 react 没执行：黑板上没有组件 ${op.target}`);
+      else if (!op.cases.length) delete st.reacts[op.target];
+      else st.reacts[op.target] = { target: op.target, seq: st.seq, seg: at.id, cases: op.cases.map((c) => ({ ...c, used: false })) };
+    }
     else if (op.op === 'pin') { const s = seg(op.id); if (s) { s.md = sg.body; s.hidden = false; if (op.title) s.title = op.title; } else st.segs.push({ id: op.id, place: 'pin', title: op.title || '', md: sg.body }); }
     else if (op.op === 'unpin') { const s = seg(op.id); if (s) s.hidden = true; }
     st.ops.push(op.op || 'unknown');
@@ -399,9 +411,17 @@ function apply(st, text) {
   return { talk, notes, newPage };
 }
 
+// 段被改写、撤回：之前几轮挂在它上面的预案作废（和课堂一样）
+function dropRules(st, segId) {
+  const m = new Map(Object.entries(st.reacts || {}));
+  dropForSeg(m, segId, st.seq);
+  st.reacts = Object.fromEntries(m);
+}
+
 function viewText(st, talk) {
   const page = st.pages.find((p) => p.n === st.cur);
-  const here = st.segs.filter((s) => !s.hidden && s.place !== 'pin' && s.page === st.cur);
+  // 藏着的段（add … hold）学生看不到
+  const here = st.segs.filter((s) => !s.hidden && !s.held && s.place !== 'pin' && s.page === st.cur);
   const pins = st.segs.filter((s) => !s.hidden && s.place === 'pin');
   return [
     `# 第 ${st.cur || 0} 块板${page?.title ? `「${page.title}」` : ''}`,
@@ -455,7 +475,31 @@ if (cmd === 'init') {
     acts.push(ev);
   }
   const say = String(s.say || '').trim();
-  const msg = [say, actionsMessage(acts), ...(st.pendingNotes || [])].filter(Boolean).join('\n') || '（学生没有说话，也没有作答）';
+  // 预案：页面能自己接就不调用老师（trig 和课堂一样：有把握的标记跟着下一条走；答对了却没把握要叫老师）
+  const items = acts.map((a) => ({ a, trig: a.type === 'sure' ? (a.sure === false && a.ok === true ? 'soon' : 'later') : 'soon' }));
+  const rules = new Map(Object.entries(st.reacts || {}));
+  const held = new Set(st.segs.filter((x) => x.held || x.hidden).map((x) => x.id));
+  const local = planLocal({ items, rules, other: !!say, present: (id) => !!st.compAt[id] && !held.has(st.compAt[id].seg.id) });
+  if (local) {
+    markFired(rules, local);
+    st.reacts = Object.fromEntries(rules);
+    for (const id of local.show) { const x = st.segs.find((g) => g.id === id); if (x) { x.held = false; x.hidden = false; } }
+    const page = st.pages.find((p) => p.n === st.cur);
+    if (page && local.talk) page.talk = local.talk;
+    const am = actionsMessage(acts);
+    const note = reactNote(local);
+    st.history.push({ role: 'student', seq: st.seq, text: am }, { role: 'system', seq: st.seq, text: note });
+    (st.localMsgs ||= []).push(am, note);
+    const view = viewText(st, local.talk);
+    fs.writeFileSync(P('view.md'), view);
+    st.turns.push({ seq: st.seq, role: 'student', say, acts: acts.map((a) => ({ comp: a.block, ok: a.ok, type: a.type })), msg: am, local: true }, { seq: st.seq, role: 'page', talk: local.talk, note, view });
+    save(st);
+    console.log(`第 ${st.seq} 轮学生：${acts.map((a) => (a.block ? `${a.block}${a.ok === true ? '✓' : a.ok === false ? '✗' : '·'}` : a.type || '')).join(' ')}——页面按预案接了（没调用老师）：学生接着看 view.md`);
+    process.exit(0);
+  }
+  // 前面几轮页面按预案接过的，跟着这一次发给老师
+  const msg = [...(st.localMsgs || []), say, actionsMessage(acts), ...(st.pendingNotes || [])].filter(Boolean).join('\n') || '（学生没有说话，也没有作答）';
+  st.localMsgs = [];
   st.history.push({ role: 'student', seq: st.seq, text: msg });
   st.turns.push({ seq: st.seq, role: 'student', say, acts: acts.map((a) => ({ comp: a.block, ok: a.ok, type: a.type })), msg });
   st.pendingNotes = [];
@@ -468,6 +512,7 @@ if (cmd === 'init') {
   const out = [`# 模拟课 ${st.scenario}（${st.subject}，计划块${st.plan ? '开' : '关'}）`];
   for (const t of st.turns) {
     if (t.role === 'teacher') out.push(`## 第 ${t.seq} 轮 · 老师\n\n${st.history.find((h) => h.seq === t.seq)?.text || ''}\n\n### 学生看到的\n\n${t.view}`);
+    else if (t.role === 'page') out.push(`## 第 ${t.seq} 轮 · 页面按预案接（没调用老师）\n\n${t.note}\n\n### 学生看到的\n\n${t.view}`);
     else out.push(`## 第 ${t.seq} 轮 · 学生\n\n${t.msg}`);
   }
   fs.writeFileSync(P('transcript.md'), out.join('\n\n'));
@@ -487,6 +532,8 @@ if (cmd === 'init') {
       planWrites: T.filter((t) => t.plan).length, boards: T.reduce((a, t) => a + t.ops.filter((o) => o === 'new').length, 0),
       turnsWithTask: interactive, studentActs: judged.length, studentRight: judged.filter((a) => a.ok).length,
       notes: T.reduce((a, t) => a + t.notes.length, 0),
+      // 页面按预案接了几轮（每一轮本来都是一次调用）
+      localTurns: st.turns.filter((t) => t.role === 'page').length,
     });
   }
   console.log(JSON.stringify(rows, null, 1));

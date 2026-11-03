@@ -40,6 +40,8 @@ import { reportText } from '../memory/report.js';
 import { slipsToFold, blockSwitch, tidyDue, tidyText } from '../memory/memo.js';
 import { spaceOfId } from '../memory/space.js';
 import { textbookForClass, readChunks, searchChunks } from '../books/textbook.js';
+import { planLocal, markFired, reactNote, armedText, rebuildRules, dropForSeg } from './react.js';
+import { beatPlan, shouldPlay, DEFERRED_OPS } from './beats.js';
 
 export const MODEL = 'claude-opus-5-5';
 // 学生明确要求：讲课只能是 Opus 5.5、effort high；modelTier 只是平台要求的退路（退路的输出会被丢弃）
@@ -79,6 +81,7 @@ export async function renderClass(root, meta, desk = null) {
     isBusy: () => busy,
     seqOf: (id) => segs.get(id)?.seq,
     decorate: (p) => decoratePage(p),
+    onBeat: (n, k) => beatGo(n, k),
   });
   const { board, pages } = bv;
   const hero = root.querySelector('.class-hero');
@@ -155,6 +158,12 @@ export async function renderClass(root, meta, desk = null) {
   let lastVerify = { turns: 0, discarded: 0 }; // 学习台里：上次写进 sessions/{编号} 的核验轮数
   let lastUsage = ''; // 学习台里：上次写进 sessions/{编号} 的花费
   let turnMemos = []; // 这一轮 memo 块里读懂的条目（执行完黑板指令、记下这一轮以后再写进记忆库）
+  // 预案（react.js，docs/board-plan.md）：组件 id → { target, seq（哪一轮写的）, seg（组件所在的段）, by, cases }
+  const reacts = new Map();
+  const trigs = new WeakMap(); // 排着的动作 → actionTrigger 算的（'later' 的是学生在看、在试，不用老师）
+  let opTurn = { seq: 0, by: '' }; // 正在执行的这一轮（预案记它是哪一轮、谁写的）
+  // 拍子（beats.js）：正在播的这一轮。{ page, n（几拍）, max（播到第几拍）, segs: 拍 → [段 id], deferred: [{ b, op }], told（这一轮的记录）}
+  let beat = null;
 
   // 察觉卡住的开关（学生在「⋯」里可以开；记在这台设备上）。每提醒一次就是一整轮调用，默认关（docs/desk-plan.md 第 7 节）。
   // 本地试用带 ?stuck=秒数 时自动开
@@ -166,7 +175,13 @@ export async function renderClass(root, meta, desk = null) {
     stuck: { on: stuckOn, onChange: (v) => { stuckOn = v; lastActive = Date.now(); try { localStorage.setItem(stuckKey, v ? 'on' : 'off'); } catch { /* 无痕模式 */ } } },
     onSend: ({ text, images }) => { bv.go(bv.cur); enqueueStudent(text, images, true); },
     inkPending: () => hasFreshInk(),
-    onQuick: (label) => { if (busy) return; bv.go(bv.cur); enqueueStudent(QUICK_SAY[label] || label, [], true); },
+    onQuick: (label) => {
+      if (busy) return;
+      // 「继续」：这一轮还有没播的拍子时只走下一拍，不调用 Claude
+      if (label === '继续' && beat && !beat.done) { bv.go(beat.page); beatGo(beat.page, (pages.get(beat.page)?.beat ?? beat.max) + 1); return; }
+      bv.go(bv.cur);
+      enqueueStudent(QUICK_SAY[label] || label, [], true);
+    },
     onNav: (n) => bv.go(n),
     onStop: () => ctl?.abort(),
     onRetry: () => retryRun(),
@@ -264,6 +279,8 @@ export async function renderClass(root, meta, desk = null) {
       for (const d of pg.docs.map((x) => x.data()).filter((p) => Number.isFinite(p?.n) && p.n > 0).sort((a, b) => a.n - b.n)) {
         const p = bv.ensurePage(d.n);
         Object.assign(p, { title: String(d.title || ''), talk: String(d.talk || ''), talkBy: d.talkBy || '', lead: d.lead || '', kind: d.kind || '', body: String(d.body || ''), foot: String(d.foot || ''), memo: Array.isArray(d.memo) ? d.memo.map(String) : [] });
+        // 分拍播过的板顶那句话：刷新后停在最后一拍（段都已经露出来了），还能倒回去看前面几拍的话
+        if (Array.isArray(d.beats) && d.beats.length > 1) Object.assign(p, { beats: d.beats.map(String), beat: d.beats.length - 1, beatFocus: [] });
         bv.paint(p);
       }
       const docs = st.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.seq || 0) - (b.seq || 0));
@@ -279,7 +296,7 @@ export async function renderClass(root, meta, desk = null) {
           Object.assign(bv.ensurePage(page), { lead: d.id, title: d.title || '' });
         }
         if (page) bv.ensurePage(page);
-        const seg = { id: d.id, seq: d.seq || 0, page, place, title: d.title || '', md: String(d.md || ''), hidden: !!d.hidden, failed: !!d.failed, pending: false, sec: null, ...(d.point ? { point: d.point } : {}) };
+        const seg = { id: d.id, seq: d.seq || 0, page, place, title: d.title || '', md: String(d.md || ''), hidden: !!d.hidden, held: !!d.held, failed: !!d.failed, pending: false, sec: null, ...(d.point ? { point: d.point } : {}) };
         segs.set(seg.id, seg);
         if (old) legacy.push(seg);
         if (!seg.hidden) mountRestored(seg);
@@ -288,6 +305,8 @@ export async function renderClass(root, meta, desk = null) {
       // 旧版的段分好板就存回去：以后新开的板接在它们后面，下次打开顺序也不变
       for (const seg of legacy) { saveSeg(seg); savePage(pages.get(seg.page)); }
       tu.docs.map((d) => d.data()).filter((t) => Number.isFinite(t?.seq)).sort((a, b) => a.seq - b.seq).forEach((t) => { history.push(t); turnSeq = Math.max(turnSeq, t.seq); });
+      // 还没用掉的预案（组件还在黑板上的）
+      for (const [k, r] of rebuildRules(history)) reacts.set(k, r);
       // 黑板现状里的作答结果：作答记录 + 揭开 / 拖动（按时间重放，规则和上课时一样）
       const recs = [
         ...an.map((r) => ({ source: 'record', ...r, type: r.kind, answer: r.kind === 'conjecture' ? r.text : undefined })),
@@ -405,7 +424,7 @@ export async function renderClass(root, meta, desk = null) {
   }
 
   function savePage(p) {
-    sink.put('class_pages', { id: pad3(p.n), n: p.n, title: p.title || '', talk: p.talk || '', talkBy: p.talkBy || '', lead: p.lead || '', kind: p.kind || '', body: p.body || '', foot: p.foot || '', ...(p.memo?.length ? { memo: p.memo } : {}), at: Date.now() });
+    sink.put('class_pages', { id: pad3(p.n), n: p.n, title: p.title || '', talk: p.talk || '', talkBy: p.talkBy || '', lead: p.lead || '', kind: p.kind || '', body: p.body || '', foot: p.foot || '', ...(p.memo?.length ? { memo: p.memo } : {}), ...(p.beats ? { beats: p.beats } : {}), at: Date.now() });
   }
 
   // —— 学习台里改记忆（memory/memo.js）：都直接写进去了，上课时板上什么都不挂（不打扰学生）；
@@ -453,13 +472,126 @@ export async function renderClass(root, meta, desk = null) {
   }
 
   // by：这句话是谁说的（平台回报的 modelApplied；模拟老师是 'mock'），板顶那句话后面标出来
-  function setTalk(p, md, by = '') {
+  // beats：这一轮分拍播时每一拍的话（板顶一次只显示一拍，boardview.js 画「‹ 2 / 4 下一拍 ›」）
+  function setTalk(p, md, by = '', beats = null) {
     const talk = String(md || '').trim();
-    if (p.talk === talk && p.talkBy === by) return false;
+    const list = Array.isArray(beats) && beats.length > 1 ? beats : null;
+    if (p.talk === talk && p.talkBy === by && !list && !p.beats) return false;
     p.talk = talk;
     p.talkBy = by;
+    p.beats = list;
+    p.beat = list ? 0 : undefined;
+    p.beatFocus = list ? [] : undefined;
     bv.paint(p);
     savePage(p);
+    return true;
+  }
+
+  // —— 拍子：一拍一拍地播（docs/board-plan.md 第 2 节）——
+  // 一拍要指给学生看的段：这一拍写的、圈的、让动的、揭开的
+  function focusOf(ops) {
+    const ids = [];
+    for (const o of ops || []) {
+      if (!o?.ok) continue;
+      if (['add', 'new', 'replace', 'pin', 'show'].includes(o.op)) ids.push(o.id);
+      else if (o.op === 'mark' || o.op === 'figure') {
+        const t = o.target || o.id;
+        const seg = segs.has(t) ? t : board.querySelector(`[data-bid="${CSS.escape(String(t || ''))}"]`)?.closest('[data-step]')?.dataset.step;
+        if (seg) ids.push(seg);
+      }
+    }
+    return [...new Set(ids)];
+  }
+
+  // 播到第 b 拍：这一拍写的段露出来，推迟的指令（圈、让图动、擦掉）现在执行，记进这一轮的 boardOps
+  function revealBeat(b) {
+    if (!beat || b <= beat.max || b >= beat.n) return;
+    beat.max = b;
+    for (const id of beat.segs.get(b) || []) {
+      const sec = segs.get(id)?.sec;
+      if (!sec) continue;
+      sec.classList.remove('beat-wait');
+      if (!reduceMotion()) sec.classList.add('beat-in');
+    }
+    const notes = [];
+    const ran = beat.deferred.filter((d) => d.b === b).map((d) => execOp(d.op, [], notes));
+    for (const o of ran) if (!o.ok || o.error) notes.push(`指令 ${o.op}${o.action ? ` ${o.action}` : ''} ${o.id || o.target || ''} 没执行：${o.error || ''}`);
+    const p = pages.get(beat.page);
+    if (p?.beatFocus) p.beatFocus[b] = [...(beat.segs.get(b) || []), ...focusOf(ran)];
+    if (beat.told && ran.length) {
+      beat.told.boardOps = [...(beat.told.boardOps || []), ...ran];
+      sink.put('class_turns', { id: pad6(beat.told.seq), ...beat.told });
+    }
+    if (notes.length) addTurn({ role: 'system', kind: 'note', text: `[系统] ${[...new Set(notes)].join('\n')}` });
+    if (beat.max >= beat.n - 1) beat.done = true;
+  }
+
+  // 学生点「‹」「下一拍 ›」（或快捷回答「继续」）：往后走就先播到那一拍；往回只是换回那一拍的话、指一下那几段
+  function beatGo(n, k) {
+    const p = pages.get(n);
+    if (!p?.beats) return;
+    const to = Math.max(0, Math.min(p.beats.length - 1, k));
+    if (beat && beat.page === n) while (beat.max < to) revealBeat(beat.max + 1);
+    p.beat = to;
+    bv.paint(p);
+    focusBeat(p, to);
+    lastActive = Date.now();
+    bv.scheduleFit();
+  }
+
+  // 这一拍的段亮、别的淡（播到最后一拍全都恢复），滚到屏幕中间
+  function focusBeat(p, k, { scroll = true } = {}) {
+    if (!p) return;
+    const ids = (p.beatFocus?.[k] || []).filter((id) => segs.get(id)?.sec && !segs.get(id).sec.hidden);
+    p.sec.querySelectorAll('.class-seg.beat-focus').forEach((x) => x.classList.remove('beat-focus'));
+    const last = !p.beats || k >= p.beats.length - 1;
+    p.sec.classList.toggle('is-beating', !last && ids.length > 0);
+    for (const id of ids) segs.get(id).sec.classList.add('beat-focus');
+    if (!scroll || bv.view !== p.n) return;
+    const el = ids.length ? segs.get(ids.at(-1)).sec : p.talkEl;
+    el.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: ids.length ? 'center' : 'start' });
+  }
+
+  // 剩下的拍子一下子播完：学生作答、说话，或者要调用 Claude 之前（Claude 看到的黑板总是完整的）
+  function finishBeats() {
+    if (!beat) return;
+    const b = beat;
+    if (!b.done) {
+      while (b.max < b.n - 1) revealBeat(b.max + 1);
+      const p = pages.get(b.page);
+      if (p?.beats) { p.beat = p.beats.length - 1; bv.paint(p); focusBeat(p, p.beat, { scroll: false }); }
+    }
+    beat = null;
+  }
+
+  // —— 预案：这一批作答页面自己接（react.js）。返回 true 表示接了，不用调用 Claude ——
+  function tryLocal() {
+    if (busy || !queue.triggered || queue.texts.length || queue.images.length || hasFreshInk()) return false;
+    const items = queue.actions.map((a) => ({ a, trig: trigs.get(a) }));
+    const live = liveBlockIds();
+    const plan = planLocal({ items, rules: reacts, present: (id) => live.has(id) });
+    if (!plan) return false;
+    clearTimeout(timer);
+    const actions = queue.actions.splice(0);
+    queue.triggered = false;
+    queue.now = false;
+    started = true;
+    addTurn({ role: 'student', text: actionsMessage(actions), say: '', actions: actions.map(actionText), page: bv.cur || undefined });
+    const by = reacts.get(plan.fired[0].target)?.by;
+    markFired(reacts, plan);
+    const notes = [];
+    const shown = plan.show.map((id) => execOp({ op: 'show', id }, [], notes)).filter((o) => o.ok);
+    const cur = pages.get(bv.cur);
+    if (plan.talk && cur && cur.kind !== 'closing') setTalk(cur, plan.talk, by === 'mock' ? 'mock' : 'pre');
+    addTurn({ role: 'system', kind: 'react', text: reactNote(plan), fired: plan.fired.map(({ target, seq, index, kind }) => ({ target, seq, index, kind })) });
+    syncUsage();
+    refresh();
+    if (bv.view !== bv.cur) bv.show(bv.cur, { animate: true });
+    const el = shown.map((o) => segs.get(o.id)?.sec).filter(Boolean).at(-1) || (plan.talk ? cur?.talkEl : null);
+    el?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: shown.length ? 'nearest' : 'start' });
+    nudged = false;
+    lastActive = Date.now();
+    bar.setStatus('idle', '');
     return true;
   }
 
@@ -525,6 +657,7 @@ export async function renderClass(root, meta, desk = null) {
     if (seg.failed) { seg.sec = failedSec(seg); return; }
     const { sec } = renderSeg(seg);
     sec.classList.remove('class-pending');
+    if (seg.held) sec.hidden = true;
     seg.sec = sec;
   }
 
@@ -606,6 +739,8 @@ export async function renderClass(root, meta, desk = null) {
         seg = { id: op.id, seq: ++segSeq, page, place: toPin ? 'pin' : 'board', title: '', md: '', hidden: false, failed: false, pending: false, sec: null };
       }
       const next = { ...seg, title: op.title ?? seg.title, md: op.body || '', ...(op.point ? { point: op.point } : {}) };
+      // 藏着的段（add … hold，等预案揭开）：改写时还藏着；写错了等重写时记着要藏
+      const held = op.op === 'replace' ? !!seg.held : op.op === 'add' && (!!op.hold || !!(seg.pending && seg.held));
       const errors = [];
       // 组件 id 撞号：同一段里重复，或者和黑板上别的段重复（figure、作答记录、link: 都靠 id 找组件）
       const taken = liveBlockIds(seg);
@@ -628,14 +763,17 @@ export async function renderClass(root, meta, desk = null) {
         if (sec) { dropScenesOf(sec); sec.remove(); }
         for (const [id, step] of links) if (link(id).step !== step) link(id).set(step);
         // 记住 id、板、顺序和标题，重写时放回原位（重写多半不再写 title=）
-        if (isNew || seg.pending) { seg.pending = true; seg.title = next.title; segs.set(seg.id, seg); }
+        if (isNew || seg.pending) { seg.pending = true; seg.title = next.title; seg.held = held; segs.set(seg.id, seg); }
         failures.push({ key: op.id, id: op.id, title: next.title, errors, isNew: !seg.sec });
         return { op: op.op, id: op.id, ok: false, page: seg.page || undefined, error: errors.map((p) => `${p.kind}：${p.msg}`).join('；') };
       }
       if (seg.sec) { dropScenesOf(seg.sec); seg.sec.remove(); }
       tools.dropMarks(seg.id);
       sec.classList.remove('class-pending');
-      Object.assign(seg, next, { sec, hidden: false, failed: false, pending: false, softNotes: soft.length ? soft.map((p) => p.msg) : undefined });
+      Object.assign(seg, next, { sec, hidden: false, held, failed: false, pending: false, softNotes: soft.length ? soft.map((p) => p.msg) : undefined });
+      if (held) sec.hidden = true;
+      // 改写了：之前几轮挂在这一段组件上的预案作废（这一轮后面再写的 react 照常挂上）
+      if (!isNew) dropForSeg(reacts, seg.id, opTurn.seq);
       segs.set(seg.id, seg);
       rewrites.delete(seg.id);
       saveSeg(seg);
@@ -651,8 +789,33 @@ export async function renderClass(root, meta, desk = null) {
       seg.pending = false;
       if (seg.sec) seg.sec.hidden = true;
       tools.dropMarks(seg.id);
+      dropForSeg(reacts, seg.id, opTurn.seq);
       saveSeg(seg);
       return { op: 'hide', id: op.id, ok: true };
+    }
+    // 揭开藏着的段（add … hold）或撤回过的段
+    if (op.op === 'show') {
+      const seg = segs.get(op.id);
+      if (!seg?.sec || seg.failed || seg.pending) return { op: 'show', id: op.id, ok: false, error: seg ? `${op.id} 没画出来，揭不开` : `黑板上没有 ${op.id}` };
+      if (!seg.held && !seg.hidden) return { op: 'show', id: op.id, ok: true };
+      seg.held = false;
+      seg.hidden = false;
+      seg.sec.hidden = false;
+      seg.sec.classList.add('beat-in');
+      saveSeg(seg);
+      return { op: 'show', id: op.id, ok: true, page: seg.page || undefined };
+    }
+    // 预案：学生在这个组件上作答以后页面当场接的话（react.js）
+    if (op.op === 'react') {
+      const seg = liveBlockIds().get(op.target);
+      if (!seg) return { op: 'react', target: op.target, ok: false, error: `黑板上没有组件 ${op.target}（target 写组件的 id:，不是段的 id）` };
+      if (op.errors?.length) notes.push(`react ${op.target} 里有 ${op.errors.length} 行没读懂，没用：\n${op.errors.map((e) => `  - ${e}`).join('\n')}`);
+      const unknown = [...new Set(op.cases.flatMap((c) => c.show || []))].filter((id) => !segs.has(id));
+      if (unknown.length) notes.push(`react ${op.target} 的 show= 写了黑板上没有的段：${unknown.join('、')}（到时候揭不开）`);
+      if (!op.cases.length) { reacts.delete(op.target); return { op: 'react', target: op.target, seg, ok: true, cases: [] }; }
+      const cases = op.cases.map((c) => ({ ...c }));
+      reacts.set(op.target, { target: op.target, seq: opTurn.seq, seg, by: opTurn.by, cases: cases.map((c) => ({ ...c, used: false })) });
+      return { op: 'react', target: op.target, seg, by: opTurn.by, ok: true, cases };
     }
     if (op.op === 'figure') return tools.figureOp(op, notes);
     if (op.op === 'mark') return tools.markOp(op);
@@ -661,7 +824,7 @@ export async function renderClass(root, meta, desk = null) {
   }
 
   function saveSeg(seg) {
-    sink.put('steps', { id: seg.id, seq: seg.seq, page: seg.page || 0, place: seg.place || 'board', md: seg.md, title: seg.title || '', hidden: !!seg.hidden, failed: !!seg.failed, ...(seg.point ? { point: seg.point } : {}), by: 'class', at: Date.now() });
+    sink.put('steps', { id: seg.id, seq: seg.seq, page: seg.page || 0, place: seg.place || 'board', md: seg.md, title: seg.title || '', hidden: !!seg.hidden, failed: !!seg.failed, ...(seg.held ? { held: true } : {}), ...(seg.point ? { point: seg.point } : {}), by: 'class', at: Date.now() });
   }
 
   function refresh() {
@@ -709,11 +872,12 @@ export async function renderClass(root, meta, desk = null) {
         vars: tools.figureVars(b),
         results: (results.get(b.dataset.bid) || []).slice(-6).map((r) => r.line),
         draft: draftsIn(b).map((d) => (d.label ? `${d.label}：${d.text}` : d.text)).join('；'),
+        react: armedText(reacts.get(b.dataset.bid)) || undefined,
       })) : [];
       const text = texText(seg.sec?.querySelector('.stage-body > p'));
       const summary = [clipTex(text, 140), seg.softNotes?.length ? `（${seg.softNotes.join('；')}）` : ''].filter(Boolean).join(' ');
       const segMarks = seg.hidden ? [] : [...marks.values()].filter((m) => m.seg === seg.id).map((m) => markText(m.id, m.spec));
-      return { id: seg.id, page: seg.page || 0, place: seg.place || 'board', title: seg.title || seg.sec?.querySelector('h2')?.textContent?.trim() || '', summary, hidden: seg.hidden, pending: !!seg.pending, failed: !!seg.failed, blocks, marks: segMarks.length ? segMarks : undefined };
+      return { id: seg.id, page: seg.page || 0, place: seg.place || 'board', title: seg.title || seg.sec?.querySelector('h2')?.textContent?.trim() || '', summary, hidden: seg.hidden, held: !!seg.held, pending: !!seg.pending, failed: !!seg.failed, blocks, marks: segMarks.length ? segMarks : undefined };
     });
     const vw = window.innerWidth, vh = window.innerHeight;
     // 这节课的量（let 块）：课堂说明被压缩成摘要以后，Claude 也知道有哪些量、值是多少
@@ -786,6 +950,7 @@ export async function renderClass(root, meta, desk = null) {
     const trig = actionTrigger(a, { lastStep: a.source === 'event' && a.type === 'reveal' && isLastStep(a) });
     if (!trig) return;
     if (reportable(a)) {
+      trigs.set(a, trig);
       addResult(a);
       // 连着拖同一个点，只留最后一次
       if (a.type === 'drag') {
@@ -846,6 +1011,9 @@ export async function renderClass(root, meta, desk = null) {
 
   function flush() {
     if (busy || !queue.triggered) return Promise.resolve();
+    // 学生有动作了：这一轮剩下的拍子一下子播完；预案接得住就不调用 Claude
+    finishBeats();
+    if (tryLocal()) return Promise.resolve();
     return exclusive(async () => {
       // 先占住（busy），再等图片上传：上传慢的时候，后来的动作不会抢先发出去、也不会把顺序弄乱
       const actions = queue.actions.splice(0);
@@ -939,6 +1107,7 @@ export async function renderClass(root, meta, desk = null) {
   // why：这一轮为什么调用（usage.js：turn 学生引起的、stuck 停久了的提醒）；同一轮里再要的几次记成 lint（重写）/ images（看原图）
   async function converse(images = [], { why: firstWhy = 'turn' } = {}) {
     if (!teacher.available) return false;
+    finishBeats();
     let imgs = images;
     let why = firstWhy;
     let followed = false; // 这次已经补发过 view_handwriting 要的图了
@@ -1058,20 +1227,29 @@ export async function renderClass(root, meta, desk = null) {
     const pageBefore = bv.cur;
     const boardOps = [];
     turnMemos = [];
+    opTurn = { seq: turnSeq + 1, by: mock ? 'mock' : res.modelApplied || '' };
+    // 拍子（beats.js）：说一句、写一段、再说一句……一拍一拍地播。重写写错的段那一轮不播
+    const opSegs = segments.filter(isOp);
+    const plan = beatPlan(segments, isOp);
+    const play = FEATURES.beats && !keepTalk && shouldPlay(plan, opSegs.map((s) => s.op));
+    const deferred = []; // 到了那一拍才执行的指令 { b, op }
+    const beatSegs = new Map(); // 拍 → 这一拍写的段 id（先藏着）
     // 一轮最多开一块新板（2026-11-03 我说：一下子给好几块板、每块一点点，很影响学习）：同一轮第二个 board new 起都并到这块板上
     let newBoards = 0;
-    for (const s of segments) {
-      if (!isOp(s)) continue;
+    opSegs.forEach((s, i) => {
       const n = failures.length;
       let op = { ...s.op, body: s.body };
       if (op.op === 'new' && ++newBoards > 1) {
         op = { ...op, op: 'add' };
         if (newBoards === 2) notes.push('一轮只开一块新板：这一轮后面的 board new 都并到了第一块新板上。下一个点下一轮再换新板。');
       }
+      const b = play ? plan.opBeat[i] : 0;
+      if (b > 0 && DEFERRED_OPS.has(op.op)) { deferred.push({ b, op }); return; }
       const r = execOp(op, failures, notes);
       failures.slice(n).forEach((f) => { f.at = boardOps.length; });
       boardOps.push(r);
-    }
+      if (b > 0 && r.ok && ['add', 'replace', 'pin'].includes(op.op)) beatSegs.set(b, [...(beatSegs.get(b) || []), op.id]);
+    });
     // 同一轮里先写错、后面又写对了同一段（add 错了紧跟一个 replace）：不用再要求重写
     failures = failures.filter((f) => !boardOps.some((o, i) => i > f.at && o.ok && o.id === f.id && ['add', 'new', 'replace', 'pin'].includes(o.op)));
     // 说的话：写在当前板的最上面（换了新板就写在新板上），把上一句换掉。还没有板就开一块只有话的板
@@ -1080,8 +1258,19 @@ export async function renderClass(root, meta, desk = null) {
     if (talk && !keepTalk) {
       const cur = pages.get(bv.cur);
       const p = cur && cur.kind !== 'closing' ? cur : newPage();
-      setTalk(p, talk, mock ? 'mock' : res.modelApplied);
+      setTalk(p, talk, mock ? 'mock' : res.modelApplied, play ? plan.talks : null);
       talkPage = p.n;
+    }
+    // 后面几拍写的段先藏着（段已经画好、存好了，只是还没轮到）
+    if (play && talkPage) {
+      for (const ids of beatSegs.values()) for (const id of ids) segs.get(id)?.sec?.classList.add('beat-wait');
+      beat = { page: talkPage, n: plan.talks.length, max: 0, segs: beatSegs, deferred, told: null };
+      const later = new Set([...beatSegs.values()].flat());
+      pages.get(talkPage).beatFocus = [focusOf(boardOps).filter((id) => !later.has(id))];
+    } else {
+      beat = null;
+      // 没开成拍子（没说话）：推迟的指令照常执行
+      for (const d of deferred) boardOps.push(execOp(d.op, failures, notes));
     }
     const turnedPage = bv.cur !== pageBefore;
     refresh();
@@ -1091,7 +1280,7 @@ export async function renderClass(root, meta, desk = null) {
     if (turnedPage) bv.show(bv.cur, { animate: true });
     else if (pages.has(bv.cur)) {
       if (bv.view !== bv.cur) bv.show(bv.cur, { animate: true });
-      const fresh = boardOps.filter((o) => o.ok && (o.op === 'add' || o.op === 'replace') && o.page === bv.cur).map((o) => segs.get(o.id)?.sec).filter((sec) => sec && !sec.hidden).at(-1);
+      const fresh = boardOps.filter((o) => o.ok && (o.op === 'add' || o.op === 'replace') && o.page === bv.cur).map((o) => segs.get(o.id)?.sec).filter((sec) => sec && !sec.hidden && !sec.classList.contains('beat-wait')).at(-1);
       if (fresh) {
         const r = fresh.getBoundingClientRect();
         if (r.bottom > window.innerHeight - bar.height || r.top < 0) fresh.scrollIntoView({ behavior: smooth, block: 'nearest' });
@@ -1101,6 +1290,7 @@ export async function renderClass(root, meta, desk = null) {
       }
     }
     const told = addTurn({ role: 'claude', text: res.text, boardOps, page: bv.cur || undefined, talkPage, modelApplied: res.modelApplied, truncated: !!res.truncated, tools: toolCalls.length ? toolCalls : undefined, cost });
+    if (beat) { beat.told = told; focusBeat(pages.get(beat.page), 0, { scroll: false }); }
     if (turnMemos.length) runMemo(turnMemos.splice(0), told.seq, talkPage || bv.cur);
     // Claude 又说了话：重新计「停了多久」
     nudged = false;
@@ -1536,6 +1726,7 @@ export async function renderClass(root, meta, desk = null) {
     if (busy) { toast('等 Claude 说完这一轮再下课'); return; }
     if (!history.length) { toast('还没开始上课'); return; }
     if (!teacher.available) return;
+    finishBeats();
     exclusive(async () => {
       // 学习台里：下课那一刻还没提交的草稿记成证据（写了一半的不丢）。小结没写成、再点下课时，没变的草稿不重复记
       if (desk) for (const d of allDrafts()) sink.put('evidence', draftEvidence(d, evCtx(d.step)));

@@ -18,7 +18,8 @@ const NO_SWIPE = 'input, textarea, select, button, a, label, [contenteditable=""
  * onShow(n)：换了正在看的板；onMeasure(fit)：量过一次一屏放不放得下。底部的条（bar.setNav、bar.height、bar.el）建好后用 attachBar 接上。
  */
 // decorate(p)：每次画完一块板以后调（学习台里课堂在板顶的话下面挂改动单；实时黑板不给）
-export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy = () => false, seqOf = () => Infinity, onShow, onMeasure, decorate = null } = {}) {
+// onBeat(n, k)：板顶的话分拍播时，学生点了「‹」「下一拍 ›」（课堂的 beatGo；实时黑板不给）
+export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy = () => false, seqOf = () => Infinity, onShow, onMeasure, decorate = null, onBeat = null } = {}) {
   // 常驻栏（横屏在右边一栏，竖屏在顶上一条）+ 黑板。黑板里一块板一个 section，只显示正在看的那块
   root.innerHTML = `
     <div class="class-app">
@@ -64,6 +65,12 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
     sec.dataset.inkGroup = '';
     sec.innerHTML = '<header class="class-page-head" hidden><h2 class="class-page-title"></h2></header><div class="class-talk" hidden></div><div class="class-page-body"></div>';
     p = { n, title: '', talk: '', lead: '', kind: '', body: '', sec, head: sec.querySelector('.class-page-head'), titleEl: sec.querySelector('.class-page-title'), talkEl: sec.querySelector('.class-talk'), bodyEl: sec.querySelector('.class-page-body') };
+    // 分拍播的「‹」「下一拍 ›」
+    p.talkEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-beat]');
+      if (!btn || !onBeat || !p.beats) return;
+      onBeat(p.n, (p.beat ?? 0) + Number(btn.dataset.beat));
+    });
     pages.set(n, p);
     // 按板号插：恢复时板号可能不是按顺序来的
     const after = [...pagesBox.children].find((c) => Number(c.dataset.page) > n);
@@ -95,13 +102,25 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
   function paint(p) {
     p.titleEl.innerHTML = p.title ? mdToHtml(p.title, { inline: true }) : '';
     p.head.hidden = !p.title;
-    p.talkEl.innerHTML = p.talk ? mdToHtml(p.talk) : '';
+    // 分拍播（课堂 beats.js）：板顶一次只显示一拍的话，下面一排「‹ 2 / 4 下一拍 ›」
+    const beats = Array.isArray(p.beats) && p.beats.length > 1 ? p.beats : null;
+    const k = beats ? Math.max(0, Math.min(beats.length - 1, p.beat ?? 0)) : 0;
+    const said = beats ? beats[k] : p.talk;
+    p.talkEl.innerHTML = said ? mdToHtml(said) : '';
     p.talkEl.hidden = !p.talk;
-    // 课堂：板顶的话是谁说的（平台核验过的模型）。挂在最后一段的末尾，不单占一行
+    p.talkEl.classList.toggle('has-beats', !!beats);
+    // 课堂：板顶的话是谁说的（平台核验过的模型）。挂在最后一段的末尾，不单占一行。
+    // pre：Opus 5.5 上一轮预先写好的预案（react.js），学生作答以后页面当场接上，这一次没有调用
     if (p.talk && p.talkBy) {
       const last = p.talkEl.lastElementChild;
       const mock = p.talkBy === 'mock';
-      (last?.tagName === 'P' ? last : p.talkEl).insertAdjacentHTML('beforeend', `<span class="class-by${mock ? ' is-mock' : ''}" title="${mock ? '本地测试的模拟老师，没有调用 Claude' : '这句话由 claude-opus-5-5 回答：模型是平台核验的；effort high 是页面要求的档位，平台不回报'}">${mock ? '模拟老师' : 'Opus 5.5 ✓'}</span>`);
+      const pre = p.talkBy === 'pre';
+      const title = mock ? '本地测试的模拟老师，没有调用 Claude' : pre ? 'claude-opus-5-5 上一轮预先写好的回应：你作答以后页面当场接上，这一次没有再调用' : '这句话由 claude-opus-5-5 回答：模型是平台核验的；effort high 是页面要求的档位，平台不回报';
+      (last?.tagName === 'P' ? last : p.talkEl).insertAdjacentHTML('beforeend', `<span class="class-by${mock ? ' is-mock' : ''}" title="${title}">${mock ? '模拟老师' : pre ? 'Opus 5.5 预写 ✓' : 'Opus 5.5 ✓'}</span>`);
+    }
+    if (beats) {
+      const more = k < beats.length - 1;
+      p.talkEl.insertAdjacentHTML('beforeend', `<div class="class-beats" role="group" aria-label="一拍一拍地讲"><button type="button" class="class-beat-prev" data-beat="-1" aria-label="上一拍"${k ? '' : ' disabled'}>‹</button><span class="class-beat-at">${k + 1} / ${beats.length}</span>${more ? '<button type="button" class="class-beat-next" data-beat="1">下一拍 ›</button>' : ''}</div>`);
     }
     p.sec.classList.toggle('is-closing', p.kind === 'closing');
     let closing = p.bodyEl.querySelector(':scope > .class-closing');
