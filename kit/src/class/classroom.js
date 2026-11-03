@@ -1979,7 +1979,7 @@ export async function renderClass(root, meta, desk = null) {
       }] : []),
       {
         name: 'component_doc',
-        description: '取一个组件的完整写法（课堂说明里有的组件只写了最常用的写法，末尾写着「更多写法」）。name 写组件名，比如 elim、sched、answer。每调用一次你要多等一整轮，只在要用说明里没写到的字段时用；照精简版写错了，页面会自动把完整写法附在提醒里，不用先查。',
+        description: '取一个组件的完整写法（课堂说明里有的组件只写了最常用的写法，末尾写着「更多写法」）。name 写组件名，比如 elim、sched、answer；黑板指令（mark 标注、figure）也能查。每调用一次你要多等一整轮，只在要用说明里没写到的字段时用；照精简版写错了，页面会自动把完整写法附在提醒里，不用先查。',
         inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
         async execute(input) {
           const name = String(input?.name ?? '').trim();

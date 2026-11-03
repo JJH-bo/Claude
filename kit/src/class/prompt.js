@@ -725,13 +725,35 @@ export function lintDocs(componentDocs, subject, kinds = []) {
 }
 const DOC_MAX = 12 * 1024;
 
-// component_doc 工具：按名字取一个组件的完整说明；找不到时列出有哪些
+// 黑板指令不是组件：课堂 Claude 拿「mark」「标注」去查组件写法，以前回「没有叫 mark 的组件」，它就以为圈不了（2026-11-03）。
+// 这些名字直接给黑板指令说明里那一节
+const BOARD_DOC_ALIAS = [
+  [/^(board\s+)?(un)?mark$|标注|圈|框|划线|波浪线|着重号|荧光笔|涂色|大括号|^tags?$|^highlight$|^circle$|^underline$|^brace$|^annotat/i, '### mark / unmark'],
+  [/^(board\s+)?figure$|让图动/i, '### figure'],
+  [/^(board\s+)?react$|预案/i, '### react'],
+  [/^(board\s+)?why$/i, '### why'],
+  [/^(board\s+)?(un)?pin$|常驻栏/i, '### pin / unpin'],
+];
+export function boardDocFor(name) {
+  const n = String(name ?? '').trim();
+  const hit = BOARD_DOC_ALIAS.find(([re]) => re.test(n));
+  if (!hit) return '';
+  const a = PROTOCOL_DOC.indexOf(hit[1]);
+  if (a < 0) return '';
+  const b = PROTOCOL_DOC.indexOf('\n### ', a + 4);
+  return `「${n}」不是组件，是黑板指令（写在 board 块里），说明里这一节：\n\n${PROTOCOL_DOC.slice(a, b < 0 ? undefined : b).trim()}`;
+}
+
+// component_doc 工具：按名字取一个组件的完整说明；是黑板指令的给指令那一节；找不到时列出有哪些
 export function docLookup(componentDocs, subject, name) {
   const src = asText(componentDocs);
+  const names = allNames(src, subject);
+  // 「标注」「圈」这类词先当黑板指令（英语课的 parse 说明里也有「标注」两个字，不能被它截走）；真有这个名字的组件照旧给组件
+  const bd = boardDocFor(name);
+  if (bd && !names.includes(String(name ?? '').trim().toLowerCase())) return bd;
   const d = componentDoc(src, name, subject);
   if (d) return cutBytes(d, DOC_MAX);
-  const names = allNames(src, subject);
-  throw new Error(`没有叫「${String(name ?? '').trim()}」的组件${names.length ? `（这门课有：${names.join('、')}）` : ''}`);
+  throw new Error(`没有叫「${String(name ?? '').trim()}」的组件${names.length ? `（这门课有：${names.join('、')}）` : ''}。圈、框、划线、荧光笔这类标注不是组件，是黑板指令 board mark（说明里「mark / unmark」那一节）`);
 }
 
 // tools：这个查看方式给不给课堂 Claude 工具（不给就没有 component_doc，说明里不提它）

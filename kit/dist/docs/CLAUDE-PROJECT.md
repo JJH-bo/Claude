@@ -1,6 +1,6 @@
 # 学习台 · 给 Claude 的教学说明
 
-> **版本：2026-11-03zc**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
+> **版本：2026-11-03zd**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
 >
 > 这份说明的**最新版**一直放在**学习台** artifact 里（文件 `CLAUDE-PROJECT.md`）。每个新对话里，第一次做和学习有关的事（写黑板、备课、读课堂记录、改记忆）之前，先用 `Artifact` 工具读它：`action: "read"`，`url` 是上面的学习台地址，`path: "CLAUDE-PROJECT.md"`。
 > - 读到的版本比你手上这份新：以读到的为准，这份里和它不一样的地方全部作废。回复里顺便告诉我「项目指令里的说明是旧版（版本号），学习台里是新版（版本号）」。
@@ -252,6 +252,7 @@ b = [1, 1, -2]
 - `translate`（英语）：翻译（页面按要点判） → `components/translate.md`
 - `gloss`（英语）：生词（点一下看意思） → `components/gloss.md`
 - `drill`（英语）：句型操练（一题一题做，页面判分） → `components/drill.md`
+- **板书标注**（圈、框、大括号、下划线、波浪线、着重号、荧光笔、✓ ✗、箭头；也叫 mark、tag、highlight、圈画）：不是组件，是教具指令 `mark`（课堂里写 board mark 块，实时黑板写进 `ops`），写法见第六节「教具指令：figure、mark / unmark」 → `components/mark.md`
 
 ## 四、读学习记录
 
