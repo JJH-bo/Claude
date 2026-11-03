@@ -13,6 +13,7 @@ import {
   curriculumTree, blockDetail, blockTimeline, weaknessRows, errorRows, classRows, learningStats, evidenceLine, MASTERY_KEY, cmpId,
 } from './views.js';
 import { toDate } from './schema.js';
+import { hitText, lessonLines, pointCatalog } from './skills.js';
 
 const inline = (s) => { try { return mdToHtml(String(s ?? ''), { inline: true }); } catch { return escapeHtml(String(s ?? '')); } };
 const esc = escapeHtml;
@@ -27,7 +28,7 @@ const fmt = (v) => (v === null || v === undefined ? '无' : Array.isArray(v) ? v
  * host：放页面的元素；getData()：这一科的记忆库各类的数组（一直在更新）；db：学习台的数据库；ops：memops.js；
  * goto(hash)：整页刷新跳到地址（进课堂、翻看黑板）。返回 { show(route), refresh() }
  */
-export function createPages(host, { getData, db, ops, goto }) {
+export function createPages(host, { getData, db, ops, goto, purge = null }) {
   let route = '';
   let data = getData(); // 当前这一科的记忆（desk.js 的 filterSpace），每次重画时重新取
   const open = new Set(); // 展开着的详情（页面重画时保持）
@@ -67,7 +68,7 @@ export function createPages(host, { getData, db, ops, goto }) {
     const legend = `<div class="dk-legend">${['未学', '讲过', '基础题过', '复现通过', '掉了'].map((s) => stateChip(s)).join('')}</div>`;
     const blk = (b) => `<div class="dk-blk" data-open="map:${esc(b.id)}">
         <button type="button" class="dk-blk-row" data-toggle="map:${esc(b.id)}" aria-expanded="${open.has(`map:${b.id}`)}"><span>${inline(b.title || b.id)}</span>${stateChip(b.state, b.tier)}</button>
-        ${b.points?.length ? `<div class="dk-pts">${b.points.map((p) => `<span class="dk-pt">${esc(p.id.split('#')[1])} ${stateChip(p.state, p.tier)}</span>`).join('')}</div>` : ''}
+        ${b.points?.length ? `<div class="dk-pts">${b.points.map((p) => `<span class="dk-pt">${inline(p.title || p.id.split('#')[1])} ${stateChip(p.state, p.tier)}</span>`).join('')}</div>` : ''}
         ${open.has(`map:${b.id}`) ? blockPanel(b.id) : ''}
       </div>`;
     const sec = (n) => `<div class="dk-sec"><div class="dk-sec-h">${inline(n.title || n.id)}${counts(n.count)}</div>${n.children.map((c) => (c.level === 'block' ? blk(c) : sec(c))).join('')}</div>`;
@@ -82,7 +83,7 @@ export function createPages(host, { getData, db, ops, goto }) {
     return `<div class="dk-panel">
       ${d.block?.scope ? `<p><span class="dk-k">范围</span>${inline(d.block.scope)}</p>` : ''}
       ${d.block?.exam ? `<p><span class="dk-k">考试</span>${inline(d.block.exam)}</p>` : ''}
-      ${m.length ? m.map((x) => `<div class="dk-sub-card"><p><b>${String(x.id).includes('#') ? esc(String(x.id).split('#')[1]) : '这一块'}</b> ${stateChip(x.state, x.tier)}</p>${Array.isArray(x.log) && x.log.length ? `<ul class="dk-log">${logLines(x.log)}</ul>` : ''}</div>`).join('') : '<p class="muted">还没有掌握状态（未学）。</p>'}
+      ${m.length ? m.map((x) => `<div class="dk-sub-card"><p><b>${String(x.id).includes('#') ? inline(x.title || pointCatalog(data.sessions || [], data.mastery || [])[x.id]?.title || String(x.id).split('#')[1]) : '这一块'}</b> ${stateChip(x.state, x.tier)}</p>${Array.isArray(x.log) && x.log.length ? `<ul class="dk-log">${logLines(x.log)}</ul>` : ''}</div>`).join('') : '<p class="muted">还没有掌握状态（未学）。</p>'}
       ${d.weaknesses.length ? `<p><span class="dk-k">弱点</span>${d.weaknesses.map((w) => inline(w.title)).join('；')} <a href="#weak" class="dk-link">弱点表</a></p>` : ''}
       ${d.errors.length ? `<p><span class="dk-k">错题</span>${d.errors.length} 道${d.errors.some((e) => e.resolved) ? `（已解决 ${d.errors.filter((e) => e.resolved).length}）` : ''} <a href="#errors" class="dk-link">错题本</a></p>` : ''}
       ${d.reviews.length ? `<p><span class="dk-k">复现组</span>${d.reviews.map((r) => inline(r.title)).join('；')}</p>` : ''}
@@ -102,9 +103,9 @@ export function createPages(host, { getData, db, ops, goto }) {
     if (!rows.length) return '<p class="muted">弱点表还是空的。</p>';
     return `<section class="dk-card"><h2 class="dk-h">弱点表</h2><p class="dk-sub muted">影响面大的在前（通用 → 链条 → 局部）。L0 是还没修好，L3 是隔了很久还对。点一条看挂的错题。</p>
       ${rows.map((w) => `<div class="dk-blk${w.closed ? ' is-closed' : ''}">
-        <button type="button" class="dk-blk-row" data-toggle="weak:${esc(w.id)}" aria-expanded="${open.has(`weak:${w.id}`)}"><span>${inline(w.title)}</span><span class="dk-tag">${esc(w.scope || '')}</span><span class="dk-tag lv-${esc(w.level || '')}">${esc(w.level || '')}</span>${w.closed ? '<span class="dk-tag">关了</span>' : ''}</button>
+        <button type="button" class="dk-blk-row" data-toggle="weak:${esc(w.id)}" aria-expanded="${open.has(`weak:${w.id}`)}"><span>${inline(w.title)}</span><span class="dk-tag">${esc(w.scope || '')}</span><span class="dk-tag lv-${esc(w.level || '')}">${esc(w.level || '')}</span>${w.hits?.n > 1 ? `<span class="dk-tag is-warn">出现 ${w.hits.n} 次</span>` : ''}${w.closed ? '<span class="dk-tag">关了</span>' : ''}</button>
         ${open.has(`weak:${w.id}`) ? `<div class="dk-panel">
-          ${w.last ? `<p><span class="dk-k">最近</span>${esc(w.last)}</p>` : ''}
+          ${w.hits?.n ? `<p><span class="dk-k">出现</span>${esc(hitText(w.hits))}</p>` : w.last ? `<p><span class="dk-k">最近</span>${esc(w.last)}</p>` : ''}
           ${list(w.blocks).length ? `<p><span class="dk-k">相关的块</span>${list(w.blocks).map((b) => inline(blockName(b))).join('、')}</p>` : ''}
           ${w.errorDocs.length ? `<div class="dk-memo-sub" role="heading" aria-level="3">挂的错题</div>${w.errorDocs.map((e) => errorCard(e, false)).join('')}` : ''}
           ${Array.isArray(w.log) && w.log.length ? `<div class="dk-memo-sub" role="heading" aria-level="3">怎么变过来的</div><ul class="dk-log">${logLines(w.log)}</ul>` : ''}
@@ -160,7 +161,7 @@ export function createPages(host, { getData, db, ops, goto }) {
   function classesPage() {
     const rows = classRows(data);
     if (!rows.length) return '<p class="muted">还没有上过课。</p>';
-    return `<section class="dk-card"><h2 class="dk-h">以前的课</h2>${rows.map((r) => `<a class="dk-class-row" href="#classes/${esc(r.id)}">
+    return `<section class="dk-card"><h2 class="dk-h">以前的课</h2><p class="dk-sub muted">测试开的、不要的课：点进去，最下面「删掉这节课」。</p>${rows.map((r) => `<a class="dk-class-row" href="#classes/${esc(r.id)}">
       <span class="dk-cr-d"><b>${esc((r.date || '').slice(5).replace('-', '/') || r.id)}</b></span>
       <span class="dk-cr-m">${r.kind !== 'class' ? `<span class="dk-tag is-ok">${KIND_TEXT[r.kind]}</span>` : ''}${r.review ? '<span class="dk-tag">复现课</span>' : ''}${r.status === 'open' ? '<span class="dk-tag is-warn">没下课</span>' : ''} ${inline(r.title)}<br><span class="muted">${esc(r.summary || r.line || '')}</span></span>
       <span class="dk-cr-n">${r.minutes !== null ? `${r.minutes} 分钟` : ''}${r.usage?.calls ? `<br><span class="muted">${esc(tokenText(r.usage.bytes))}</span>` : ''}${r.verify ? `<br><span class="muted">核验 ${r.verify.turns}${r.verify.discarded ? ` · 作废 ${r.verify.discarded}` : ''}</span>` : ''}</span>
@@ -180,7 +181,8 @@ export function createPages(host, { getData, db, ops, goto }) {
     return `<p><a class="dk-link" href="#classes">← 以前的课</a></p>
       <section class="dk-card"><h2 class="dk-h">${esc(r.date)} ${inline(r.title)}</h2>
         <p class="muted">${KIND_TEXT[r.kind]}${r.block ? ` · ${inline(blockName(r.block))}` : ''}${r.minutes !== null ? ` · ${r.minutes} 分钟` : ''}${r.usage?.calls ? ` · 调用 ${r.usage.calls} 轮，${esc(tokenText(r.usage.bytes))}` : ''}</p>
-        <div class="mm-acts"><button type="button" class="btn btn-primary" data-goto="${r.status === 'open' ? esc(sid) : `view/${esc(sid)}`}">${r.status === 'open' ? (r.kind === 'class' ? '接着上课' : '进去') : r.kind === 'unit' ? '翻看这个单元' : '翻看这节课的黑板'}</button></div>
+        <div class="mm-acts"><button type="button" class="btn btn-primary" data-goto="${r.status === 'open' ? esc(sid) : `view/${esc(sid)}`}">${r.status === 'open' ? (r.kind === 'class' ? '接着上课' : '进去') : r.kind === 'unit' ? '翻看这个单元' : '翻看这节课的黑板'}</button>${purge ? `<button type="button" class="btn btn-danger" data-purge="${esc(sid)}">删掉这节课</button>` : ''}</div>
+        ${skillsHtml(r.skills)}
         ${sum ? `<div class="dk-memo-sub" role="heading" aria-level="3">下课小结</div><div class="dk-summary">${mdToHtml(sum.text || '')}</div>` : ''}
         ${rep && sheetMd(rep.sheet) ? `<div class="dk-memo-sub" role="heading" aria-level="3">这节课的一页</div><div class="dk-summary dk-sheet">${mdToHtml(sheetMd(rep.sheet))}</div>` : ''}
         ${rep ? reportHtml(rep) : rep === false ? '<p class="muted">这节课还没有课后报告（下课以后才有；回首页会补写）。</p>' : '<p class="muted">正在读课后报告…</p>'}
@@ -188,12 +190,26 @@ export function createPages(host, { getData, db, ops, goto }) {
       </section>`;
   }
 
+  // 这节课的三行和按知识点的表（skills.js：下课后页面让 Claude 把每道题归到知识点）
+  function skillsHtml(sk) {
+    if (!sk?.sum || !Object.keys(sk.sum).length) return '';
+    const cat = pointCatalog(data.sessions || [], data.mastery || []);
+    const ll = lessonLines(sk, cat);
+    const row = (k, xs, f) => (xs.length ? `<p><span class="dk-k">${k}</span>${xs.map(f).join('；')}</p>` : '');
+    const name = (p) => cat[p]?.title || sk.points?.[p] || p.split('#')[1];
+    return `<div class="dk-memo-sub" role="heading" aria-level="3">这节课学到哪了</div>
+      ${row('会了', ll.solid, (x) => inline(x.name))}
+      ${row('还不稳', ll.shaky, (x) => `${inline(x.name)}<span class="muted">（错 ${x.fail} 道${x.fixed ? '，当堂改过来了，隔天再测' : ''}${x.w.length ? `；${x.w.map((w) => inline(weakName(w))).join('、')}` : ''}）</span>`)}
+      ${row('下次先测', ll.next, (x) => inline(x.name))}
+      <details class="dk-soft"><summary>按知识点（${Object.keys(sk.sum).length} 个）</summary><div class="dk-tablewrap"><table class="dk-table2"><thead><tr><th>知识点</th><th>题</th><th>一次对</th><th>失手</th></tr></thead><tbody>${Object.entries(sk.sum).sort((a, b) => cmpId(a[0], b[0])).map(([p, x]) => `<tr><td>${inline(name(p))}<span class="muted">（${inline(blockName(p.split('#')[0]))}）</span></td><td>${x.n}</td><td>${x.first}</td><td>${x.fail}</td></tr>`).join('')}</tbody></table></div></details>`;
+  }
+
   function reportHtml(rep) {
     const t = rep.totals || {};
     const items = rep.items || [];
     return `<div class="dk-memo-sub" role="heading" aria-level="3">课后报告</div>
-      <p>做了 ${t.items || 0} 题：一次对 ${t.first || 0}、改对 ${t.ok || 0}、错 ${t.wrong || 0}、想不出来 ${t.giveup || 0}、看了答案 ${t.revealed || 0}${t.open ? `、没判 ${t.open}` : ''}${t.drafts ? `；${t.drafts} 处草稿没交` : ''}。</p>
-      ${items.length ? `<div class="dk-tablewrap"><table class="dk-table2"><thead><tr><th>题</th><th>每次</th><th>结果</th><th>用时</th></tr></thead><tbody>${items.map((it) => `<tr><td>${inline(it.q)}${it.page ? `<span class="muted">（第 ${it.page} 块板）</span>` : ''}</td><td class="dk-seq">${esc(it.seq || '·')}</td><td>${esc(OUTCOME_TEXT[it.outcome] || it.outcome)}</td><td>${it.ms ? `${Math.round(it.ms / 1000)} 秒` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      <p>做了 ${t.items || 0} 题：一次对 ${t.first || 0}、改对 ${t.ok || 0}${t.guess ? `（其中 ${t.guess} 道是把选项试遍了才对）` : ''}、错 ${t.wrong || 0}、想不出来 ${t.giveup || 0}、看了答案 ${t.revealed || 0}${t.open ? `、没判 ${t.open}` : ''}${t.drafts ? `；${t.drafts} 处草稿没交` : ''}。</p>
+      ${items.length ? `<div class="dk-tablewrap"><table class="dk-table2"><thead><tr><th>题</th><th>每次</th><th>结果</th><th>用时</th></tr></thead><tbody>${items.map((it) => `<tr><td>${inline(it.q)}${it.page ? `<span class="muted">（第 ${it.page} 块板）</span>` : ''}</td><td class="dk-seq">${esc(it.seq || '·')}</td><td>${esc(it.guess ? '试出来的' : OUTCOME_TEXT[it.outcome] || it.outcome)}</td><td>${it.ms ? `${Math.round(it.ms / 1000)} 秒` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${(rep.byTag || []).filter((x) => x.tag).length ? `<p><span class="dk-k">按块 / 知识点</span>${rep.byTag.filter((x) => x.tag).map((x) => `${inline(blockName(x.tag))}：${x.items} 题一次对 ${x.first}`).join('；')}</p>` : ''}
       ${rep.drafts?.length ? `<p><span class="dk-k">没交的草稿</span>${rep.drafts.map((d) => `「${esc(d.text)}」`).join('；')}</p>` : ''}
       ${rep.says?.length ? `<p><span class="dk-k">我说的</span>${rep.says.filter((s) => s.text).map((s) => `「${esc(s.text)}」`).join(' ')}</p>` : ''}
@@ -215,8 +231,9 @@ export function createPages(host, { getData, db, ops, goto }) {
   }
 
   async function onClick(e) {
-    const t = e.target.closest('[data-toggle], [data-solve], [data-goto], [data-more]');
+    const t = e.target.closest('[data-toggle], [data-solve], [data-goto], [data-more], [data-purge]');
     if (!t) return;
+    if (t.dataset.purge) { purge?.(t.dataset.purge, t); return; }
     if (t.dataset.more) { errShown += ERR_PAGE; paint(); return; }
     if (t.dataset.goto) { goto(t.dataset.goto); return; }
     if (t.dataset.toggle) {

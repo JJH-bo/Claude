@@ -38,6 +38,7 @@ import { fromEvidence, sayEvidence, draftEvidence, observationRecord, slipRecord
 import { callCost, usageOf, usageText } from './usage.js';
 import { reportText } from '../memory/report.js';
 import { earlierClasses } from '../memory/digest.js';
+import { choose } from '../dialog.js';
 import { lessonSheet, sheetMd } from '../memory/sheet.js';
 import { slipsToFold, blockSwitch, tidyDue, tidyText } from '../memory/memo.js';
 import { spaceOfId } from '../memory/space.js';
@@ -164,7 +165,7 @@ export async function renderClass(root, meta, desk = null) {
   let nudged = false; // 这一轮已经提醒过「停了很久」
   let lastPrompt = null; // 开发面板看：上一轮发了多少字节
   // 被函数声明用到、而 restore() 在函数定义之前就会调到那些函数：要在这里先有值（let / const 有暂时性死区）
-  let raf = 0, pendingText = ''; // 草稿：一帧最多画一次
+  let raf = 0, pendingText = '', pendingStatus = ''; // 草稿：一帧最多画一次
   let firstAt = 0; // 这一次调用黑板上出现第一个字的时候（performance.now）
   let stream = null; // 边写边显示：这一轮先画出来的段（streamOps）
   let streamPage = null; // 核验过了：先开的那块新板留着，finishTurn 的 board new 直接用它
@@ -1624,14 +1625,15 @@ export async function renderClass(root, meta, desk = null) {
     return draft;
   }
 
-  function drawDraft(text) {
+  function drawDraft(text, status = 'Claude 正在写黑板…') {
     pendingText = text;
+    pendingStatus = status;
     if (raf) return;
     raf = requestAnimationFrame(() => {
       raf = 0;
       try {
         const { segments } = parseOutput(pendingText);
-        bar.setStatus('writing', 'Claude 正在写黑板…');
+        bar.setStatus('writing', pendingStatus);
         const d = ensureDraft();
         const talk = d.keepTalk ? '' : segments.filter((s) => s.type === 'speech').map((s) => s.text).join('\n\n').trim();
         if (!firstAt && (talk || segments.some((s) => s.type === 'board'))) firstAt = performance.now();
@@ -2009,10 +2011,17 @@ export async function renderClass(root, meta, desk = null) {
   }
 
   // —— 下课：让课堂 Claude 写一份小结，存进 class_notes（同样只收 Opus 5.5 写的），写在最后一块板上 ——
-  function endClass() {
+  async function endClass() {
     if (busy) { toast('等 Claude 说完这一轮再下课'); return; }
     if (!history.length) { toast('还没开始上课'); return; }
     if (!teacher.available) return;
+    // 已经写过小结、之后没再上课：再点「下课」先问一句（11-02 那节课小结写了两遍，第二遍又等了一分半）
+    const last = [...history].reverse().find((t) => t && !t.discarded && (t.role === 'student' || t.kind === 'closing'));
+    if (last?.kind === 'closing') {
+      const v = await choose('这节课的小结已经写好了，下课以后没有再上课。', [{ label: '重新写一份', value: 'again' }, { label: '看小结', value: 'show', primary: true }]);
+      if (v !== 'again') { if (v === 'show' && last.page) bv.show(last.page, { animate: true }); return; }
+      if (busy) return;
+    }
     finishBeats();
     exclusive(async () => {
       // 学习台里：下课那一刻还没提交的草稿记成证据（写了一半的不丢）。小结没写成、再点下课时，没变的草稿不重复记
@@ -2033,10 +2042,13 @@ export async function renderClass(root, meta, desk = null) {
       const why = desk ? tidyDue(desk.mem, sp, desk.sid) : '';
       const tidy = why ? { why, text: tidyText(desk.mem, sp) } : null;
       const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review, opening: desk?.opening, slips: desk ? slipsToFold(desk.mem, sp) : '', plan: FEATURES.plan === false ? null : latestPlan(history), tidy }) }], maxBytes: promptLimit(), stub: teacher.tools });
-      const cost = (why) => callCost({ bytes: fit.bytes, why });
+      // 小结边写边显示（以前要干等一两分钟才一下子出来），也记下等了多久
+      const t0 = performance.now();
+      firstAt = 0;
+      const cost = (why) => callCost({ bytes: fit.bytes, why, ms: performance.now() - t0, first: firstAt ? firstAt - t0 : undefined });
       let res;
       try {
-        res = await teacher.call(fit.turns, { ...TEACH, cache: false, signal: ctl.signal });
+        res = await teacher.call(fit.turns, { ...TEACH, cache: false, signal: ctl.signal, onText: ({ text }) => drawDraft(text, 'Claude 在写这节课的小结…') });
       } catch (e) {
         failTurn(e, '下课小结', cost('failed'));
         return false;

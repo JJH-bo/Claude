@@ -1,6 +1,6 @@
 # 学习台 · 给 Claude 的教学说明
 
-> **版本：2026-11-03s**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
+> **版本：2026-11-03u**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
 >
 > 这份说明的**最新版**一直放在**学习台** artifact 里（文件 `CLAUDE-PROJECT.md`）。每个新对话里，第一次做和学习有关的事（写黑板、备课、读课堂记录、改记忆）之前，先用 `Artifact` 工具读它：`action: "read"`，`url` 是上面的学习台地址，`path: "CLAUDE-PROJECT.md"`。
 > - 读到的版本比你手上这份新：以读到的为准，这份里和它不一样的地方全部作废。回复里顺便告诉我「项目指令里的说明是旧版（版本号），学习台里是新版（版本号）」。
@@ -664,7 +664,7 @@ b = [1, 1, -2]
 
 ### 每节课和证据（证据页面写，你读）
 
-- **`sessions`**：编号 `c-20261027-1`（日期 - 当天第几节，三种课共用一套编号）。`kind`：`class` 课堂（页面开，不写就是它）、`live` 实时黑板、`unit` 自学单元（这两种由你开，第五节、第一节）。`date`、`block`（这节课的块）、`space`、`title`、`status`（`open` 还在上 / `closed` 下课了、用完了）、`startedAt`、`endedAt`、`pack`（开课时资料包的 `unit`、`goal`）、`verify`（核验了几轮、作废了几轮）、`summary`（下课小结那条观察的 id）、`usage`（这节课调用 Claude 花了多少，见第六节「课后：读课堂记录」的 `cost`）、`report`（课后报告的要点：`line` 一行字、`items` 做了几题、`first` 一次对几题、`at`）。这节课的东西都在 `sessions/{编号}/` 下面（课堂：`steps`、`class_turns`、`class_pages`、`pack`；实时黑板：`steps`、`talk`、`ops`、`ops_done`、`meta`、`lint`、`uploads`；自学单元：`unit`；三种都有课后报告 `report`）。
+- **`sessions`**：编号 `c-20261027-1`（日期 - 当天第几节，三种课共用一套编号）。`kind`：`class` 课堂（页面开，不写就是它）、`live` 实时黑板、`unit` 自学单元（这两种由你开，第五节、第一节）。`date`、`block`（这节课的块）、`space`、`title`、`status`（`open` 还在上 / `closed` 下课了、用完了）、`startedAt`、`endedAt`、`pack`（开课时资料包的 `unit`、`goal`）、`verify`（核验了几轮、作废了几轮）、`summary`（下课小结那条观察的 id）、`usage`（这节课调用 Claude 花了多少，见第六节「课后：读课堂记录」的 `cost`）、`report`（课后报告的要点：`line` 一行字、`items` 做了几题、`first` 一次对几题、`at`、`v`、`provisional`）、`skills`（知识点归类，第七节「课后报告」后面）。这节课的东西都在 `sessions/{编号}/` 下面（课堂：`steps`、`class_turns`、`class_pages`、`pack`；实时黑板：`steps`、`talk`、`ops`、`ops_done`、`meta`、`lint`、`uploads`；自学单元：`unit`；三种都有课后报告 `report`）。
 - **`evidence`**：编号 `ev-…`，页面自动编。每条都有 `session`、`block`（这节课的块）、`tags`（知识点标签：`["L2.2.1", "L2.2.1#tr"]`，后一个来自课堂里的 Claude 给那一段标的 `point=`）、`kind`、`src`、`at`：
   - `src: "record"`：一次作答。`kind` 是组件（`answer`、`practice`、`quiz`、`predict`、`steps`、`conjecture`……），`comp` 是组件的 id，`step` 是黑板上的段，`q` 题面，`text` / `value` 我写的、选的，`ok` 程序判的对错（判不了是 null），`attempts` 第几次，`ms` 用时，`giveup` 想不出来，`final` 这道题的最终结果，`images` 手写原图，`transcript` 转写。
   - `src: "event"`：一个动作。`kind` 是 `reveal`（揭开一步）、`giveup`、`drag`（拖动，`detail` 里是变量和松手时的值）、`sure`（我点的「有把握 / 没把握」，`detail.sure` 是 true / false，`detail.key` 是课后报告里那道题的键，`detail.ok` 那题判的对错）、`open`（打开）、`end`（下课）等。
@@ -686,6 +686,12 @@ b = [1, 1, -2]
 - `notes`：课堂里的 Claude 这节课的观察、提议、小结（id、`kind`、开头一段）；`summary` 小结的 id；`slips` 它记的失误。
 - `usage`：这节课花了多少（同 `sessions/{编号}.usage`）；`verify`：核验了几轮、作废了几轮。
 - 太长时（几百道题）文字会缩短、最早的条目截掉，`more` 里写着各截掉了几条。
+- `items[].guess: true`：单选题把选项差不多试遍了才对（三个选项第二次、四个选项第三次），`totals.guess` 是几道。这种「改对」证明不了会。
+- 挂着没下课、几个小时没动静的课，页面先按现有的证据算一份**暂时的**报告（`sessions/{编号}.report.provisional: true`），课照旧能接着上。`report.v` 是算法的版本，旧版算的首页打开时重算。
+
+**知识点归类**（`sessions/{编号}.skills`，页面写，你读）：报告写好以后，页面调用一次 Claude 把每道题归到一个具体的知识点（`块#短名`，例如 `EN-L1.1.1#dobj-oc`「双宾和宾补的区分」），做错了而且正是某个弱点说的那件事的挂上弱点。字段：`items`（`k` 报告里那道题的 `key`、`p` 知识点、`w` 弱点）、`points`（这节课新起的知识点和标题）、`sum`（每个知识点 `n` 几道、`first` 一次对、`fail` 失手、`end` 最后一道 `clean` / `fail`、`w` 挂上的弱点）。用处：掌握按知识点、按真正讲的块算（证据上记的块不一定对：课上可能改讲了别的块）；弱点表写着每个弱点出现过几次、最近哪天、之后做对过几道；「以前的课」和首页写着这节课会了的、还不稳的、下次先测的。课堂里的 Claude 的记忆摘要里带着上一节的「下次先测」。你写掌握、弱点时可以照这份看。
+
+**删课**：测试开的、不要的课，我在「以前的课」点进去「删掉这节课」（首页没下课的那一行也有「删掉」）：这节课的黑板、对话、报告、证据、观察、失误、改动单、抄进题库的题、错题一起删；守则用到的失误、弱点挂着的错题留着（失误去掉课号，记 `wasSession`）。你不用替我删。
 
 ### 练一练和题库：`drills`（页面写，你也可以写）
 

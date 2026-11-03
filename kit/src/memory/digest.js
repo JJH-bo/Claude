@@ -7,6 +7,7 @@
 // 规则最多占全文预算的 RULES_SHARE（红线、掌握、检验、讲解在前），放不下的进目录：真实的记忆库里规则有十几 KB，
 // 不限的话全被规则占满（2026-10-29 用真数据量出来的）。目录有自己的上限 CATALOG_MAX，太长时远处的错题、掌握收成按块的编号。
 // 撤销了的（status: void、有一条作废的更正指向它）不带；学生标了已解决的错题注明；还在等学生确认的改动单列出来，免得它再提一遍。
+import { weaknessHits, hitText, lessonLines, lessonLinesText, pointCatalog } from './skills.js';
 import { voidedIds, resolvedErrors, pendingTitle, absorbedSlips } from './memo.js';
 import { filterSpace, spaceOfId, positionId, sharedFor } from './space.js';
 import { dueList, toDate } from './schema.js';
@@ -126,11 +127,17 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
 
   // 以前学这一块（和挨着的块）的课：最近两节，报告的一行 + 小结开头。上一节怎么样，开课就要知道
   const obs = get('observations');
+  const catalog = pointCatalog(get('sessions'), get('mastery'));
   const before = get('sessions').filter((s) => s.id !== session && nearIds.has(String(s.block || '')) && (s.report || s.summary || s.status === 'closed'))
     .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0)).slice(0, 2);
   sections.push({
     coll: 'sessions', head: '## 以前学这一块的课（sessions，最近的在前）',
-    items: before.map((s) => { const x = sessionLine(s, obs, 160); return { key: `sessions/${s.id}`, text: `- ${x.head}${s.date ? ` ${s.date}` : ''}${x.line ? `：${x.line}` : ''}${x.sum.length ? `\n  - 小结：${x.sum.join(' / ')}` : ''}` }; }),
+    items: before.map((s, i) => {
+      const x = sessionLine(s, obs, 160);
+      // 最近那节归过类的：会了 / 还不稳 / 下次先测（页面按知识点算的），这节课开头先测没稳的
+      const ll = i === 0 && s.skills ? lessonLinesText(lessonLines(s.skills, catalog)) : [];
+      return { key: `sessions/${s.id}`, text: `- ${x.head}${s.date ? ` ${s.date}` : ''}${x.line ? `：${x.line}` : ''}${x.sum.length ? `\n  - 小结：${x.sum.join(' / ')}` : ''}${ll.length ? `\n  - 页面按知识点算的：${ll.join('。')}` : ''}` };
+    }),
   });
 
   // 相关的错题：块挨着这节课的，或者挂在相关弱点上的。相关的弱点：管着这几块的、挂着这些错题的、影响面是「通用」的
@@ -141,9 +148,10 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   const touch = (w) => (list(w.blocks).includes(here) || list(w.errors).some((e) => errors.find((x) => x.id === e)?.block === here) ? 0 : 1);
   relW.sort((a, b) => touch(a) - touch(b) || byDate('last')(a, b));
   const relWIds = new Set(relW.map((w) => String(w.id)));
+  const hits = weaknessHits(mem);
   sections.push({
     coll: 'weaknesses', head: '## 相关的弱点（weaknesses）',
-    items: relW.map((w) => ({ key: `weaknesses/${w.id}`, text: `- ${w.id} ${one(w.title, 120)}（${[w.scope, w.level ? `证据级 ${w.level}` : '', w.last ? `最近 ${w.last}` : '', list(w.errors).length ? `错题 ${list(w.errors).join('、')}` : ''].filter(Boolean).join('，')}）` })),
+    items: relW.map((w) => ({ key: `weaknesses/${w.id}`, text: `- ${w.id} ${one(w.title, 120)}（${[w.scope, w.level ? `证据级 ${w.level}` : '', hitText(hits.get(String(w.id))) || (w.last ? `最近 ${w.last}` : ''), list(w.errors).length ? `错题 ${list(w.errors).join('、')}` : ''].filter(Boolean).join('，')}）` })),
   });
   // 这一块的在前，同一块里最新的在前；最多 ERRORS_FULL 条原文，其余在目录里（一条一行：编号、块、根因）
   const relE = errors.filter((e) => nearErr.has(String(e.id)) || relWIds.has(String(e.weakness)))
@@ -151,7 +159,7 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   sections.push({ coll: 'errors', head: '## 相关的错题（errors，原文，这一块的、最近的在前）', limit: ERRORS_FULL, items: relE.map((e) => ({ key: `errors/${e.id}`, text: errorFull(e, solved) })) });
   const relM = get('mastery').filter((m) => nearIds.has(blockOf(m.block || m.id)))
     .sort((a, b) => (blockOf(a.id) === here ? 0 : 1) - (blockOf(b.id) === here ? 0 : 1) || cmpId(a.id, b.id));
-  sections.push({ coll: 'mastery', head: '## 掌握状态（mastery，只读：你不能宣布掌握）', items: relM.map((m) => ({ key: `mastery/${m.id}`, text: `- ${m.id}：${m.state}${m.state === '复现通过' && m.tier ? `（第 ${m.tier} 天那档）` : ''}` })) });
+  sections.push({ coll: 'mastery', head: '## 掌握状态（mastery，只读：你不能宣布掌握）', items: relM.map((m) => ({ key: `mastery/${m.id}`, text: `- ${m.id}${String(m.id).includes('#') && (m.title || catalog[m.id]?.title) ? `（${one(m.title || catalog[m.id].title, 40)}）` : ''}：${m.state}${m.state === '复现通过' && m.tier ? `（第 ${m.tier} 天那档）` : ''}` })) });
   // 要记的（记忆点，recall.js）：这几块记过哪些、哪几条老想不起——课上不重复记，老想不起的换个讲法再讲一次
   const recalls = get('recall').filter((k) => (k.status || 'active') === 'active' && (nearIds.has(blockOf(k.block)) || Number(k.lapses) >= 2))
     .sort((a, b) => (Number(b.lapses) || 0) - (Number(a.lapses) || 0) || cmpId(a.id, b.id));

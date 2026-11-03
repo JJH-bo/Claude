@@ -6,6 +6,7 @@ import { voidedIds, resolvedErrors, pendingTitle } from './memo.js';
 import { OUTCOME_TEXT } from './report.js';
 import { SPACES, positionId, packIds, filterSpace, courseOf, subjectOf, spaceOfId } from './space.js';
 import { classView, memoryCatalog, utf8 } from './digest.js';
+import { weaknessHits, pointCatalog } from './skills.js';
 
 const cut = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
 // 截短带公式的文字：截断处落在 $…$ 里面时，退到那个公式前面（不然页面上露出半截 TeX）
@@ -34,12 +35,18 @@ export function curriculumTree(mem = {}) {
   const cur = live(mem, 'curriculum');
   const mastery = live(mem, 'mastery');
   const mOf = (id) => mastery.find((m) => String(m.id) === String(id));
+  const catalog = pointCatalog(mem.sessions || [], mastery);
   const depth = (id) => String(id).split('.').length;
   const parentOf = (d) => d.parent || String(d.id).split('.').slice(0, -1).join('.');
   const node = (d) => {
     const m = mOf(d.id);
     const n = { id: String(d.id), title: d.title || '', level: d.level || ['lecture', 'section', 'block'][depth(d.id) - 1] || 'block', state: m?.state || '未学', tier: m?.tier ?? null, children: [] };
-    if (n.level === 'block') n.points = mastery.filter((x) => String(x.id).startsWith(`${d.id}#`)).map((x) => ({ id: String(x.id), state: x.state, tier: x.tier ?? null })).sort((a, b) => cmpId(a.id, b.id));
+    // 块里的知识点：有掌握状态的，加上归类时用过、还没有状态的（未学）；标题来自归类（skills.js）
+    if (n.level === 'block') {
+      const pts = mastery.filter((x) => String(x.id).startsWith(`${d.id}#`)).map((x) => ({ id: String(x.id), title: x.title || catalog[x.id]?.title || '', state: x.state, tier: x.tier ?? null }));
+      for (const [pid, c] of Object.entries(catalog)) if (c.block === String(d.id) && !pts.some((x) => x.id === pid)) pts.push({ id: pid, title: c.title, state: '未学', tier: null });
+      n.points = pts.sort((a, b) => cmpId(a.id, b.id));
+    }
     return n;
   };
   const byId = new Map(cur.map((d) => [String(d.id), node(d)]));
@@ -104,8 +111,11 @@ const LEVEL_RANK = { L3: 0, L2: 1, L1: 2, L0: 3 };
 export function weaknessRows(mem = {}) {
   const errors = live(mem, 'errors');
   const solved = resolvedErrors(mem);
+  const hits = weaknessHits(mem);
   return live(mem, 'weaknesses').map((w) => ({
     ...w,
+    // 出现过几次、最近哪天、之后做对过几道（错题档案 + 每节课归类时挂上的，skills.js）
+    hits: hits.get(String(w.id)) || null,
     closed: w.status === 'closed',
     errorDocs: list(w.errors).map((id) => errors.find((e) => String(e.id) === id)).filter(Boolean).map((e) => ({ ...e, resolved: solved.has(String(e.id)) })),
     levelLog: (Array.isArray(w.log) ? w.log : []).filter((l) => l?.field === 'level'),
@@ -144,6 +154,7 @@ export function classRows(mem = {}) {
       minutes: s.report?.activeMs ? Math.round(s.report.activeMs / 60000) : null, line: s.report?.line || '',
       verify: s.verify || null, summary: cut(first, 80), usage: s.usage || null, review: s.review || null, startedAt: s.startedAt || 0,
       kind: ['live', 'unit'].includes(s.kind) ? s.kind : 'class',
+      skills: s.skills || null,
     };
   }).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0) || cmpId(b.id, a.id));
 }

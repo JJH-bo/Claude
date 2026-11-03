@@ -35,7 +35,7 @@ export function quiz(el, src) {
     if (closed) return;
     closed = true;
     gateDone();
-    session.record({ type: 'quiz', q: qText, ok, attempts: tries, wrong: wrongPicks, el });
+    session.record({ type: 'quiz', q: qText, ok, attempts: tries, wrong: wrongPicks, options: options.length, ...(multi ? { multi: true } : {}), el });
   };
   // 草稿：多选题勾了还没「提交」；填空题写了还没「检查」（或者改了上次检查过的）
   let lastChecked = '';
