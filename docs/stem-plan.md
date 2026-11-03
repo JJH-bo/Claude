@@ -40,4 +40,11 @@
 
 ## 进度
 
-- 2026-11-03：写了这份计划。
+- 2026-11-03：写了这份计划；六批都做了：
+  - 第 1 批：`practice` 的 `use:`（13 种内置出题，别的组件照自定义题型写取数）；取数 `bits` `seq` `word` `str`，写法函数 `list` `sbin` `el` `sort` `sum` `cumsum`。顺带修了一个老问题：`mode: quiz` / `fill` 时 `det`、`eig`、`elim`、`quad`、`alloc`、`memexp`、`asm` 和二十来张表的题面看不到输入（学生不知道算什么），加了测试守着。
+  - 第 2 批：`vary:`（演示上的滑块，课堂 `figure set / play` 也能动）。
+  - 第 3 批：`ans(编号)`、`type: interval` / `equation` / `fixed`（`fix()` 让页面算定点补码）。
+  - 第 4 批：`encode` 的 `mode: do`（自己画波形）、CLOCK 的过程表（访问位、修改位、指针）；建树用已有的 `ask` 每次插入都问（手册写清）。
+  - 第 5 批：含参数的精确计算（`a = param`、`factor`）、`formula:` 的矩阵答案按格给式子框。
+  - 第 6 批：验收第三批 85% 一次写对，修完 100%（`evals/results.md` 的 3-stem）；教学尺子三节 4 / 4 / 4，看出的教法问题并进了 `TEACH_PROBE`（`evals/teaching/results.md` 第 3 轮）；说明书补了拿不准的地方。
+- 还没做（摩擦报告里排在前面的，下一轮）：学生动手做「那一下」（转子树、拨指针、竖式一行行判、含参数的 `elim` `mode: do`）；表达式里的算法函数（`nextval(s)`、`faults(…)`）；不数步号就能指（`ask: rotate@3`、按访问序号标注）；`vary:` 之后接判分的问题；不含 $n$ 的式子作答和形式要求。改了教法后的教学尺子还没重跑。

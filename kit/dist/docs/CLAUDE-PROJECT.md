@@ -191,7 +191,7 @@ b = [1, 1, -2]
 - `calc` / `hl` / `chalk`：`\calc`、`\hl`、`\chalk` → `components/calc.md`
 - `recognize`：认方法快练（只认方法，不计算） → `components/recognize.md`
 - `findbug`：找错 → `components/findbug.md`
-- `graph`（线代）：函数图（概率分布、面积、函数性质） → `components/graph.md`
+- `graph`（线代、计网）：函数图（概率分布、面积、函数性质） → `components/graph.md`
 - `space`（线代）：三维图（可以拖动旋转） → `components/space.md`
 - `stepper`：一步步走的过程 → `components/stepper.md`
 - `frames`：自己写每一步的演示（菜单上没有的过程） → `components/frames.md`
