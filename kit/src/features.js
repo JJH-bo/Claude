@@ -12,4 +12,7 @@ export const FEATURES = {
   // 课堂老师的教学计划（board plan，学生看不到；docs/learning-plan.md 第 5 节）。教学尺子第一轮（2026-11-02，线代、408 各一对）
   // 量下来看不出比不写好（evals/teaching/results.md），每轮还多带约 1 KB 说明，所以先关着；代码留着，以后再量一次
   plan: false,
+  // 板比一屏长时切成几屏左右翻（boardview.js 的 fitScreens，2026-11-02 加的）。2026-11-03 我说不喜欢：
+  // 一个点被切成好几屏、每屏一点点，还不如以前那样稍长一点上下滑。关掉，板照旧往下长、上下滑着看；代码留着
+  screens: false,
 };

@@ -139,6 +139,18 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
   // 学习台里下课：小结后面接着写整理单（memo 块），依据用课后报告里的第一道题
   if (/下课|小结/.test(said)) return { kind: 'closing', text: closingText(conv) + (/整理单/.test(said) ? `\n${closingMemo(said)}` : '') };
 
+  // 一轮写了两块新板、第一块还很长：页面把第二块并进第一块（一轮最多一块新板），长的那块上下滑着看，不切成几屏
+  if (!isSystem && /测试\s*[:：]?\s*长板/.test(said)) {
+    const n = nextSeq(turns, memo);
+    const para = (i) => `第 ${i} 段：$A\\mathbf x=\\boldsymbol\\alpha(\\boldsymbol\\beta^{\\mathrm T}\\mathbf x)$，括号里是一个数，所以 $A\\mathbf x$ 总落在 $\\boldsymbol\\alpha$ 那条线上。`;
+    return {
+      kind: 'long',
+      text: join('（模拟老师）这一轮故意写了两块新板，第一块还很长。',
+        board(`new id=b${n} title="很长的一块板"`, Array.from({ length: 14 }, (_, i) => para(i + 1)).join('\n\n')),
+        board(`new id=b${n + 1} title="第二块新板"`, '这一段本来想换新板，页面会并到上面那块板上。')),
+    };
+  }
+
   // 学习台里改记忆：每一档都写一条（直接写的、等确认的规则、待办），再故意写三条不对的（掌握不收、偏好没写依据、和 W19 一样的新弱点）
   if (!isSystem && /测试\s*[:：]?\s*整理/.test(said)) {
     const n = nextSeq(turns, memo);

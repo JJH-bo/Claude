@@ -2,6 +2,7 @@
 // 一屏放不放得下的测量（--board-h、「下面还有」、横屏时输入框靠在黑板那一栏）、宽屏左图右文。
 // 板上写什么、存到哪、什么时候换板由各自的控制器决定；这里只管怎么摆、怎么翻。
 import { mdToHtml, escapeHtml } from '../render.js';
+import { FEATURES } from '../features.js';
 
 const reduceMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 // 一块板超出一屏多少才算放不下（KaTeX、图的取整会差几个像素）
@@ -287,7 +288,7 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
     const avail = Math.max(240, Math.round(window.innerHeight - (bar?.height || 0) - top - 10));
     board.style.setProperty('--board-h', `${avail}px`);
     const shown = pages.get(viewPage);
-    if (shown && !shown.sec.hidden && shown.kind !== 'closing') fitScreens(shown, avail);
+    if (FEATURES.screens && shown && !shown.sec.hidden && shown.kind !== 'closing') fitScreens(shown, avail);
     const p = pages.get(curPage);
     if (p && !p.sec.hidden) {
       const r = p.sec.getBoundingClientRect();

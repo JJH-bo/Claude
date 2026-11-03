@@ -1058,10 +1058,17 @@ export async function renderClass(root, meta, desk = null) {
     const pageBefore = bv.cur;
     const boardOps = [];
     turnMemos = [];
+    // 一轮最多开一块新板（2026-11-03 我说：一下子给好几块板、每块一点点，很影响学习）：同一轮第二个 board new 起都并到这块板上
+    let newBoards = 0;
     for (const s of segments) {
       if (!isOp(s)) continue;
       const n = failures.length;
-      const r = execOp({ ...s.op, body: s.body }, failures, notes);
+      let op = { ...s.op, body: s.body };
+      if (op.op === 'new' && ++newBoards > 1) {
+        op = { ...op, op: 'add' };
+        if (newBoards === 2) notes.push('一轮只开一块新板：这一轮后面的 board new 都并到了第一块新板上。下一个点下一轮再换新板。');
+      }
+      const r = execOp(op, failures, notes);
       failures.slice(n).forEach((f) => { f.at = boardOps.length; });
       boardOps.push(r);
     }

@@ -102,7 +102,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 
 ### 实时黑板（`kit/src/live/`）
 
-- 和课堂模式共用一屏一块板：`class/boardview.js`（板、常驻栏、翻板、一屏放不放得下；放不下就分屏 `fitScreens`：按段、段里的块分，底部上一屏 / 下一屏，划动、方向键先在屏之间走，内容变了才重新分）、`class/pagenav.js`（翻板条）、`class/selfcheck.js`（额外的写法自检）、`class/boardtools.js`（教具：标注、让图动）。改这几个文件，两种模式都要看。
+- 和课堂模式共用一屏一块板：`class/boardview.js`（板、常驻栏、翻板、一屏放不放得下；分屏 `fitScreens` 现在**关着**（`features.js` 的 `screens`）：2026-11-03 我说不喜欢一个点被切成好几屏，板照旧往下长、上下滑着看）、`class/pagenav.js`（翻板条）、`class/selfcheck.js`（额外的写法自检）、`class/boardtools.js`（教具：标注、让图动）。改这几个文件，两种模式都要看。
 - `live.js`：订阅 `steps`，按 `layout.js` 的 `planBoards` 分板（`page` 不写就接着前一段那块板，`pin: true` 进常驻栏，板号最大的是当前板）；新板翻过去，翻回去看旧板时当前板来了新内容让「回到当前板」闪。学生作答过的段被改了，先提示不替换。
 - 对话里的 Claude 看不到页面：写法错误写回 `lint/{段 id}`，屏幕和当前板放不放得下写回 `meta/screen`（`layout.js` 的 `lintRecord`、`screenRecord`，有变化才写）。
 - 黑板现状 `meta/now`（`layout.js` 的 `statusRecord`）：最近的作答（和课堂模式发给课堂 Claude 的写法一样，`class/prompt.js` 的 `actionText`）、没提交的草稿（`drafts.js`）、写法错误、屏幕、交来的截图、这块黑板用的组件库版本（`kit`，对话里的 Claude 拿它和说明的版本比，旧了先换新版）、教具指令的结果 `ops`、板上的标注 `marks`、能动的图 `figures`。有变化后最多 2 秒写一次。学生说「好了」时对话里的 Claude 只读这一份。
@@ -167,6 +167,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - 界面以 iPad 为准：触控目标至少 44px，输入框字号 16px（防止聚焦放大），注意软键盘、横竖屏、Apple Pencil。
 - **不用 `window.confirm` / `alert` / `prompt`**：claude.ai 的沙箱不让它们弹出来，直接当「取消」，按钮点了像没反应（2026-11-03「直接下课」就这样坏过）。要问一句用 `kit/src/dialog.js` 的 `ask` / `choose`（页面里自己画的框）；`tests/no-modals.test.js` 守着。浏览器里验证时照沙箱把 `window.confirm` 换成 `() => false`。
 - 给我看的页面少放编号（W19、L2-07、L2.1.4、c-2026…）：换成标题；长列表先列几条、其余收起。
+- **一块板讲一个完整的点**（讲解、例子、配套的题放在一起），稍长一点我上下滑可以；不要为了不超屏把一个点拆成好几块板、每块一点点（2026-11-03 我说过，很影响学习）。一轮最多一块新板：`classroom.js` 的 `finishTurn` 把同一轮第二个 `board new` 起并到第一块新板上；说明在 `prompt.js` 的「一块板放多少」。我的规则 rule-bd-2、守则 T-4 也照这个改了。dev 暗号「测试:长板」。
 
 ## 发布：学习台是唯一的 artifact（`docs/hub-plan.md`）
 
