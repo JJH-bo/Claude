@@ -288,24 +288,23 @@ $A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$，$\boldsymbol\alpha=(1,2)^{\m
 ˋˋˋˋboard unpin id=k1
 ˋˋˋˋ
 
-### react：预案（作答后页面当场接，不调用你）
+### react：答案固定时页面替你接（不调用你）
 
 ˋˋˋˋboard react target=q-b3
 right show=b4: 对。再来一个：乘 $(1,0)$ 呢？
-wrong: 先只算第一个分量，再试一次。
-misread "FIFO": 你是按谁先进来换的？
+done step=3: 例题看完了，下面这道你来。
 ˋˋˋˋ
 
-- 每调用你一次，学生等几十秒、花一整轮额度。把料得到的情况写成预案：作答落在哪种，页面就把冒号后的话写到板顶（ˋshow=ˋ 揭开 ˋboard add id=b4 holdˋ 藏着的段，也可以 ˋboard show id=b4ˋ），不调用你；没写到的照常发给你。
-- 情况：ˋrightˋ ˋwrongˋ ˋmisread "关键词"ˋ（页面认出的错法）ˋgiveupˋ ˋdoneˋ（steps 看完），可加 ˋstep=3ˋ。每条只用一次，答对整组收起，空块是撤掉。要听理由的题不写 right。
+- 调用你一次学生要等几十秒。**只预写答案固定、你当场写也一样的**：ˋrightˋ 答对（一句确认，ˋshow=ˋ 揭开这一轮写好、ˋboard add id=b4 holdˋ 藏着的下一小问）、ˋdoneˋ steps 看完（可加 ˋstep=3ˋ）。页面把话写到板顶。
+- **教学不预写**：答错怎么引导、想不出来怎么提示，要看着这一次的作答当场写；页面不收 wrong / misread / giveup。要听理由、答对了也要追问的题不写 right。每条只用一次，答对整组收起，空块是撤掉。
 
-### why：预写「为什么」
+### why：预写一步的依据
 
 ˋˋˋˋboard why target=ex-1
 step=2: 因为 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 是一个数，能挪到最前面。
 ˋˋˋˋ
 
-学生能点板上任何一处问「为什么 / 没看懂 / 举个例子」。写了 why 的地方（ˋstep=ˋ、ˋterm=ˋ（ˋ\hlˋ 的名字）、ˋallˋ），点「为什么」时页面当场显示、不调用你。容易问的几步顺手写一句。
+学生能点板上任何一处问「为什么 / 没看懂 / 举个例子」。ˋwhyˋ 只写一句这一步的**依据**（哪条性质、哪个定义），点「为什么」时页面当场显示、不调用你（ˋstep=ˋ、ˋterm=ˋ（ˋ\hlˋ 的名字）、ˋallˋ）。不写讲解：还不懂学生会问你。
 
 ### 一轮输出的样子
 

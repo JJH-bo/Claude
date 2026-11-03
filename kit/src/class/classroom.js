@@ -902,7 +902,7 @@ export async function renderClass(root, meta, desk = null) {
     if (op.op === 'react') {
       const seg = liveBlockIds().get(op.target);
       if (!seg) return { op: 'react', target: op.target, ok: false, error: `黑板上没有组件 ${op.target}（target 写组件的 id:，不是段的 id）` };
-      if (op.errors?.length) notes.push(`react ${op.target} 里有 ${op.errors.length} 行没读懂，没用：\n${op.errors.map((e) => `  - ${e}`).join('\n')}`);
+      if (op.errors?.length) notes.push(`react ${op.target} 里有 ${op.errors.length} 行没用：\n${op.errors.map((e) => `  - ${e}`).join('\n')}`);
       const unknown = [...new Set(op.cases.flatMap((c) => c.show || []))].filter((id) => !segs.has(id));
       if (unknown.length) notes.push(`react ${op.target} 的 show= 写了黑板上没有的段：${unknown.join('、')}（到时候揭不开）`);
       if (!op.cases.length) { reacts.delete(op.target); return { op: 'react', target: op.target, seg, ok: true, cases: [] }; }

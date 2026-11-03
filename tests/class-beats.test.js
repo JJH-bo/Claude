@@ -51,5 +51,5 @@ test('模拟老师「测试:拍子」分成四拍，「测试:预案」写了两
   assert.deepEqual(rejected, []);
   assert.deepEqual(ops.map((o) => o.op), ['new', 'add', 'react', 'react']);
   assert.equal(ops[1].hold, true);
-  assert.deepEqual(ops[2].cases.map((c) => c.kind), ['right', 'wrong', 'giveup']);
+  assert.deepEqual(ops[2].cases.map((c) => c.kind), ['right'], '答错、想不出来不预写');
 });
