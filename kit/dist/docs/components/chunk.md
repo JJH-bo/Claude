@@ -1,6 +1,7 @@
 ### chunk：意群断句（长难句、翻译）
 
 ```chunk
+id: k-idea
 title: 切成意群
 text: The man who lives next door, / gave me a book / that I had wanted | for years.
 translate: on

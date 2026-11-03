@@ -127,3 +127,20 @@ test('分步拆句 steps:、意群断句 chunk（docs/english-plan.md 第 4 批�
   assert.match(actionText({ source: 'record', type: 'chunk', block: 'k1', detail: '译文', text: 'gave me a book → 给了我一本书' }), /按意群写的译文：\n.*给了我一本书/);
   assert.match(actionText({ source: 'record', type: 'parse', block: 'p2', value: '[S The man]', ok: false, attempts: 1, detail: '第 2 步（主语）', check: '1 处范围不对' }), /第 2 步（主语）：1 处范围不对/);
 });
+
+test('连线 link、phrase 带标点（docs/english-plan.md 第 6 批）', async () => {
+  const { parseLink, judgeLinks, linkHint, wordsIn, wordSpan } = await import('../kit/src/entext.js');
+  const s = parseLink('My brother, who lives in Beijing, is a doctor.', 'who -> brother; !who -> Beijing=就近的名词不一定是先行词');
+  assert.deepEqual(s.pairs, [{ from: 3, to: 1 }]);
+  assert.deepEqual(s.wrongs, [{ from: 3, to: 6, why: '就近的名词不一定是先行词' }]);
+  const bad = judgeLinks([{ from: 3, to: 6 }], s);
+  assert.equal(linkHint(bad, s.tokens), '「who」连到「Beijing」不对：就近的名词不一定是先行词；还有 1 条没连');
+  assert.ok(judgeLinks([{ from: 3, to: 1 }], s).ok);
+  assert.throws(() => parseLink('He is here.', ''), /至少写一条/);
+  assert.throws(() => parseLink('He is here.', 'He -> He'), /两头是同一个词/);
+  assert.throws(() => parseLink('He is here.', 'He is'), /写成 词 -> 它连着的词/);
+  const t = wordsIn('My brother, who lives in Beijing, is a doctor.', { punct: true }).map((x) => x.w);
+  assert.deepEqual(wordSpan({ kind: 'phrase', text: ', who' }, t), { from: 2, to: 3 });
+  assert.deepEqual(wordSpan({ kind: 'phrase', text: ',', n: 2 }, t), { from: 7, to: 7 });
+  assert.equal(wordsIn('a, b').length, 2, '不带 punct 时只数词');
+});

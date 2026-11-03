@@ -1,6 +1,7 @@
 ### drill：句型操练（一题一题做，页面判分）
 
 ```drill
+id: d-passive
 title: 主动变被动
 q: 把句子改成被动语态。
 count: 3

@@ -7,8 +7,12 @@ import { parseFields } from '../parse.js';
 import { widget, mdToHtml, escapeHtml } from './common.js';
 import {
   ROLES, matchText, textHint, parseCloze, tokenizeSentence, findWrong, parseAlts, parseBrackets, judgeSpans, spanText, spansHint, parseRoles, parseDrill, joinWords,
-  parseAnswer, diagnose, parseDecoys, parseSteps, parseChunk, judgeChunks, chunkHint, chunksOf,
+  parseAnswer, diagnose, parseDecoys, parseSteps, parseChunk, judgeChunks, chunkHint, chunksOf, parseLink, judgeLinks, linkHint,
 } from '../entext.js';
+
+// errfind 的「删掉」（多了一个词的错：which I bought it 里的 it）：fix: 删掉；学生点「删掉这个词」或者写「删」都算
+const DEL = /^[（(]?\s*(删掉|删去|删除|删|去掉|delete|del|-|—)\s*[)）]?$/i;
+const delNorm = (s) => (DEL.test(String(s ?? '').trim()) ? '（删掉）' : s);
 
 const inline = (s) => mdToHtml(String(s ?? ''), { inline: true });
 const short = (s, n = 120) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
@@ -84,14 +88,16 @@ export function errfind(el, src) {
   const toks = tokenizeSentence(text);
   const wrongAt = findWrong(text, fields.wrong);
   // fix: 对的改法 | !常见的错改法=提示；decoys: 常见的点错的词=为什么它没错（第 2 批：错法诊断）
-  const { alts: fixes, wrongs: fixWrongs } = parseAnswer(fields.fix || '');
+  const { alts: fixes0, wrongs: fixWrongs } = parseAnswer(fields.fix || '');
+  const fixes = fixes0.map(delNorm);
+  const canDelete = fixes.includes('（删掉）');
   const decoys = parseDecoys(text, fields.decoys);
   const title = fields.title || '改错';
   const body = widget(el, { title, cls: 'en-errfind' });
   body.innerHTML = `
     ${fields.q ? `<div class="w-q">${mdToHtml(fields.q)}</div>` : '<div class="w-q">点出用错的那个词。</div>'}
     <div class="en-words">${toks.map((t) => (t.word ? `<button type="button" class="en-word" data-i="${t.i}">${escapeHtml(t.w)}</button>` : `<span class="en-punct">${escapeHtml(t.w)}</span>`)).join(' ')}</div>
-    ${fixes.length ? '<label class="en-fix" hidden><span>改成</span><input class="en-fix-in" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>' : ''}
+    ${fixes.length ? `<label class="en-fix" hidden><span>改成</span><input class="en-fix-in" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="${canDelete ? '改成什么；多了就写「删」' : ''}"><button type="button" class="btn btn-sm en-del">删掉这个词</button></label>` : ''}
     <div class="ans-actions"><button type="button" class="btn btn-primary en-check" disabled>提交</button><button type="button" class="btn en-show" hidden>看答案</button></div>
     <div class="q-feedback" hidden></div>`;
   const fb = body.querySelector('.q-feedback');
@@ -119,7 +125,7 @@ export function errfind(el, src) {
     attempts++;
     tried = now();
     const spot = pick === wrongAt;
-    const fixR = spot && fixIn ? matchText(fixIn.value, fixes) : { ok: true };
+    const fixR = spot && fixIn ? matchText(delNorm(fixIn.value), fixes) : { ok: true };
     const ok = spot && fixR.ok;
     const decoy = spot ? null : decoys.find((d) => d.i === pick);
     const badFix = spot && !fixR.ok && fixIn ? diagnose(fixIn.value, fixWrongs) : null;
@@ -134,6 +140,7 @@ export function errfind(el, src) {
   };
   body.querySelector('.en-check').addEventListener('click', check);
   fixIn?.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+  body.querySelector('.en-del')?.addEventListener('click', () => { if (!closed && fixIn) { fixIn.value = '（删掉）'; fixIn.focus({ preventScroll: true }); } });
   body.querySelector('.en-show').addEventListener('click', () => {
     body.querySelectorAll('.en-word').forEach((x) => x.classList.toggle('is-answer', +x.dataset.i === wrongAt));
     fb.hidden = false;
@@ -453,6 +460,103 @@ export function chunk(el, src) {
     body.querySelector('.en-show').hidden = true;
     finish(false, true);
   });
+}
+
+/* ---------------- link：连线（点一个词，再点它连着的那个词）---------------- */
+
+export function link(el, src) {
+  const { fields } = parseFields(src);
+  const text = fields.text || '';
+  const spec = parseLink(text, fields.pairs);
+  const title = fields.title || '连线';
+  const body = widget(el, { title, cls: 'en-link' });
+  body.innerHTML = `
+    ${fields.q ? `<div class="w-q">${mdToHtml(fields.q)}</div>` : '<div class="w-q">先点一个词，再点它连着的那个词。</div>'}
+    <div class="lk-wrap"><svg class="lk-svg" aria-hidden="true"><defs><marker id="lk-ar-${escapeHtml(el.dataset.bid || 'x')}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z"/></marker></defs></svg>
+      <div class="lk-sent en-words">${spec.tokens.map((t) => (t.word ? `<button type="button" class="en-word lk-w" data-i="${t.i}">${escapeHtml(t.w)}</button>` : `<span class="en-punct">${escapeHtml(t.w)}</span>`)).join(' ')}</div></div>
+    <div class="pz-help muted lk-help">连了 0 / ${spec.pairs.length} 条。点一条线起点的词能把它去掉。</div>
+    <div class="ans-actions"><button type="button" class="btn btn-primary en-check" disabled>检查</button><button type="button" class="btn pz-clear">清空</button><button type="button" class="btn en-show" hidden>看答案</button></div>
+    <div class="q-feedback" hidden></div>`;
+  const wrap = body.querySelector('.lk-wrap');
+  const svg = body.querySelector('.lk-svg');
+  const fb = body.querySelector('.q-feedback');
+  const done = session.gate(el, title);
+  const marker = `lk-ar-${el.dataset.bid || 'x'}`;
+  let mine = [], from = null, attempts = 0, closed = false, last = null, tried = '';
+  const w = (i) => spec.tokens[i]?.w || '';
+  const now = (list = mine) => list.map((p) => `${w(p.from)} → ${w(p.to)}`).join('；');
+  markDraft(body, () => (!closed && mine.length && now() !== tried ? `连了 ${now()}，还没检查` : ''));
+  function draw(show = null) {
+    const list = show || mine;
+    const box = wrap.getBoundingClientRect();
+    svg.setAttribute('width', box.width);
+    svg.setAttribute('height', box.height);
+    const at = (i) => { const r = wrap.querySelector(`.lk-w[data-i="${i}"]`)?.getBoundingClientRect(); return r ? { x: r.left - box.left + r.width / 2, y: r.top - box.top + 4 } : null; };
+    const paths = list.map((p) => {
+      const a = at(p.from), b = at(p.to);
+      if (!a || !b) return '';
+      const lift = 16 + Math.min(40, Math.abs(b.x - a.x) * 0.15);
+      const cy = Math.min(a.y, b.y) - lift;
+      const cls = last ? (last.right.includes(p) ? 'is-right' : last.wrong.some((x) => x.from === p.from && x.to === p.to) ? 'is-wrong' : '') : show ? 'is-answer' : '';
+      return `<path class="lk-line ${cls}" d="M${a.x} ${a.y} Q${(a.x + b.x) / 2} ${cy} ${b.x} ${b.y}" marker-end="url(#${marker})"/>`;
+    }).join('');
+    svg.querySelectorAll('.lk-line').forEach((x) => x.remove());
+    svg.insertAdjacentHTML('beforeend', paths);
+    wrap.querySelectorAll('.lk-w').forEach((b) => {
+      const i = +b.dataset.i;
+      b.classList.toggle('is-picked', from === i);
+      b.classList.toggle('is-linked', list.some((p) => p.from === i || p.to === i));
+    });
+    body.querySelector('.lk-help').firstChild.textContent = `连了 ${mine.length} / ${spec.pairs.length} 条。点一条线起点的词能把它去掉。`;
+    body.querySelector('.en-check').disabled = closed || !mine.length;
+  }
+  wrap.addEventListener('click', (e) => {
+    const b = e.target.closest('.lk-w');
+    if (!b || closed) return;
+    const i = +b.dataset.i;
+    last = null;
+    if (from === null) {
+      // 点了已经连出去的词：去掉那条线
+      if (mine.some((p) => p.from === i)) { mine = mine.filter((p) => p.from !== i); draw(); return; }
+      from = i;
+    } else if (from === i) from = null;
+    else { mine = [...mine.filter((p) => p.from !== from), { from, to: i }]; from = null; }
+    draw();
+  });
+  body.querySelector('.pz-clear').addEventListener('click', () => { if (closed) return; mine = []; from = null; last = null; draw(); });
+  const finish = (ok, revealed = false) => {
+    if (closed) return;
+    closed = true;
+    done();
+    session.record({ type: 'link', final: true, title, q: short(text, 200), ok, attempts, revealed: revealed || undefined, value: now(), expected: now(spec.pairs), el });
+  };
+  body.querySelector('.en-check').addEventListener('click', () => {
+    if (closed || !mine.length) return;
+    attempts++;
+    tried = now();
+    last = judgeLinks(mine, spec);
+    const hint = linkHint(last, spec.tokens);
+    const misread = last.wrong.filter((x) => x.why).map((x) => `把「${w(x.from)}」连到了「${w(x.to)}」：${x.why}`).join('；');
+    session.record({ type: 'link', liveOnly: true, title, q: short(text, 200), value: tried, ok: last.ok, attempts, detail: hint, misread: misread || undefined, el });
+    fb.hidden = false;
+    fb.className = `q-feedback ${last.ok ? 'is-ok' : 'is-bad'}`;
+    fb.innerHTML = verdict(last.ok, hint) + (last.ok && fields.explain ? mdToHtml(fields.explain) : '');
+    draw();
+    if (last.ok) finish(true);
+    else if (attempts >= 2) body.querySelector('.en-show').hidden = false;
+  });
+  body.querySelector('.en-show').addEventListener('click', () => {
+    last = null;
+    draw(spec.pairs);
+    fb.hidden = false;
+    fb.className = 'q-feedback is-reveal';
+    fb.innerHTML = `<div>${escapeHtml(now(spec.pairs))}</div>${fields.explain ? mdToHtml(fields.explain) : ''}`;
+    body.querySelector('.en-show').hidden = true;
+    finish(false, true);
+  });
+  // 换行、横竖屏：线跟着词走
+  try { new ResizeObserver(() => draw(closed && !last ? spec.pairs : null)).observe(wrap); } catch { /* 老浏览器：不跟 */ }
+  requestAnimationFrame(() => draw());
 }
 
 /* ---------------- drill：句型操练，一题一题做 ---------------- */

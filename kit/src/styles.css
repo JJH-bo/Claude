@@ -2447,3 +2447,13 @@ g.sv-new.sv-flash > rect, g.sv-new.sv-flash > circle, g.sv-new.sv-flash > path {
 .ck-tr-row { display: block; margin: 0 0 10px; }
 .ck-tr-row span { display: block; font: 16px/1.5 var(--sans); color: rgb(var(--chalk-rgb) / 0.85); margin-bottom: 4px; }
 .ck-tr-row textarea { width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgb(var(--chalk-rgb) / 0.25); background: rgb(var(--glow-rgb) / 0.04); color: var(--chalk); font: 16px/1.4 var(--sans); }
+/* link：连线。词上面画弧线和箭头（svg 盖在句子上，不挡点击） */
+.lk-wrap { position: relative; padding-top: 46px; }
+.lk-svg { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.lk-svg marker path { fill: var(--yellow); fill: context-stroke; }
+.lk-line { fill: none; stroke: var(--yellow); stroke-width: 2.5; stroke-linecap: round; }
+.lk-line.is-right { stroke: var(--ok); }
+.lk-line.is-wrong { stroke: var(--bad); stroke-dasharray: 6 5; }
+.lk-line.is-answer { stroke: rgb(var(--blue-rgb)); }
+.lk-w.is-linked { border-color: rgb(var(--yellow-rgb) / 0.45); }
+.en-fix .en-del { margin-left: 8px; min-height: 44px; }

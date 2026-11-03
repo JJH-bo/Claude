@@ -1,6 +1,6 @@
 # 学习台 · 给 Claude 的教学说明
 
-> **版本：2026-11-02b**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
+> **版本：2026-11-03**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
 >
 > 这份说明的**最新版**一直放在**学习台** artifact 里（文件 `CLAUDE-PROJECT.md`）。每个新对话里，第一次做和学习有关的事（写黑板、备课、读课堂记录、改记忆）之前，先用 `Artifact` 工具读它：`action: "read"`，`url` 是上面的学习台地址，`path: "CLAUDE-PROJECT.md"`。
 > - 读到的版本比你手上这份新：以读到的为准，这份里和它不一样的地方全部作废。回复里顺便告诉我「项目指令里的说明是旧版（版本号），学习台里是新版（版本号）」。
@@ -126,7 +126,7 @@
 
 **关卡**：`answer`、`predict`、`conjecture`、`practice`、`quiz`、`steps`、`recognize`、`findbug`、带 `goal` 的 `scene`，完成后才能继续（guided 课件）。其余组件不拦人。实时黑板里没有关卡。
 
-**科目**：课件开头的 front matter 写 `subject:`（`线代`、`数据结构`、`操作系统`、`组成原理`、`计网`，不写就是线代）。下面有的小节标题底下写着 `<!-- 科目：… -->`，说明这一节只给那几门课用；没写的是通用的。课堂模式里，课堂 Claude 只拿到「通用 + 这门课」的那几节（每一轮的说明有长度上限），所以计算机课的课堂一定要写 `subject:`。
+**科目**：课件开头的 front matter 写 `subject:`（`线代`、`数据结构`、`操作系统`、`组成原理`、`计网`、`英语`，不写就是线代）。下面有的小节标题底下写着 `<!-- 科目：… -->`，说明这一节只给那几门课用；没写的是通用的。课堂模式里，课堂 Claude 只拿到「通用 + 这门课」的那几节（每一轮的说明有长度上限），所以计算机课的课堂一定要写 `subject:`。
 
 ### 表达式（所有组件通用）
 
@@ -251,6 +251,7 @@ b = [1, 1, -2]
 - `errfind`（英语）：英语改错（点出用错的词，再写改成什么） → `components/errfind.md`
 - `parse`（英语）：句子成分标注（长难句，能套从句） → `components/parse.md`
 - `chunk`（英语）：意群断句（长难句、翻译） → `components/chunk.md`
+- `link`（英语）：连线（点一个词，再点它连着的那个词） → `components/link.md`
 - `drill`（英语）：句型操练（一题一题做，页面判分） → `components/drill.md`
 
 ## 四、读学习记录
@@ -466,7 +467,7 @@ b = [1, 1, -2]
   - `row=2`、`col=3`、`diag`（主对角线）、`entry=2,3`、`block=1,2`（子块，要先在 `matrix` 组件里 `split`）：矩阵的部位。`matrix` 组件和公式里的 `bmatrix` 都能标；一处有好几个矩阵时加 `of=名字`（`matrix` 的 `name=`，或者公式里用 `\hl{名字}{…}` 包起来的矩阵）。
   - `step=2`：`steps` 的第 2 步（学生已经走到的）。
   - `label=Ax`、`item=4`：图里标签是 Ax 的东西、第 4 条命令画的东西（演示组件里是第 4 个格子 / 结点）；`at=[1, 2]`：`scene` 里坐标 (1, 2) 那个点。图被拖动、`figure set` 之后，标注跟着挪。
-  - `word=3`（第 3 个英文词）、`words=4-7`（第 4 到 7 个词）、`phrase="who lives next door"`（这几个词；出现几次时 `phrase="that#2"`）、`blank=2`（`cloze` 的第 2 个空）：英语句子里的词。target 是英语组件时数的是那句英文，target 是一段时数的是整段的英文。一个词默认圈，一段词默认划线。
+  - `word=3`（第 3 个英文词）、`words=4-7`（第 4 到 7 个词）、`phrase="who lives next door"`（这几个词；出现几次时 `phrase="that#2"`）、`blank=2`（`cloze` 的第 2 个空）：英语句子里的词。target 是英语组件时数的是那句英文，target 是一段时数的是整段的英文。phrase 里可以带标点（`phrase=", which"`、只圈逗号 `phrase=",#2"`）。一个词默认圈，一段词默认划线。
 - `style=`：`circle` 圈、`box` 框、`underline` 下划线、`highlight` 涂底色、`strike` 划掉（约去的项）、`arrow` 箭头（从旁注指过去）。不写时：项、元素、点用圈，行、列、子块、整段用框，对角线用斜着的长圈。
 - `color=`：`yellow`（默认）`pink` `blue` `green` `orange` `purple` `red` `white`。`note="…"`：旁边写一句（要短，最多 80 个字，可以有 `$公式$`）；`side=right|left|above|below` 指定写在哪边。`id=` 不写时页面自动编 m1、m2……
 - 写公式时就要圈、要划的，直接写进公式（`\boxed{…}`、`\cancel{…}`、彩色粉笔 `\chalk{pink}{…}`）；讲着讲着才要指的，用 mark。

@@ -153,14 +153,19 @@ export function tokenizeSentence(text) {
   return out;
 }
 
-/** 英文里的词（和 tokenizeSentence 的「词」一样：缩写、连字符、所有格算一个），带在原文里的位置：[{ w, start, end }] */
-export function wordsIn(text) {
+/**
+ * 英文里的词（和 tokenizeSentence 的「词」一样：缩写、连字符、所有格算一个），带在原文里的位置：[{ w, start, end }]。
+ * punct：标点也算进来（word: false），phrase=", which" 要标逗号时用
+ */
+export function wordsIn(text, { punct = false } = {}) {
   const out = [];
-  const re = /[A-Za-z0-9]+(?:['’][A-Za-z]+)*(?:-[A-Za-z0-9]+(?:['’][A-Za-z]+)*)*/g;
+  const re = punct ? /[A-Za-z0-9]+(?:['’][A-Za-z]+)*(?:-[A-Za-z0-9]+(?:['’][A-Za-z]+)*)*|[,;:.!?—–()"“”]/g : /[A-Za-z0-9]+(?:['’][A-Za-z]+)*(?:-[A-Za-z0-9]+(?:['’][A-Za-z]+)*)*/g;
   let m;
-  while ((m = re.exec(String(text ?? '')))) out.push({ w: m[0], start: m.index, end: m.index + m[0].length });
+  while ((m = re.exec(String(text ?? '')))) out.push({ w: m[0], start: m.index, end: m.index + m[0].length, word: /[A-Za-z0-9]/.test(m[0]) });
   return out;
 }
+/** phrase 里有没有要标的标点（有就连标点一起数） */
+export const phraseHasPunct = (text) => /[,;:.!?—–()"“”]/.test(String(text ?? ''));
 
 const wkey = (w) => String(w).toLowerCase().replace(/’/g, "'");
 
@@ -173,8 +178,8 @@ export function wordSpan(sel, words) {
   if (!n) return { error: '这里没有英文词' };
   if (sel.kind === 'word') return sel.k > n ? { error: `这里一共 ${n} 个词，没有第 ${sel.k} 个` } : { from: sel.k - 1, to: sel.k - 1 };
   if (sel.kind === 'words') return sel.b > n ? { error: `这里一共 ${n} 个词，没有第 ${sel.b} 个` } : { from: sel.a - 1, to: sel.b - 1 };
-  const want = wordsIn(sel.text).map((x) => wkey(x.w));
-  if (!want.length) return { error: `phrase「${sel.text}」里没有英文词` };
+  const want = wordsIn(sel.text, { punct: phraseHasPunct(sel.text) }).map((x) => wkey(x.w));
+  if (!want.length) return { error: `phrase「${sel.text}」里没有英文词，也没有标点` };
   const keys = words.map(wkey);
   const hits = [];
   for (let i = 0; i + want.length <= n; i++) if (want.every((w, j) => keys[i + j] === w)) hits.push(i);
@@ -392,4 +397,48 @@ export function chunksOf(tokens, cuts) {
   const out = [[]];
   tokens.forEach((t, i) => { if (set.has(i) && out.at(-1).length) out.push([]); out.at(-1).push(t.w); });
   return out.map((ws) => joinWords(ws));
+}
+
+// —— 连线 link（第 6 批）：点一个词，再点它连着的那个词（关系词 → 先行词、非谓语 → 逻辑主语、谓语 → 主语的中心词）——
+
+/**
+ * text 是句子；pairs 是「who -> brother; gave -> man」（几条用 ; 隔开，出现几次的词写 the#2）；
+ * 常见的连错写成「!who -> Beijing=就近的名词不一定是先行词」。返回 { tokens, pairs: [{ from, to }], wrongs: [{ from, to, why }] }（下标是 tokenizeSentence 的）
+ */
+export function parseLink(text, src) {
+  const tokens = tokenizeSentence(text);
+  const pairs = [], wrongs = [];
+  for (const raw of String(src ?? '').split(/[;；\n]/).map((x) => x.trim()).filter(Boolean)) {
+    const bad = raw.startsWith('!');
+    const body = bad ? raw.slice(1) : raw;
+    const eq = bad ? body.indexOf('=') : -1;
+    const pair = (eq < 0 ? body : body.slice(0, eq)).trim();
+    const m = /^(.+?)\s*(?:->|→|=>)\s*(.+)$/.exec(pair);
+    if (!m) throw new Error(`「${raw}」：写成 词 -> 它连着的词，比如 who -> brother`);
+    const from = findWrong(text, m[1].trim());
+    const to = findWrong(text, m[2].trim());
+    if (from === to) throw new Error(`「${raw}」：两头是同一个词`);
+    if (bad) wrongs.push({ from, to, why: eq < 0 ? '' : body.slice(eq + 1).trim() });
+    else pairs.push({ from, to });
+  }
+  if (!pairs.length) throw new Error('pairs: 至少写一条：词 -> 它连着的词，比如 who -> brother');
+  const seen = new Set();
+  for (const p of pairs) { if (seen.has(p.from)) throw new Error(`「${tokens[p.from].w}」连了两条：一个词只连一条`); seen.add(p.from); }
+  return { tokens, pairs, wrongs };
+}
+
+/** 学生连的 vs 答案：{ ok, right, wrong: [{ from, to, why }], missing（还差几条）} */
+export function judgeLinks(mine, { pairs, wrongs = [] }) {
+  const right = mine.filter((m) => pairs.some((p) => p.from === m.from && p.to === m.to));
+  const wrong = mine.filter((m) => !right.includes(m)).map((m) => ({ ...m, why: wrongs.find((w) => w.from === m.from && w.to === m.to)?.why || '' }));
+  const missing = pairs.filter((p) => !mine.some((m) => m.from === p.from && m.to === p.to)).length;
+  return { ok: !wrong.length && !missing && right.length === pairs.length, right, wrong, missing };
+}
+
+/** 不对时的一句话（不说答案）：「who 连错了：…；还有 1 条没连」 */
+export function linkHint(r, tokens) {
+  if (r.ok) return '';
+  const bits = r.wrong.map((w) => `「${tokens[w.from].w}」连到「${tokens[w.to].w}」不对${w.why ? `：${w.why}` : ''}`);
+  if (r.missing) bits.push(`还有 ${r.missing} 条没连`);
+  return bits.join('；');
 }

@@ -4,7 +4,7 @@
 import { mdToHtml } from './render.js';
 import { compile, isVec } from './expr.js';
 import { shapeFor, arrowPath, leaderPath, placeNote, union, strokeObstacles } from './markdraw.js';
-import { wordsIn, wordSpan } from './entext.js';
+import { wordsIn, wordSpan, phraseHasPunct } from './entext.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 // 颜色都从主题变量取（不同风格的黑板颜色不一样）
@@ -197,10 +197,10 @@ export function locate(root, spec, { scene, name = '这里' } = {}) {
 
 // —— 英语句子里的词（docs/english-plan.md 第 1 批）：在画好的文字里找词，组件不用另外标记，普通段里的英文也能圈 ——
 // 数词的范围：target 是英语组件时，是那句英文（cloze 的文字、errfind / parse 的句子、drill 的题、chunk 的句子）；target 是一段时，是整段的英文（去掉标题）
-const SENTENCE = '.en-text, .en-words:not(.pz-ans), .pz-sent, .dr-q, .ck-sent';
+const SENTENCE = '.en-text, .en-words:not(.pz-ans), .pz-sent, .dr-q, .ck-sent, .lk-sent';
 // 不算词的地方：公式、成分标注的括号和名字、反馈（揭晓的答案）、标注层自己、输入框
 const NOT_WORDS = '.katex, .pz-open, .pz-close, .q-feedback, .mk-layer, .w-title, h1, h2, h3, h4, script, style, textarea, input, select, [hidden]';
-function textWords(root) {
+function textWords(root, punct = false) {
   // 标的是一个组件：数它那句英文；标的是一整段：段里所有的英文（说明、例句、组件里的句子，按出现的顺序）
   const areas = root.matches?.('[data-bid]') ? [...root.querySelectorAll(SENTENCE)].filter(shown) : [];
   const scopes = areas.length ? areas : [root];
@@ -209,13 +209,14 @@ function textWords(root) {
     const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
       acceptNode: (n) => (n.parentElement?.closest(NOT_WORDS) && !scope.matches(NOT_WORDS) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
     });
-    for (let n = walker.nextNode(); n; n = walker.nextNode()) for (const w of wordsIn(n.nodeValue)) out.push({ ...w, node: n });
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) for (const w of wordsIn(n.nodeValue, { punct })) out.push({ ...w, node: n });
   }
   return out;
 }
 function wordGeom(root, s, name) {
   if (!shown(root)) return { hidden: true };
-  const ws = textWords(root);
+  // phrase 里写了标点（", which"）：连标点一起数；word= / words= 只数词
+  const ws = textWords(root, s.kind === 'phrase' && phraseHasPunct(s.text));
   const span = wordSpan(s, ws.map((w) => w.w));
   if (span.error) return { error: `${name}：${span.error}` };
   const a = ws[span.from], b = ws[span.to];

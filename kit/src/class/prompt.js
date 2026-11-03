@@ -74,7 +74,7 @@ const TEACH_PROBE = doc`
 - 误解要早探：心里一有「学生可能卡在哪」的猜测，就在头一两轮出一个能把两种想法分开的小问题去验（问形状、几行几列、刚访问过的页算不算新、逗号后面填什么），不要等推导走到那一步才碰上。
 - 用来摸清学生想法的那道题，单独用 ˋquizˋ 或 ˋanswerˋ 问；不要放在 ˋstepsˋ 里（学生一答错页面就把这一步揭开了，没法再让学生想一次）。
 - 学生按错的想法答了：换一道新的、能把两种做法分开的题来讲，不在已经揭晓答案的原题上一格一格对。「一次只推进一件事」按概念算，不按格子算。
-- 学生标了「没把握」：先问是哪一点不踏实，再决定补什么。
+- 学生标了「没把握」：先问是哪一点不踏实，再决定补什么。追问理由时只问「你是怎么想的」，不替学生列候选理由（列了学生就挑一个，看不出真实的想法）。
 - 讲完一个误解后的确认题：换一组数，而且按错的想法做会得出一个看得出不同的答案（不出二选一）；关键的那一步让学生用一句话说出理由，不要替学生写完。
 `;
 /** 这门课的「角色与红线 + 教法」：计算机四门用计算机的教法，英语用英语的，其余（线代、没写科目）用线代的 */
@@ -265,7 +265,7 @@ row 3 note="×1"
   - ˋrow=2ˋ、ˋcol=3ˋ、ˋdiagˋ（主对角线）、ˋentry=2,3ˋ、ˋblock=1,2ˋ（子块，要先在 matrix 组件里 ˋsplitˋ）：矩阵的部位。ˋmatrixˋ 组件里的矩阵、公式里的 ˋbmatrixˋ 都能标；一处有好几个矩阵时，加 ˋof=名字ˋ（matrix 组件里的 ˋname=ˋ，或者公式里用 ˋ\hl{名字}{…}ˋ 包起来的矩阵）。
   - ˋstep=2ˋ：ˋstepsˋ 的第 2 步（学生已经走到的）。
   - ˋlabel=Axˋ、ˋitem=4ˋ：图里标签是 Ax 的东西、第 4 条命令画的东西；ˋat=[1, 2]ˋ：图里坐标 (1, 2) 那个点（ˋsceneˋ）。图被拖动、ˋfigure setˋ 之后，标注跟着挪。
-  - ˋword=3ˋ（第 3 个英文词）、ˋwords=4-7ˋ（第 4 到 7 个词）、ˋphrase="who lives next door"ˋ（这几个词；出现几次时 ˋphrase="that#2"ˋ）、ˋblank=2ˋ（ˋclozeˋ 的第 2 个空）：英语句子里的词。target 是英语组件时数的是那句英文，target 是一段时数的是整段的英文。一个词默认圈，一段词默认划线。
+  - ˋword=3ˋ（第 3 个英文词）、ˋwords=4-7ˋ（第 4 到 7 个词）、ˋphrase="who lives next door"ˋ（这几个词；出现几次时 ˋphrase="that#2"ˋ）、ˋblank=2ˋ（ˋclozeˋ 的第 2 个空）：英语句子里的词。target 是英语组件时数的是那句英文，target 是一段时数的是整段的英文。phrase 里可以带标点（ˋphrase=", which"ˋ、只圈逗号 ˋphrase=",#2"ˋ）。一个词默认圈，一段词默认划线。
 - ˋstyle=ˋ：ˋcircleˋ 圈、ˋboxˋ 框、ˋunderlineˋ 下划线、ˋhighlightˋ 涂底色、ˋstrikeˋ 划掉（约去的项）、ˋarrowˋ 箭头（从旁注指过去）。不写时：项、元素、点用圈，行、列、子块、整段用框，对角线用斜着的长圈。
 - ˋcolor=ˋ：ˋyellowˋ（默认）ˋpinkˋ ˋblueˋ ˋgreenˋ ˋorangeˋ ˋpurpleˋ ˋredˋ ˋwhiteˋ。ˋnote="…"ˋ：旁边写一句（要短，可以有 $公式$）；ˋside=right|left|above|belowˋ 指定写在哪边。ˋid=ˋ 不写时页面自动编 m1、m2……
 - 撤：ˋboard unmark id=m3ˋ（一条）、ˋboard unmark target=b5ˋ（这个目标上的全部）、ˋboard unmark allˋ。换一个讲法前，把不再相关的标注撤掉，板上别越圈越乱。
@@ -476,7 +476,7 @@ export function packText(pack, budget = PACK_BUDGET) {
 // —— 4. 黑板现状 ——
 
 // 会产生作答的组件：还没作答时要写出来（图之类的不用）
-const ANSWERING = new Set(['answer', 'conjecture', 'quiz', 'predict', 'practice', 'steps', 'recognize', 'findbug', 'sortpass', 'code', 'derive', 'cloze', 'errfind', 'parse', 'drill', 'chunk']);
+const ANSWERING = new Set(['answer', 'conjecture', 'quiz', 'predict', 'practice', 'steps', 'recognize', 'findbug', 'sortpass', 'code', 'derive', 'cloze', 'errfind', 'parse', 'drill', 'chunk', 'link']);
 const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const oneLine = (s, n = 200) => clip(String(s ?? '').replace(/\s*\n\s*/g, ' / ').replace(/\s+/g, ' ').trim(), n);
 const clip = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
@@ -883,8 +883,9 @@ function recordText(a, type) {
     case 'errfind':
     case 'parse':
     case 'drill':
-    case 'chunk': {
-      const kind = { cloze: '填空', errfind: '改错', parse: '句子成分', drill: '操练', chunk: '意群断句' }[type];
+    case 'chunk':
+    case 'link': {
+      const kind = { cloze: '填空', errfind: '改错', parse: '句子成分', drill: '操练', chunk: '意群断句', link: '连线' }[type];
       // 断句后写的译文（判不了分）：原样给老师
       if (type === 'chunk' && a.detail === '译文') return `[作答] ${where(a, kind)}：按意群写的译文：\n${short(a.text, 1200)}`;
       const q = a.q ? `「${short(a.q, 120)}」` : '';
