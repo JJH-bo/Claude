@@ -81,7 +81,7 @@ test('pickDrills：到期的复现组、掉了的块、错过的优先；刚做�
   assert.deepEqual(interleave([{ block: 'A' }, { block: 'A' }, { block: 'B' }]).map((x) => x.block), ['A', 'B', 'A']);
 });
 
-test('drillOutcome：每道题的结果、复现组的提议（我确认后档位变）、没过的拼成开课资料包', () => {
+test('drillOutcome：每道题的结果、复现组没过照记（原题都对不升档）、没过的拼成开课资料包', () => {
   const drills = [{ id: 'd-a1', block: 'L2.2.1', q: '一', md: 'x' }, { id: 'd-a2', block: 'L2.2.1', q: '二', md: 'y' }, { id: 'd-b1', block: 'L2.2.2', q: '三', md: 'z', from: { session: 'c-1', comp: 'q3' } }];
   const ev = (comp, ok, attempts = 1) => toEvidence('record', toAnswer({ type: 'answer', block: comp, q: comp, ok, attempts, final: true }), { session: 'c-20261010-1' });
   const evidence = [ev('d-a1', true), ev('d-a2', true), ev('d-b1', true, 2)];
@@ -90,16 +90,18 @@ test('drillOutcome：每道题的结果、复现组的提议（我确认后档�
   const res = drillOutcome({ drills, evidence, mem, reviews: ['R1', 'R2'] });
   assert.deepEqual(res.rows.map((x) => x.outcome), ['first', 'first', 'ok']);
   assert.deepEqual(res.wrong, ['d-b1']);
-  const r1 = res.reviewResults.find((x) => x.id === 'R1');
-  assert.deepEqual([r1.passed, r1.tier], [true, 7]);
+  // 原题都对了：不算复现通过，档位不动（我的规则：复现要新题、不是原题换数）
+  assert.equal(res.reviewResults.find((x) => x.id === 'R1'), undefined);
+  assert.deepEqual(res.practiced, [{ id: 'R1', n: 2 }]);
+  // 原题都没一次做对：照样记没过
   const r2 = res.reviewResults.find((x) => x.id === 'R2');
   assert.deepEqual([r2.passed, r2.tier], [false, 1]);
   const pds = reviewPendings(res.reviewResults, { session: 'c-20261010-1', date: '2026-10-10', mem });
   const pd = { id: pds[0].id, ...pds[0].doc };
   assert.equal(pd.by, 'page');
   const w = applyPending(pd, mem, { date: '2026-10-10' }).writes.find((x) => x.coll === 'reviews').doc;
-  assert.deepEqual([w.result, w.tier, w.last], ['过', 7, '2026-10-10']);
-  assert.ok(w.log.some((l) => l.field === 'tier' && l.by === 'page'));
+  assert.deepEqual([w.result, w.tier, w.last], ['没过', 1, '2026-10-10']);
+  assert.ok(w.log.some((l) => l.field === 'result' && l.by === 'page'));
   const pack = drillPack(res.rows, drills, { answers: { 'd-b1': '3x3' }, mem });
   assert.equal(pack.main.block, 'L2.2.2');
   assert.match(pack.main.student, /d-b1.*第一次错.*3x3/);

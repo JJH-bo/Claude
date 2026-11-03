@@ -54,6 +54,7 @@ export function spaceOfDoc(coll, d, mem = {}) {
   switch (coll) {
     case 'curriculum': case 'mastery': return spaceOfId(d.id);
     case 'drills': return d.block ? spaceOfId(d.block) : null;
+    case 'recall': return spaceOfId(d.block || '');
     case 'errors': return spaceOfId(d.block || d.id);
     case 'position': return spaceOfPosition(d.id);
     case 'weaknesses': return byBlocks(d.blocks) || byBlocks(list(d.errors).map((e) => (mem.errors || []).find((x) => String(x.id) === e)?.block || e)) || DEFAULT_SPACE;

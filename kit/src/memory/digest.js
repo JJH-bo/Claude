@@ -10,6 +10,7 @@
 import { voidedIds, resolvedErrors, pendingTitle, absorbedSlips } from './memo.js';
 import { filterSpace, spaceOfId, positionId, sharedFor } from './space.js';
 import { dueList, toDate } from './schema.js';
+import { recallLine } from './recall.js';
 
 const enc = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
 export const utf8 = (s) => (enc ? enc.encode(String(s)).length : Buffer.byteLength(String(s)));
@@ -24,6 +25,7 @@ export const RULES_SHARE = 0.6;
 export const LESSONS_SHARE = 0.35; // 一科最多 20 条守则，一条四五百字节：要全文放得下
 export const CATALOG_MAX = 7 * 1024;
 const ERRORS_FULL = 8; // 相关的错题最多带几条原文（这一块的、最新的在前），其余进目录
+const RECALL_FULL = 12; // 要记的最多带几条（老想不起的在前）
 const SLIPS_FULL = 6;
 // 规则的类别：课堂里最要紧的在前（放不下时后面的进目录）
 const RULE_ORDER = ['红线', '掌握', '检验', '讲解', '教法', '黑板', '细则', '来源'];
@@ -150,6 +152,10 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   const relM = get('mastery').filter((m) => nearIds.has(blockOf(m.block || m.id)))
     .sort((a, b) => (blockOf(a.id) === here ? 0 : 1) - (blockOf(b.id) === here ? 0 : 1) || cmpId(a.id, b.id));
   sections.push({ coll: 'mastery', head: '## 掌握状态（mastery，只读：你不能宣布掌握）', items: relM.map((m) => ({ key: `mastery/${m.id}`, text: `- ${m.id}：${m.state}${m.state === '复现通过' && m.tier ? `（第 ${m.tier} 天那档）` : ''}` })) });
+  // 要记的（记忆点，recall.js）：这几块记过哪些、哪几条老想不起——课上不重复记，老想不起的换个讲法再讲一次
+  const recalls = get('recall').filter((k) => (k.status || 'active') === 'active' && (nearIds.has(blockOf(k.block)) || Number(k.lapses) >= 2))
+    .sort((a, b) => (Number(b.lapses) || 0) - (Number(a.lapses) || 0) || cmpId(a.id, b.id));
+  sections.push({ coll: 'recall', head: '## 要记的（recall：这几块记过的、老想不起的；学生每天在首页自己想一遍，页面按 1 → 3 → 7 → 14 → 30 天排）', limit: RECALL_FULL, items: recalls.map((k) => ({ key: `recall/${k.id}`, text: recallLine(k, today) })) });
   // 失误：已经归纳进守则的不再带（守则里有了），只带还没归纳的，最近的在前
   const absorbed = absorbedSlips(mem.lessons);
   const slips = get('slips').filter((s) => !absorbed.has(String(s.id))).sort(byDate('date'));

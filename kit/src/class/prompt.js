@@ -105,9 +105,11 @@ const MEMO_DOC = doc`
   review id=R3 result=过 basis=q-b9
   position next="先收 L2-08 的同类题，再推 Aⁿ" debts="例 2.3；例 2.4"
   todo text="学生问了相似对角化的几何意义，资料包里没有"
+  recall q="外积 αβᵀ 的秩是多少（α、β 都不是零向量）" a="1：每一列都是 α 的倍数"
   ˋˋˋˋ
 
   - **学习台的记忆由你管**（没有别的 Claude 来整理），都直接写，不用等学生确认（学生事后看，不对能撤销）：ˋprefˋ 关于学生的事（ˋtopicˋ 讲法、习惯、目标……；改说法写 ˋid=… text=ˋ）、ˋslipˋ 你自己这节课**新出现的**教学失误（ˋlessonˋ 写下次怎么做）、ˋlessonˋ 教学守则（见下）、ˋnoteˋ 观察、ˋproposeˋ 提议、ˋtodoˋ 待办（学生问了资料包以外的，下次备课补）、ˋerrorˋ 新错题（ˋq mine step causeˋ，ˋweakness=ˋ 挂哪个弱点，不写 ˋidˋ 页面自动编号；题面、学生的答案不写时页面从依据里那次作答补；同一道题不记两次）、ˋweaknessˋ 改已有弱点的 ˋlevel scope status errors blocksˋ（写 ˋid=ˋ），或者新弱点（ˋtitle scope levelˋ，不写 ˋidˋ）、ˋreviewˋ 复现组判结果 ˋresult=过 / 没过ˋ、加题 ˋadd="…"ˋ，或者新的一组（ˋtitle family content weaknessesˋ）、ˋpositionˋ 下一节从哪接（ˋnext block debts firstˋ）、ˋruleˋ 规则：学生在课上定下的、改了的做法（「以后都……」「别再……」），照学生的意思写，ˋrule cat=讲解 text="…" basis=sayˋ（ˋcatˋ：红线 / 掌握 / 检验 / 来源 / 讲解 / 细则 / 教法 / 黑板；只管一科写 ˋspace=math / cs / enˋ），改已有的写 ˋrule id=… text="…"ˋ，作废写 ˋrule id=… status=void why="…"ˋ。**不收**：掌握状态（页面按证据算）。
+  - ˋrecallˋ **要背的一条**（记忆点）：定义原文、结论、表里的一格、公式、句型搭配……会推出来、要现场想方法的不算（那是复现组管的）。ˋq="问法"ˋ 一条只问一件事，ˋa="标准答案"ˋ 写成学生能对着检查的样子，ˋblock=ˋ 不写就挂这节课的块；默写没写出的、讲过但要背的，下课前记下来。页面从明天起每天让学生在首页自己想一遍（先写再看答案，按 1 → 3 → 7 → 14 → 30 天排，想不起回到 1 天），你上课不用再专门测这些；记忆里「要记的」是这几块记过的和老想不起的，老想不起的换个讲法讲一次。改问法、答案写 ˋrecall id=K3 q="…" a="…"ˋ，不用记了 ˋrecall id=K3 status=void why="…"ˋ。一节课最多 8 条，和已有的几乎一样的页面不收。
   - **少记，只记以后用得上的**：记之前问自己「下一节课会因为这条做得不一样吗」，不会就不记。学生的每一次作答、对错、用时页面已经自动记了，不要再用 note 复述「第 1 句写对了」。已经有的（守则、失误、弱点、错题、待办）又出现就改那一条（又犯了写 ˋagainˋ、弱点改 ˋlevelˋ），不另记一条。页面在代码里卡着：一节课观察最多 3 条、失误 3 条、错题 5 道（同一个弱点只记一道）、新弱点 3 个，和已有的说的是同一件事的不收；一个 memo 块最多 12 条。
   - **不冗杂**：新的和已有的一条几乎一样，页面不收（改那一条）；每一类有上限，到了先合并（下课整理时页面会告诉你怎么并）。
   - ˋbasis=ˋ 写依据，逗号隔开：黑板上的组件 id（ˋq-b5ˋ，页面换成学生在那道题上的全部作答）、段 id（ˋb5ˋ）、ˋsayˋ（学生刚说的那句话）、记忆里的编号（ˋL2-07ˋ ˋW19ˋ）、证据 id（ˋev-…ˋ）。新的偏好、提议、错题、弱点、复现组、规则一定要有依据，找不到依据的不记；合并、作废不用。
@@ -453,7 +455,7 @@ const PACK_FIELDS = [
 // 不放进资料包正文的字段：rules 放在第 1 部分；模型由页面固定（需求 2.3），资料包里写了也不理
 // components 是这节课要用的组件：它们的完整写法放进第 2 部分（packComponents），不写进资料包正文
 // chunks（备课挑的教材条目，全文已经并进「教材原文」）、by / at / cost / date（学习台备课时记的）也不放
-const PACK_SKIP = /^(rules|updatedAt|createdAt|id|model|modelTier|effort|components|chunks|by|at|cost|date)$/i;
+const PACK_SKIP = /^(rules|updatedAt|createdAt|id|model|modelTier|effort|components|chunks|by|at|cost|date|reviewClass)$/i;
 
 export function packText(pack, budget = PACK_BUDGET) {
   const main0 = pack?.main && typeof pack.main === 'object' ? pack.main : {};
@@ -1202,7 +1204,18 @@ export function summaryTurn(text) {
 
 // —— 下课小结（存进 class_notes / observations，给以后的课和学生看）——
 // 学习台里（report：页面算好的课后报告，memory/report.js 的 reportText）：同一次调用里接着写整理单（memo 块），不多调用一次（docs/desk-plan.md 4.2）
-export function closingPrompt({ report = '', review = '', slips = '', plan = null, tidy = null } = {}) {
+// review：复现课的复现组（一个编号或编号的数组）；opening：新课开头复现了的几组（备课写的，只写做了的）
+const idsOf = (v) => (Array.isArray(v) ? v : v ? [v] : []).map((x) => String(x && typeof x === 'object' ? x.id : x)).filter((x) => x && x !== 'undefined');
+function reviewDoc(review, opening) {
+  const rv = idsOf(review);
+  const op = idsOf(opening).filter((x) => !rv.includes(x));
+  const out = [];
+  if (rv.length) out.push(`这是复现课（复现组 ${rv.join('、')}）：整理单里${rv.length > 1 ? '每组' : ''}一定写一行 ˋreview id=${rv.length > 1 ? '…' : rv[0]} result=过ˋ 或 ˋresult=没过ˋ（依据写这节课测这一组的那几道题），档位按结果变；只测到一部分点的照最弱的那一点判，没测到的点用 ˋadd="…"ˋ 记进那一组。这节课真没测到的组不写，留着下次。`);
+  if (op.length) out.push(`这节课开头安排了复现 ${op.join('、')}：做了的那几组在整理单里写 ˋreview id=… result=过 / 没过ˋ（依据写开头那几道题），没做的不写。`);
+  return out.length ? `\n${out.join('\n')}\n` : '';
+}
+
+export function closingPrompt({ report = '', review = '', opening = null, slips = '', plan = null, tidy = null } = {}) {
   const base = doc`
 下课了。请写这节课的小结，给以后的课看（下一节课的你会带着它）：学生掌握得怎么样、下一节从哪里接。
 
@@ -1225,14 +1238,14 @@ ${pt.trim()}` : base;
   return `${withPlan}\n\n${doc`
 这节课在学习台里上。下面是页面按证据算好的课后报告（每道题的对错、没做完的、没交的草稿、学生说的话）。
 
-小结写完以后，接着写一个 ˋmemoˋ 块当**整理单**（写法和上课时一样，见「在学习台里上课」）：这节课新出现的错题（ˋerrorˋ，同一个毛病只记一道代表性的）、弱点该怎么变（ˋweaknessˋ）、复现组怎么调（ˋreviewˋ）、下一节从哪接（ˋpositionˋ，一定写）。每条都写 ˋbasis=ˋ（下面报告里的组件 id 或证据 id）。**只写要紧的**：除了归纳守则的那几行，整理单一般不超过 8 条；上课时已经记过的不再写。
+小结写完以后，接着写一个 ˋmemoˋ 块当**整理单**（写法和上课时一样，见「在学习台里上课」）：这节课新出现的错题（ˋerrorˋ，同一个毛病只记一道代表性的）、弱点该怎么变（ˋweaknessˋ）、复现组怎么调（ˋreviewˋ）、这节课要背的（ˋrecallˋ：上课时没记的定义、结论、默写没写出的，一条只问一件事）、下一节从哪接（ˋpositionˋ，一定写）。错题、弱点、复现组都写 ˋbasis=ˋ（下面报告里的组件 id 或证据 id）。**只写要紧的**：除了归纳守则和要背的那几行，整理单一般不超过 8 条；上课时已经记过的不再写。
 
 整理单最后**归纳教学失误**（这是你真正改掉它们的地方，不是再记一遍）：下面「还没归纳进守则的教学失误」每一条（这节课上课时记的也在里面），都要归到一条守则里——
 - 和已有的一条是同一件事：并进去，并把那条**改写得更能照着做**（同一件事又犯，说明原来的说法不管用）：ˋlesson id=T-3 slips=S-…,S-… text="新的说法"ˋ；
 - 是新的一件事：ˋlesson text="…" why="根因" slips=S-…ˋ；这节课新犯、上课时没记的，也直接写成守则，不用先写 slip；
 - 守则写成下次照着就能做的动作，带上判断的时机（「出一组题之前，逐题列出要用到的规则，没讲过的先讲完；讲不了的那题不出」），不写「注意」「小心」「要清楚」这种做不出来的话；一条只管一件事；
 - 意思重复的两条合成一条：留下的那条改写，另一条 ˋlesson id=T-7 status=retired into=T-3ˋ；不再适用的 ˋlesson id=T-5 status=retired why="…"ˋ。一科最多 20 条，到了上限页面不收新的，先合并。整理单直接写进记忆，学生在小结那块板上点开那行小字能撤销；上课时已经记过的不用再写。整理单只写在 memo 块里，小结正文里不用重复。
-${slips ? `\n${slips}\n` : ''}${tidy?.text ? `\n${tidyDoc(tidy)}\n` : ''}${review ? `\n这是复现课（复现组 ${review}）：整理单里一定写一行 ˋreview id=${review} result=过ˋ 或 ˋresult=没过ˋ（依据写这节课做的那几道题），档位按结果变。\n` : ''}
+${slips ? `\n${slips}\n` : ''}${tidy?.text ? `\n${tidyDoc(tidy)}\n` : ''}${reviewDoc(review, opening)}
 ${report}
 `}`;
 }

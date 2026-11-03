@@ -8,6 +8,8 @@
 //   两道不同的题干净 → 基础题过；
 //   基础题过以后，隔够 1 / 3 / 7 / 14 / 30 天又干净一道 → 复现通过（第几档）；
 //   基础题过 / 复现通过以后失手 → 掉了，重新数。
+// 练一练里的题是课上原样抄来的（drills.js，组件 id 是题库编号 d-…）：再做对只是记住了题，按我的规则（复现要新题、不是原题换数）
+// 不算干净、不往上升；原题都做错了照样算失手（连原题都不会了，肯定是掉了）。
 // 从记忆里现有的状态出发（我确认过的、对话里的 Claude 写的），只看那以后的题：不会把定下来的状态推翻成没依据的样子。
 import { REVIEW_TIERS, toDate, daysBetween } from './schema.js';
 import { itemsOf } from './report.js';
@@ -17,10 +19,12 @@ import { spaceOfId } from './space.js';
 export const MASTERY_RULE = {
   basic: 2, // 几道不同的题干净算基础题过
   tiers: REVIEW_TIERS, // 复现的间隔（和复现组同一套档位）
-  text: '两道不同的题一次对、没标没把握 → 基础题过；之后隔够 1 / 3 / 7 / 14 / 30 天再一次对 → 复现通过到那一档；之后错了、看了答案、想不出来 → 掉了',
+  text: '两道不同的题一次对、没标没把握 → 基础题过；之后隔够 1 / 3 / 7 / 14 / 30 天再一次对（新题，练一练里的原题不算）→ 复现通过到那一档；之后错了、看了答案、想不出来 → 掉了',
 };
 
-const CLEAN = (it) => it.outcome === 'first' && it.sure !== false;
+/** 练一练里做的原题（题库编号 d-…）：做对不算数，做错照样算失手 */
+export const isOriginal = (it) => /^d-/.test(String(it?.comp || ''));
+const CLEAN = (it) => it.outcome === 'first' && it.sure !== false && !isOriginal(it);
 // 改对了（第一次错）也算失手：考试只有一次机会
 const FAIL = (it) => ['wrong', 'giveup', 'revealed', 'ok'].includes(it.outcome);
 // 同一道题（练习里抄来的组件 id 每次一样）在不同的课里做两遍，不算「两道不同的题」

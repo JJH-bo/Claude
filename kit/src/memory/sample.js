@@ -67,6 +67,13 @@ export function sampleSpaces(today) {
     errors: [
       { id: 'EN-L1-01', source: '语法书 1.1 练习', q: 'Neither of the answers ___ correct.', mine: 'are', step: '主谓一致', cause: '把 answers 当主语', block: 'EN-L1.1.1', date: d(-2) },
     ],
+    // 要记的（recall.js）：各科几条，有到期的、有没想起过的
+    recall: [
+      { id: 'K1', q: '外积 $\\alpha\\beta^T$（$\\alpha,\\beta$ 都不是零向量）的秩是多少？', a: '1：每一列都是 $\\alpha$ 的倍数', block: 'L2.2.2', space: 'math', tier: 1, last: d(-1), lapses: 1, result: 'miss', status: 'active', log: [] },
+      { id: 'K2', q: '$(AB)^T$ 等于什么？', a: '$B^TA^T$（顺序反过来）', block: 'L2.2.2', space: 'math', tier: 3, last: d(-5), result: 'got', status: 'active', log: [] },
+      { id: 'K3', q: '顺序表在第 i 个位置插入，要移动几个元素（表长 n）？', a: 'n − i + 1 个', block: 'DS-L2.1.1', space: 'cs', tier: 1, last: d(-2), status: 'active', log: [] },
+      { id: 'K4', q: '五种基本句型是哪五种？', a: '主谓、主谓宾、主系表、主谓双宾、主谓宾补', block: 'EN-L1.1.1', space: 'en', tier: 7, last: d(-1), result: 'got', status: 'active', log: [] },
+    ],
     position: [
       { id: 'now-cs', block: 'DS-L2.1.1', next: '顺序表插入删除的平均移动次数' },
       { id: 'now-en', block: 'EN-L1.1.1', next: '五种基本句型，从找谓语开始' },

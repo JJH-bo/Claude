@@ -12,6 +12,7 @@
 - **学习台自己管自己**（外部 Claude 只做开发；课堂里的 Claude 管学习台，规则和掌握仍要我确认；记忆不冗杂：拦照抄、条数上限、顺着下课整理定期合并）和进度：`docs/autonomy-plan.md`。现在做学习台以它为准（2026-11-03 做完第 1、2 批；之后改成什么都不用我确认，版本 2026-11-03e）。
 - 数学和 408 再提升一轮（演示组件当练习题、演示上的滑块、答案的新写法、学生自己画波形和填过程表、含参数的精确计算、量一遍）和进度：`docs/stem-plan.md`
 - 攻学习台的上限（学得会、学得牢：信心标定、按证据算掌握、页面自己跑的练习和混练、教学尺子、课堂计划块、学生逐行推导）和进度：`docs/learning-plan.md`
+- **复习和复现分两条线**（会不会做归复现组：原题不算复现通过、首页「今天复现」不分科先挑 3 组开一节复现课；记不记得归记忆点 `recall`：一条一条排期、首页「要记的」先写再看答案自己点）和进度：`docs/review-plan.md`
 - **黑板不像对话框**（预案 `board react`：学生作答后页面当场接、不调用；拍子：一轮一拍一拍地播；固定画面的板为什么不做）和进度：`docs/board-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
@@ -125,7 +126,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 ### 学习台和记忆库（`kit/src/memory/`，`docs/learner-memory-spec.md`）
 
 - 分三批做，每一批做完对话里的 Claude 用一节真课验过再做下一批。**现在做完的是第 1、2 批**（记忆库本身；在学习台里上课）。原来的第 3 批并进了 `docs/desk-plan.md`（学习台做强：记录、交互、内部 Claude 改记忆），以它为准；**desk-plan 四批都做完了**（记录能力、课堂里的 Claude 改记忆、给我看的页面、复现课 / 启动语 / 说明书瘦身 / 组件手册按需带 / 统计）。
-- `schema.js`（纯函数）：十四类集合（`COLLECTIONS`：中文名、`history` / `state`、谁能写、编号的正则、必填、只能取的值、日期字段、指向别的类的字段、改了要记 log 的字段；改动单 `pending`、教学守则 `lessons`）；四种角色 `chat` / `class` / `page` / `me`（我在页面上点的），`assertWrite` 在代码层面拦住不该写的（学习台自己管自己以后，课堂里的 Claude 能写 `observations`、`slips`、`lessons`、`profile`、错题、弱点、复现组、位置；规则只有 `chat` 和 `me`（它写的规则走确认档，我点了以 me 写），掌握只有 `chat` 和 `me`（页面算、我确认）；`chat` 现在指开发那边修数据）；撤销时限 `UNDO_DAYS`；复现档位 1 → 3 → 7 → 14 → 30（`nextTier`、`reviewDue`：到期 = last + tier，页面算）；`applyChange` 改状态类时按字段记 log。
+- `schema.js`（纯函数）：十六类集合（`COLLECTIONS`：中文名、`history` / `state`、谁能写、编号的正则、必填、只能取的值、日期字段、指向别的类的字段、改了要记 log 的字段；改动单 `pending`、教学守则 `lessons`）；四种角色 `chat` / `class` / `page` / `me`（我在页面上点的），`assertWrite` 在代码层面拦住不该写的（学习台自己管自己以后，课堂里的 Claude 能写 `observations`、`slips`、`lessons`、`profile`、错题、弱点、复现组、位置；规则只有 `chat` 和 `me`（它写的规则走确认档，我点了以 me 写），掌握只有 `chat` 和 `me`（页面算、我确认）；`chat` 现在指开发那边修数据）；撤销时限 `UNDO_DAYS`；复现档位 1 → 3 → 7 → 14 → 30（`nextTier`、`reviewDue`：到期 = last + tier，页面算）；`applyChange` 改状态类时按字段记 log。
 - `check.js`（纯函数）：自检对话里的 Claude 写的记忆（编号、字段、日期、指向的 id、结论挂证据），外加指纹 `meta/ledger`：历史类（错题、观察、失误）改了、删了记一条提醒留 7 天；状态类改了 `tracked` 字段却没在 log 里记到新值就一直报（指纹停在旧值，补上 log 才前进）。结果写回 `meta/memcheck` 给对话里的 Claude 读。
 - `desk.js`：学习台首页（今天、自检、记忆库每类几条）；页面只写 `meta`。`sample.js` 是一份守规矩的示例记忆（`?dev` 的「填入示例记忆」、测试都用它）。说明书 `CLAUDE-PROJECT.md` 第七节的 JSON 例子拼起来要能过自检（`tests/memory.test.js` 守着）。
 - 在学习台里上课（第 2 批）：首页「开新课」→ `sessions/{编号}`（`c-20261027-1`，页面写），`pack/main`、`pack/problems` 抄进 `sessions/{编号}/pack/`；地址带 `#编号` 就进这节课（`desk.js` 的 `classHash` / `enterClass`，进出都整页刷新，课堂挂的全局监听不留）。课堂照旧是 `classroom.js`，多一个 `desk` 参数：
@@ -160,7 +161,9 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - 分科（数学 / 408 / 英语，`space.js`，纯函数）：一个学习台三个空间。课程编号带门课前缀（线代不带；`DS-` `OS-` `CO-` `CN-` `EN-`，`courseOf` / `spaceOfId` / `subjectOf`），错题跟着前缀编号；弱点、复现组按挂的块 / 错题认（或写 `space`）；`position` 每科一条（`now`、`now-cs`、`now-en`，`positionId`），资料包每科一份（`pack/main`、`main-cs`、`main-en`，`packIds`）。首页顶上切换（`desk.js` 的 `setSpace`，这台设备记着），首页各卡、页面、待确认都只看这一科（`filterSpace`）；「关于我」、规则、失误、自检、备份全科共用。开课时 `sessions` 记 `space`、`subject`，`enterClass` 把 `session.subject` 设成这一块的门课，课堂按它带组件说明和教法；记忆摘要也只带这一科。
 - 攻上限（`docs/learning-plan.md`）：
   - 掌握 `mastery.js`（纯函数）：页面按证据算（两道不同的题一次对、没标没把握 → 基础题过；隔够档位再一次对 → 复现通过；过了以后失手 → 掉了），从记忆里现有的状态出发，出改动单（`kind: mastery`、`by: page`），我确认才写（`mastery` 的写入方有 `me`）。首页 `desk.js` 的 `proposeMastery` 每次自检后算一遍。
-  - 练一练 `drills.js`（纯函数）+ `drillrun.js`：下课写报告时（`desk.js` 的 `harvestSession`）把页面判得了分的组件连同 `let` 块抄进题库 `drills`（以前的课首页补抄，`sessions.drills` 记抄了几道）；首页「练一练」挑题（到期复现组、掉了的块、错过的，挨着的不同块）开一节 `kind: drill` 的课，一次一道、不调用 Claude；做完出复现组结果的改动单，没过的能带着开课（`createClass`）。
+  - 练一练 `drills.js`（纯函数）+ `drillrun.js`：下课写报告时（`desk.js` 的 `harvestSession`）把页面判得了分的组件连同 `let` 块抄进题库 `drills`（以前的课首页补抄，`sessions.drills` 记抄了几道）；首页「练一练」挑题（到期复现组、掉了的块、错过的，挨着的不同块）开一节 `kind: drill` 的课，一次一道、不调用 Claude；做完复现组有一道没一次做对直接记没过，都对了档位不动（原题，按我的规则 rule-rev-2 不算复现通过；`mastery.js` 的 `isOriginal` 也不让它升掌握），没过的能带着开课（`createClass`）。
+  - 今天复现（`docs/review-plan.md`）：`views.js` 的 `reviewQueue`（到期的按「从没复现 > 上次没过 > 过期久」排）、`todayReviews`（不分科每门课一行，先挑 `REVIEW_MAX` 3 组），`reviewPack(mem, [ids])` 拼几组一起的复现课资料包（`main.review` 编号数组、`reviewClass: true`）；`createClass` 记 `sessions.review`（复现课）或 `sessions.opening`（备课写的开头复现 `[{ id, how }]`），`closingPrompt({ review, opening })` 下课时每组判一次。`reviewIdsOf` 兼容以前的一个编号。
+  - 记忆点 `recall`（`K12`，状态类）：`recall.js`（纯函数：到期、今天想哪几条 `recallToday`、自评 `rateRecall`（got 升一档、30 天那档再想起来 `done`；vague 不动；miss 回 1 天 `lapses + 1`）、证据 `recallEvidence`（`src: recall`，不进掌握））+ `recallrun.js`（首页「要记的」：先写再看答案、三个按钮）。课堂 memo 的 `recall q= a=`（`memo.js`，一节最多 8 条、几乎一样的不收、一科最多 `RECALL_CAP`），我自己加 / 停掉是 `meChange('recall-add' / 'recall-void')`；`digest.js` 的记忆摘要带「要记的」（这几块的、老想不起的，最多 12 条）。
   - 课堂计划块：`protocol.js` 认 `board plan`（学生看不到，≤ 200 字）；`prompt.js` 的 `latestPlan` 从整段历史里取最新一份放进「黑板现状」前面，`stripPlan` 把历史里的 plan 块去掉；`features.js` 的 `plan` 开关**现在关着**（教学尺子量下来没看出好处，`evals/teaching/results.md`）。
   - 教法里三门课共用的几条（误解要早探、确认题要换数……）在 `prompt.js` 的 `TEACH_PROBE`，来自教学尺子的评卷。
 - 浏览器里看：`kit/examples/desk-demo.html?dev`（「填入示例记忆」→「开新课」，输入框打「测试:整理」：模拟老师写一个 memo 块，三档各几条、再故意写两条不对的；下课时模拟小结后面带整理单。打「测试:记忆」：模拟老师真的调用 `memory_read`、`lesson_note`、`slip_note`，写一段标了 `point=tr` 的题；点「下课」后回首页看「上一节」、补记、导出备份）。

@@ -4,7 +4,7 @@
 import { REVIEW_TIERS, toDate, addDays, daysBetween, reviewDue, dueList } from './schema.js';
 import { voidedIds, resolvedErrors, pendingTitle } from './memo.js';
 import { OUTCOME_TEXT } from './report.js';
-import { SPACES, positionId, packIds, filterSpace } from './space.js';
+import { SPACES, positionId, packIds, filterSpace, courseOf, subjectOf, spaceOfId } from './space.js';
 import { classView, memoryCatalog, utf8 } from './digest.js';
 
 const cut = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
@@ -179,28 +179,72 @@ export function learningStats(mem = {}, { today = toDate(Date.now()), days = 14 
   return { daily, blocks: [...blocks.values()].map((x) => ({ ...x, minutes: Math.round(x.minutes) })).sort((a, b) => b.minutes - a.minutes || cmpId(a.block, b.block)), trend, total, studyDays: daily.filter((d) => d.minutes > 0).length };
 }
 
-/* ---------------- 复现课：页面自己拼资料包 ---------------- */
+/* ---------------- 复现：今天先做哪几组，页面自己拼资料包 ---------------- */
+
+// 一节复现课最多几组（我的规则 rule-pre-2：一轮最多 3 组，超出的排队不丢）
+export const REVIEW_MAX = 3;
 
 /**
- * 到期的复现组一键开课：这一组的内容、盯的弱点、相关错题原文、相关块的范围，加上以前各节课资料包里同一块的题（packs）。
- * 返回 { main, problems }（和外部写的资料包一样的字段，main 多一个 review）
+ * 到期的复现组按我的规则排先后（rule-pre-2）：从没复现 > 上次没过 > 过期久。
+ * 返回 [{ id, title, days, course, subject, space, why }]（只要过期和今天到期的；停掉、暂停、并掉的不算）
  */
-// sheets：以前这一块的课下课时整理的「这节课的一页」[{ date, title, md }]（memory/sheet.js），复现课从它开始
-export function reviewPack(mem = {}, rid, { packs = [], sheets = [], today = toDate(Date.now()) } = {}) {
-  const r = live(mem, 'reviews').find((x) => String(x.id) === String(rid));
-  if (!r) throw new Error(`复现组里没有 ${rid}`);
-  const ws = live(mem, 'weaknesses').filter((w) => list(r.weaknesses).includes(String(w.id)));
-  const wErr = new Set(ws.flatMap((w) => list(w.errors)));
-  const blocks = list(r.blocks).length ? list(r.blocks) : [...new Set(ws.flatMap((w) => list(w.blocks)))];
+export function reviewQueue(mem = {}, { today = toDate(Date.now()) } = {}) {
+  const rs = live(mem, 'reviews');
+  const rank = (r) => (!r.last || /从未|还没/.test(String(r.result || '')) ? 0 : /没过|不过/.test(String(r.result || '')) ? 1 : 2);
+  return dueList(rs, today).filter((d) => d.days <= 0).map((d) => {
+    const r = rs.find((x) => String(x.id) === d.id);
+    const b = list(r.blocks)[0] || '';
+    const k = rank(r);
+    return { id: d.id, title: d.title, days: d.days, rank: k, course: courseOf(b), subject: subjectOf(b), space: r.space || spaceOfId(b), why: ['从没复现过', '上次没过', '到期了'][k] };
+  }).sort((a, b) => a.rank - b.rank || a.days - b.days || cmpId(a.id, b.id));
+}
+
+/**
+ * 首页「今天复现」：每门课一行（不分科都列出来，在学英语时也看得到线代积压了多少），
+ * 每行先挑排在最前的 REVIEW_MAX 组：[{ course, subject, space, total, pick: [复现组], rest: [复现组] }]，积压多的门课在前。
+ * 一节课只上一门课（课堂按门课带组件说明和教法），所以不跨门课混。
+ */
+export function todayReviews(mem = {}, { today = toDate(Date.now()), max = REVIEW_MAX } = {}) {
+  const by = new Map();
+  for (const q of reviewQueue(mem, { today })) {
+    if (!by.has(q.course)) by.set(q.course, { course: q.course, subject: q.subject, space: q.space, list: [] });
+    by.get(q.course).list.push(q);
+  }
+  return [...by.values()].map((g) => ({ course: g.course, subject: g.subject, space: g.space, total: g.list.length, pick: g.list.slice(0, max), rest: g.list.slice(max) }))
+    .sort((a, b) => b.total - a.total || a.course.localeCompare(b.course));
+}
+
+/** sessions / 资料包里记的复现组：以前是一个编号，现在是编号的数组（备课写的开头复现是 [{ id, how }]） */
+export const reviewIdsOf = (v) => (Array.isArray(v) ? v : v ? [v] : []).map((x) => String(x && typeof x === 'object' ? x.id : x)).filter((x) => x && x !== 'undefined');
+
+/**
+ * 开一节复现课（一组或几组，同一门课）：每组的内容、盯的弱点、相关错题原文、相关块的范围，加上以前各节课资料包里同一块的题（packs）。
+ * 返回 { main, problems }（和外部写的资料包一样的字段，main 多一个 review：复现组编号的数组）
+ * sheets：以前这几块的课下课时整理的「这节课的一页」[{ date, title, md }]（memory/sheet.js），复现课从它开始
+ */
+export function reviewPack(mem = {}, rids, { packs = [], sheets = [], today = toDate(Date.now()) } = {}) {
+  const ids = reviewIdsOf(rids);
+  const all = live(mem, 'reviews');
+  const groups = ids.map((rid) => { const r = all.find((x) => String(x.id) === rid); if (!r) throw new Error(`复现组里没有 ${rid}`); return r; });
+  if (!groups.length) throw new Error('没有要复现的组');
   const solved = resolvedErrors(mem);
-  const errs = live(mem, 'errors').filter((e) => !e.corrects && (wErr.has(String(e.id)) || blocks.includes(blockOf(e.block)))).sort((a, b) => cmpId(a.id, b.id));
-  const cur = live(mem, 'curriculum').filter((c) => blocks.includes(String(c.id)));
-  const due = reviewDue(r, today);
-  const content = list(r.content);
+  const blocksAll = [];
+  const seenErr = new Set();
+  const parts = groups.map((r) => {
+    const ws = live(mem, 'weaknesses').filter((w) => list(r.weaknesses).includes(String(w.id)));
+    const wErr = new Set(ws.flatMap((w) => list(w.errors)));
+    const blocks = list(r.blocks).length ? list(r.blocks) : [...new Set(ws.flatMap((w) => list(w.blocks)))];
+    for (const b of blocks) if (!blocksAll.includes(b)) blocksAll.push(b);
+    // 几组一起上时每组的错题最多几道（资料包有预算）；同一道错题只放一次
+    const errs = live(mem, 'errors').filter((e) => !e.corrects && !seenErr.has(String(e.id)) && (wErr.has(String(e.id)) || blocks.includes(blockOf(e.block)))).sort((a, b) => cmpId(a.id, b.id)).slice(0, groups.length > 1 ? 4 : 12);
+    for (const e of errs) seenErr.add(String(e.id));
+    return { r, ws, errs, blocks, due: reviewDue(r, today), content: list(r.content) };
+  });
+  const cur = live(mem, 'curriculum').filter((c) => blocksAll.includes(String(c.id)));
   const items = [];
   const seen = new Set();
   for (const p of packs) {
-    if (!p || !blocks.includes(String(p.block || ''))) continue;
+    if (!p || !blocksAll.includes(String(p.block || ''))) continue;
     for (const it of Array.isArray(p.items) ? p.items : []) {
       const k = String(it?.q || '');
       if (!k || seen.has(k)) continue;
@@ -208,26 +252,31 @@ export function reviewPack(mem = {}, rid, { packs = [], sheets = [], today = toD
       items.push({ ...it, source: it.source || `以前的课 ${p.session || ''}`.trim() });
     }
   }
+  const many = groups.length > 1;
+  const name = (r) => `${r.id}「${r.title || ''}」${r.family ? `（机制族：${r.family}）` : ''}`;
+  const when = ({ r, due }) => `第 ${r.tier} 天那档${due.days !== undefined ? `（${due.days < 0 ? `过期 ${-due.days} 天` : due.days === 0 ? '今天到期' : `还有 ${due.days} 天`}）` : ''}，上次 ${r.last || '还没做过'}${r.result ? `，结果：${r.result}` : ''}`;
   const main = {
-    unit: `复现 ${r.id} · ${r.title || ''}`.trim(),
-    goal: `检验「${r.title || r.id}」${r.family ? `（机制族：${r.family}）` : ''}现在还会不会：不看提示独立做出来、说得清为什么。`,
-    block: blocks[0] || null,
-    review: String(r.id),
+    unit: `复现 ${groups.map((r) => r.id).join('、')} · ${groups.map((r) => r.title || '').join('、')}`.trim(),
+    goal: `检验${groups.map((r) => `「${r.title || r.id}」`).join('、')}现在还会不会：不看提示、独立做出新题、说得清依据。`,
+    block: blocksAll[0] || null,
+    review: groups.map((r) => String(r.id)),
+    reviewClass: true,
     scope: [
-      `这是复现课，不讲新内容：复现组 ${r.id}，第 ${r.tier} 天那档${due.days !== undefined ? `（${due.days < 0 ? `过期 ${-due.days} 天` : due.days === 0 ? '今天到期' : `还有 ${due.days} 天`}）` : ''}，上次 ${r.last || '还没做过'}${r.result ? `，结果：${r.result}` : ''}。`,
+      `这是复现课，不讲新内容：${many ? `${groups.length} 组` : '复现组'} ${parts.map((p) => `${name(p.r)}，${when(p)}`).join('；')}。`,
       ...cur.map((c) => `${c.id} ${c.title || ''}：${c.scope || ''}${c.exam ? `；考试口径：${c.exam}` : ''}`),
     ].join('\n'),
     plan: [
-      sheets.length ? '0. 资料包里有以前这一块的课整理的一页：从学生当时错的、没拿下的那几处出题（换数、换问法），不要照抄原题。' : '',
-      '1. 先出一道这一组的题，不给提示，让学生独立做完、说出理由。',
-      '2. 做对了：换一个角度再出一道（换数、换问法），确认不是记住了答案；做错了：先问学生卡在哪，再针对盯的弱点补一小段，最后再出一道同类题。',
-      '3. 下课整理单里写 review id=' + r.id + ' result=过 / 没过（依据写那几道题的组件 id），弱点有变化也写。',
-      content.length ? `这一组的内容：${content.join('；')}` : '',
+      sheets.length ? `0. 资料包里有以前这${many ? '几' : '一'}块的课整理的一页：从学生当时错的、没拿下的那几处出题（换问法、换场景），不要照抄原题。` : '',
+      `1. ${many ? '每组至少一道新题，几组的题混着出、不说是哪一组' : '先出一道这一组的新题'}（不是原题换数，不贴标签），不给提示，让学生独立做完、写出依据。一道题尽量测组里的几个点；组里列的点没测到的，换一道再测，不要测了一两点就算过。`,
+      '2. 做对了：换一个角度再出一道，确认不是记住了答案；做错了：先问学生卡在哪，再针对盯的弱点补一小段，最后再出一道同类的新题。',
+      `3. 下课整理单里${many ? `每组写一行（${groups.map((r) => r.id).join('、')}）` : '写一行'} review id=${many ? '…' : groups[0].id} result=过 / 没过（依据写那几道题的组件 id）；只测到一部分的组照最弱的那一点判，没测到的点用 add="…" 记进那一组，下次先测；弱点有变化也写。`,
+      ...parts.filter((p) => p.content.length).map((p) => `${p.r.id} 的内容：${p.content.join('；')}`),
     ].filter(Boolean).join('\n'),
-    student: [
-      ws.length ? `盯的弱点：${ws.map((w) => `${w.id} ${w.title}（${w.scope}，${w.level}）`).join('；')}` : '',
-      errs.length ? `相关错题原文：\n${errs.map((e) => `- ${e.id}${solved.has(String(e.id)) ? '（学生标了已解决）' : ''}：题「${cut(e.q, 200)}」；学生写「${cut(e.mine, 120)}」；错在 ${cut(e.step, 80)}；根因 ${cut(e.cause, 120)}`).join('\n')}` : '',
-    ].filter(Boolean).join('\n'),
+    student: parts.map((p) => [
+      many ? `【${p.r.id} ${p.r.title || ''}】` : '',
+      p.ws.length ? `盯的弱点：${p.ws.map((w) => `${w.id} ${w.title}（${w.scope}，${w.level}）`).join('；')}` : '',
+      p.errs.length ? `相关错题原文：\n${p.errs.map((e) => `- ${e.id}${solved.has(String(e.id)) ? '（学生标了已解决）' : ''}：题「${cut(e.q, 200)}」；学生写「${cut(e.mine, 120)}」；错在 ${cut(e.step, 80)}；根因 ${cut(e.cause, 120)}`).join('\n')}` : '',
+    ].filter(Boolean).join('\n')).filter(Boolean).join('\n\n'),
     ...(sheets.length ? { '以前这一块整理的一页': sheets.map((x) => `【${x.date} ${x.title}】\n${x.md}`).join('\n\n') } : {}),
     updatedAt: Date.now(),
   };
