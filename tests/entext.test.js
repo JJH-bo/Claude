@@ -144,3 +144,13 @@ test('连线 link、phrase 带标点（docs/english-plan.md 第 6 批）', async
   assert.deepEqual(wordSpan({ kind: 'phrase', text: ',', n: 2 }, t), { from: 7, to: 7 });
   assert.equal(wordsIn('a, b').length, 2, '不带 punct 时只数词');
 });
+
+test('drill 拿不准时问 Claude：提示词带题目、答案、学生写的；回答读成 { ok, why }', async () => {
+  const { regradePrompt, parseRegrade } = await import('../kit/src/entext.js');
+  const p = regradePrompt({ q: 'They built it.', task: '改成被动', alts: ['It was built.'], given: 'It was built by them.' });
+  assert.match(p, /原句：They built it\.[\s\S]*标准答案：It was built\.[\s\S]*学生写的：It was built by them\./);
+  assert.ok(!/他|她/.test(p.replace(/其他/g, '')));
+  assert.deepEqual(parseRegrade('好的 {"ok": true, "why": "加 by them 也对"}'), { ok: true, why: '加 by them 也对' });
+  assert.equal(parseRegrade('看不懂'), null);
+  assert.equal(parseRegrade('{"ok": "yes"}'), null);
+});
