@@ -1,0 +1,1 @@
+{"say": "那就直接跳到 0 吧。", "acts": [{"comp": "q-skip1", "value": "0"}], "sure": {"q-skip1": true}}
