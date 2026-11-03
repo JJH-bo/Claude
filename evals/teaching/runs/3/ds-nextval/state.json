@@ -45,7 +45,8 @@
  "cur": 2,
  "progress": {},
  "tries": {
-  "q-next1": 1
+  "q-next1": 1,
+  "q-waste": 1
  },
  "results": {
   "q-next1": [
@@ -61,6 +62,18 @@
     "ok": true,
     "attempts": 1,
     "detail": "写出结果",
+    "final": true
+   }
+  ],
+  "q-waste": [
+   {
+    "source": "record",
+    "block": "q-waste",
+    "step": "b2",
+    "type": "quiz",
+    "q": "这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？",
+    "ok": true,
+    "attempts": 1,
     "final": true
    }
   ]
@@ -107,6 +120,11 @@
    "role": "claude",
    "seq": 3,
    "text": "对，六个都对。nextval 要解决的是 next 的一个浪费，先看它浪费在哪：还是这个串，想一想下面这次比较。\n\n````board new id=b2 title=\"next 浪费在哪\"\n模式串 $T=$ a a b a a c，$next=$ 0 1 2 1 2 3。\n\n匹配时，主串的字符 $S[i]$ 和 $T[2]=\\text{a}$ **失配**了，按 next，$j$ 退到 $next[2]=1$，接着拿 $S[i]$ 和 $T[1]$ 比。\n\n```quiz\nid: q-waste\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [x] 一定失配\n- [ ] 一定匹配\n- [ ] 不一定，要看主串\nexplain: $S[i]\\ne T[2]=\\text{a}$，而 $T[1]$ 也是 a，所以 $S[i]\\ne T[1]$：这次比较白做了。\n```\n````\n\n选好以后，用一句话告诉我你是凭什么判断的。\n"
+  },
+  {
+   "role": "student",
+   "seq": 4,
+   "text": "选 A。T[2]是a，S[i]跟它不一样，T[1]也是a，所以应该也不一样吧？不太确定。\n[作答] b2 里的 quiz q-waste：「这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？」做对了（共 1 次）\n[动作] b2 里的组件 q-waste：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
   }
  ],
  "turns": [
@@ -152,8 +170,26 @@
    "notes": [],
    "plan": false,
    "view": "# 第 2 块板「next 浪费在哪」\n\n老师写在板顶的话：对，六个都对。nextval 要解决的是 next 的一个浪费，先看它浪费在哪：还是这个串，想一想下面这次比较。\n\n选好以后，用一句话告诉我你是凭什么判断的。\n\n## next 浪费在哪\n模式串 $T=$ a a b a a c，$next=$ 0 1 2 1 2 3。\n\n匹配时，主串的字符 $S[i]$ 和 $T[2]=\\text{a}$ **失配**了，按 next，$j$ 退到 $next[2]=1$，接着拿 $S[i]$ 和 $T[1]$ 比。\n\n【选择题 q-waste】\n  这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n  A. 一定失配\n  B. 一定匹配\n  C. 不一定，要看主串\n\n# 常驻栏\n## 口径（王道）\n位置从 1 数；$next[1]=0$；$next[j]$ = $T[1..j-1]$ 最长相等前后缀的长度 $+1$。\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 4,
+   "role": "student",
+   "say": "选 A。T[2]是a，S[i]跟它不一样，T[1]也是a，所以应该也不一样吧？不太确定。",
+   "acts": [
+    {
+     "comp": "q-waste",
+     "ok": true,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-waste",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "选 A。T[2]是a，S[i]跟它不一样，T[1]也是a，所以应该也不一样吧？不太确定。\n[作答] b2 里的 quiz q-waste：「这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？」做对了（共 1 次）\n[动作] b2 里的组件 q-waste：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
   }
  ],
- "seq": 3,
+ "seq": 4,
  "pendingNotes": []
 }
