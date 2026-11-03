@@ -227,7 +227,9 @@ export function renderLesson(src, root) {
     if (!own && session.live && (ANSWERING.has(name) || FIGURES.has(name) || blocks[name].stepper)) session.problem(el, name, `这个组件没写 id:，暂时按 ${el.dataset.bid} 记。请加一行 id:（同一个单元里不重复）`, { soft: true });
     // 组件文字里的 \calc：有自己 let 的组件（answer、scene、predict、matrix）自己带着变量查；别的按整节课的量查。
     // 要现在查：解析这类文字往往答完题才显示，那时再报就晚了
-    if (!SELF_CALC.has(name)) for (const msg of calcProblems(body)) session.problem(el, name, msg);
+    // 带 vary:（滑块）的演示：字段里的 \calc{d} 用的是滑块的值，演示组件自己查
+    const selfCalc = SELF_CALC.has(name) || (blocks[name]?.stepper && /^\s*vary\s*[:：]/m.test(body));
+    if (!selfCalc) for (const msg of calcProblems(body)) session.problem(el, name, msg);
     try {
       blocks[name](el, body);
     } catch (e) {

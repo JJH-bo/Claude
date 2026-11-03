@@ -64,7 +64,7 @@ export function stepperBlock(engine) {
     for (const e of errors) session.problem(el, engine.name, e);
     // practice 里随机取的数：「数据已经有序」这类提醒不是老师写的问题，不报
     if (!opts.embedded) for (const e of engine.problems?.(input, run) || []) session.problem(el, engine.name, e, { soft: true });
-    for (const msg of calcProblems([fields.title, fields.q, fields.note])) session.problem(el, engine.name, msg);
+    for (const msg of calcProblems([fields.title, fields.q, fields.note], varyVals)) session.problem(el, engine.name, msg);
     const quiz = common.mode === 'quiz' ? engine.quiz?.(input, run, fields) : null;
     if (common.mode === 'quiz' && !quiz) throw new Error(`${engine.name} 没有 quiz 模式`);
     let fill = null;
