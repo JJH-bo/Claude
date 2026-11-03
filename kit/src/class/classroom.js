@@ -408,10 +408,11 @@ export async function renderClass(root, meta, desk = null) {
     sink.put('class_pages', { id: pad3(p.n), n: p.n, title: p.title || '', talk: p.talk || '', talkBy: p.talkBy || '', lead: p.lead || '', kind: p.kind || '', body: p.body || '', foot: p.foot || '', ...(p.memo?.length ? { memo: p.memo } : {}), at: Date.now() });
   }
 
-  // —— 学习台里改记忆（memory/memo.js）：这一轮 memo 块记的改动单挂在板顶那句话下面（小结板上整张列出来，逐条确认）——
+  // —— 学习台里改记忆（memory/memo.js）：都直接写进去了，上课时板上什么都不挂（不打扰学生）；
+  // 下课小结那块板上只有一行小字「这节课记下了……」，点开才一条条看、能撤销（2026-11-03：一节课结束甩几十条没必要）——
   function decoratePage(p) {
     if (!desk?.memo) return;
-    const ids = p.memo || [];
+    const ids = p.kind === 'closing' ? p.memo || [] : [];
     let el = p.sec.querySelector(':scope > .class-memo, :scope > .class-page-body > .class-memo');
     if (!ids.length) { el?.remove(); return; }
     if (!el) {
@@ -421,12 +422,10 @@ export async function renderClass(root, meta, desk = null) {
       if (closing) closing.after(el);
       else p.talkEl.after(el);
     }
-    desk.memo.view.attach(el, () => p.memo || [], p.kind === 'closing'
-      ? { mode: 'list', title: '整理单：已经写进学习台，不对就点「撤销」；规则等你点「确认」' }
-      : { mode: 'line' });
+    desk.memo.view.attach(el, () => p.memo || [], { mode: 'line' });
   }
 
-  // 执行一轮里的 memo 块：直接写的马上写，等确认的记成改动单；没记成的告诉课堂 Claude（不多跑一轮：跟着下一轮的提醒）
+  // 执行一轮里的 memo 块：都直接写；没记成的告诉课堂 Claude（不多跑一轮：跟着下一轮的提醒）
   async function runMemo(entries0, seq, pageN) {
     // 改讲别的块：页面自己改（sessions 记下来，之后的证据、记忆摘要都按新的块），不进改动单
     const switches = entries0.filter((e) => e.kind === 'block');
@@ -1586,13 +1585,11 @@ export async function renderClass(root, meta, desk = null) {
       const p = newPage({ title: '这节课的小结', kind: 'closing', body: summary, foot });
       const closed = addTurn({ role: 'system', kind: 'closing', text: res.text, modelApplied: res.modelApplied, page: p.n, cost: cost('closing') });
       bv.show(p.n, { animate: true });
-      // 整理单：直接写的马上写，等确认的挂在小结下面让我逐条点
+      // 整理单：都直接写进去，小结下面只有一行小字（点开能撤销）
       const memo = memoEntries.length ? await runMemo(memoEntries, closed.seq, p.n) : null;
       // 课后报告（memory/report.js，页面代码算，不调用 Claude）：sessions/{编号}/report/main
       if (desk?.writeReport) desk.writeReport({ turns: history, steps: steps() }).catch((e) => { console.warn('课后报告没写成', e); toast('课后报告没写成，回学习台首页会再试'); });
-      const open = memo?.pds.filter((x) => x.status === 'open').length || 0;
-      bar.setStatus('notice', !desk ? '下课了。小结已经存好，回对话告诉 Claude「下课了」。'
-        : open ? `下课了。小结和课后报告存进学习台了；小结下面的整理单有 ${open} 条等你确认。` : '下课了。小结和课后报告已经存进学习台。');
+      bar.setStatus('notice', !desk ? '下课了。小结已经存好，回对话告诉 Claude「下课了」。' : '下课了。小结和课后报告已经存进学习台。');
       session.event('end', null, { turns: history.length });
       return true;
     });

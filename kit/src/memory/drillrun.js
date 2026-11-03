@@ -9,6 +9,7 @@ import { createSink } from '../live/sync.js';
 import { assertWrite, toDate } from './schema.js';
 import { drillOutcome, reviewPendings, drillPack } from './drills.js';
 import { OUTCOME_TEXT } from './report.js';
+import { createMemOps } from './memops.js';
 
 const TEXT = { ...OUTCOME_TEXT, skip: '没做', giveup: '没做出来', wrong: '错', ok: '改对了', first: '一次对' };
 
@@ -117,8 +118,9 @@ export async function enterDrill(root, meta, { db, store, sid, doc, readOnly = f
     const res = drillOutcome({ drills, evidence, mem, reviews: Array.isArray(doc.reviews) ? doc.reviews : [] });
     const today = toDate(Date.now());
     if (!readOnly && doc.status !== 'closed') {
-      assertWrite('page', 'pending');
-      for (const p of reviewPendings(res.reviewResults, { session: sid, date: today, mem })) await db.doc(`pending/${p.id}`).set(p.doc).catch(() => {});
+      // 复现组的结果直接写进去（档位跟着变），不等我确认；不对能在「管理」里撤销
+      const ops = createMemOps({ db, mem: () => mem });
+      for (const p of reviewPendings(res.reviewResults, { session: sid, date: today, mem })) await ops.applyNow({ id: p.id, ...p.doc }).catch(() => {});
       assertWrite('page', 'sessions');
       const summary = { n: res.rows.length, clean: res.rows.filter((x) => x.clean).length, wrong: res.wrong.length };
       doc = { ...doc, status: 'closed', endedAt: Date.now(), drill: summary };
@@ -129,8 +131,7 @@ export async function enterDrill(root, meta, { db, store, sid, doc, readOnly = f
     out.innerHTML = `
       <h2 class="dk-h">做完了：${clean} / ${res.rows.length} 道一次对</h2>
       <div class="dr-rows">${res.rows.map((x, i) => `<div class="dk-row"><b>${i + 1}</b><span>${escapeHtml(x.block)}${titleOf(x.block) ? ` ${mdToHtml(titleOf(x.block), { inline: true })}` : ''}　<span class="muted">${mdToHtml(String(byId.get(x.id)?.title || '').slice(0, 60), { inline: true }) || escapeHtml(String(x.q).replace(/\\[a-zA-Z]+/g, '').slice(0, 60))}</span></span><em class="${x.clean ? 'dr-ok' : 'dr-bad'}">${escapeHtml(TEXT[x.outcome] || x.outcome)}${x.sure === false ? '（没把握）' : ''}</em></div>`).join('')}</div>
-      ${res.reviewResults.length ? `<p>复现组：${res.reviewResults.map((r) => `${escapeHtml(r.id)} ${r.passed ? '过了' : '没过'}（下次 ${r.tier} 天后）`).join('；')}。在学习台首页「待确认」里点确认才算数。</p>` : ''}
-      <p class="muted">掌握状态页面会按这次的作答重新算，有变化会出现在「待确认」里。</p>
+      ${res.reviewResults.length ? `<p>复现组：${res.reviewResults.map((r) => `${escapeHtml(r.id)} ${r.passed ? '过了' : '没过'}（下次 ${r.tier} 天后）`).join('；')}，已经记下了。</p>` : ''}
       <div class="dr-acts">${res.wrong.length && !readOnly ? `<button type="button" class="btn btn-primary dr-class">带着没过的 ${res.wrong.length} 道开课</button>` : ''}<button type="button" class="btn dr-back">回学习台</button></div>`;
     out.querySelector('.dr-back').addEventListener('click', () => goto(''));
     out.querySelector('.dr-class')?.addEventListener('click', async (e) => {

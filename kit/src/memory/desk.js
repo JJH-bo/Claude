@@ -89,11 +89,12 @@ export async function renderDesk(root, meta) {
     <section class="dk-card dk-drill" hidden><h2 class="dk-h">练一练</h2><p class="dk-sub muted">页面从以前课上的题里挑几道，不同块混着做，页面判分，不调用 Claude。</p><div class="dk-body"></div></section>
     </div>
     <div class="dk-col dk-col-side">
-    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">规则和掌握要你点了才写进记忆。别的课堂里的 Claude 直接写，不对就在「最近写进去的」里撤销（7 天内）。</p><div class="dk-popen"></div><details class="dk-soft dk-pdone-box"><summary>最近写进去的</summary><div class="dk-pdone"></div></details></section>
+    <section class="dk-card dk-pending" hidden><h2 class="dk-h">还没写进去的</h2><p class="dk-sub muted">以前留下的，点「全部确认」写进去，或者「全部不要」。</p><div class="dk-popen"></div></section>
     <section class="dk-card dk-manual" hidden><details class="dk-fold"><summary><h2 class="dk-h">补记</h2><span class="muted">在学习台外面做的题，写一句或贴张图</span></summary><div class="dk-body"></div><div class="dk-mlist"></div></details></section>
     </div>
     </div>
     <div class="dk-manage" hidden>
+    <section class="dk-card dk-recent"><h2 class="dk-h">最近记下的</h2><p class="dk-sub muted">课堂里的 Claude 和页面直接写进记忆的，不对就撤销（7 天内）。</p><div class="dk-pdone"></div></section>
     <section class="dk-card dk-mine" hidden><h2 class="dk-h">我改记忆</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-backup" hidden><h2 class="dk-h">备份</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-check" hidden><h2 class="dk-h">自检</h2><div class="dk-body"></div></section>
@@ -113,6 +114,8 @@ export async function renderDesk(root, meta) {
   const put = (coll, id, data) => { assertWrite('page', coll); return db.doc(`${coll}/${id}`).set(data); };
 
   const data = Object.fromEntries(MEMORY_COLLECTIONS.map((c) => [c, []]));
+  // 改记忆（掌握直接写、我改记忆、撤销）：放在订阅前面，第一次自检算出掌握时就用得上
+  const ops = createMemOps({ db, mem: () => data });
   const loaded = new Set();
   const failed = new Set();
   let ledger = null;
@@ -179,7 +182,7 @@ export async function renderDesk(root, meta) {
     for (const c of failed) res.problems.unshift({ coll: c, id: '', msg: `读不到 ${c}（${COLLECTIONS[c].label}），这一次的自检不全` });
     paint(res, today);
     writeBriefs(today);
-    if (!failed.size) proposeMastery();
+    if (!failed.size) { flushOpen(); proposeMastery(); }
     const rec = memcheckRecord(res, { kit: VERSION, today });
     const json = JSON.stringify(rec);
     if (json !== lastCheck) {
@@ -196,16 +199,34 @@ export async function renderDesk(root, meta) {
     }
   }
 
-  // 掌握：页面按证据算（mastery.js），有变化就出一张改动单（by: page），在「待确认」里等我点。
-  // 刚写的改动单订阅还没回来时，下一次算出同样的结论别再写一张：先记在手上
+  // 以前留下、还开着的改动单（以前要我一条条确认的）：打开学习台时直接写进去（2026-11-03：不要我确认，直接改），
+  // 和点「确认」走同一条路（自动编号被占了换下一个）；写不进去的留着，在首页「还没写进去的」里能点「不要」
+  let flushed = false;
+  async function flushOpen() {
+    if (flushed) return;
+    flushed = true;
+    const open = data.pending.filter((p) => p.status === 'open').sort((a, b) => (a.at || 0) - (b.at || 0));
+    let n = 0;
+    for (const pd of open) { try { await ops.confirm(pd); n++; } catch (err) { console.warn('没写进去', pd.id, err?.message || err); } }
+    if (n) toast(`以前留下的 ${n} 条改动写进记忆了（不对能在「管理」里撤销）`);
+  }
+
+  // 掌握：页面按证据算（mastery.js），有变化就直接写进去（2026-11-03：不要我一条条确认），改动单记成 done，在「管理」里能撤销。
+  // 刚写的订阅还没回来时，下一次算出同样的结论别再写一遍：先记在手上
   const myPd = new Map(); // 改动单 id → 刚写的那份
-  function proposeMastery() {
-    const pend = [...data.pending.filter((p) => !myPd.has(p.id)), ...myPd.values()];
-    for (const w of masteryPendingWrites(masteryProposals({ ...data, pending: pend }), pend)) {
-      myPd.set(w.id, { id: w.id, ...w.doc });
-      put('pending', w.id, w.doc).catch(() => myPd.delete(w.id));
-    }
-    for (const id of [...myPd.keys()]) if (data.pending.some((p) => p.id === id && JSON.stringify(p.patch || p.data) === JSON.stringify(myPd.get(id).patch || myPd.get(id).data))) myPd.delete(id);
+  let masteryBusy = false;
+  async function proposeMastery() {
+    if (masteryBusy) return;
+    masteryBusy = true;
+    try {
+      const pend = [...data.pending.filter((p) => !myPd.has(p.id)), ...myPd.values()];
+      const mine = { ...data, pending: pend, mastery: [...data.mastery.filter((m) => ![...myPd.values()].some((p) => p.target === m.id)), ...[...myPd.values()].map((p) => ({ id: p.target, ...(p.data || {}), ...(p.patch || {}) }))] };
+      for (const w of masteryPendingWrites(masteryProposals(mine), pend)) {
+        myPd.set(w.id, { id: w.id, ...w.doc });
+        await ops.applyNow({ id: w.id, ...w.doc }).catch(() => myPd.delete(w.id));
+      }
+      for (const id of [...myPd.keys()]) if (data.pending.some((p) => p.id === id && p.status === 'done')) myPd.delete(id);
+    } finally { masteryBusy = false; }
   }
 
   // 给对话里的 Claude 的开场简报（views.js 的 deskBrief）：每科一份，内容变了才写
@@ -223,7 +244,7 @@ export async function renderDesk(root, meta) {
   function paint(res, today) {
     lastRes = res;
     status.hidden = true;
-    for (const s of ['.dk-today', '.dk-check', '.dk-colls', '.dk-manual', '.dk-backup', '.dk-pending', '.dk-mine']) $(s).hidden = false;
+    for (const s of ['.dk-today', '.dk-check', '.dk-colls', '.dk-manual', '.dk-backup', '.dk-mine']) $(s).hidden = false;
     pagesView.refresh();
     paintClass();
     paintManual();
@@ -284,10 +305,9 @@ export async function renderDesk(root, meta) {
     const block = main?.block || mine.position.find((d) => d.id === positionId(space))?.block || '';
     // 等我确认的改动单；上一节还没整理完（它的整理单里还有没点的）
     const openPd = (mine.pending || []).filter((p) => p.status === 'open');
-    const lastOpen = last ? openPd.filter((p) => p.session === last.id).length : 0;
     const blocksHere = mine.curriculum.filter((b) => (b.level || (String(b.id).replace(/^[A-Z]{2}-/, '').split('.').length === 3 ? 'block' : '')) === 'block').sort((a, b) => cmpId(a.id, b.id));
     box.querySelector('.dk-body').innerHTML = `
-      ${lastOpen ? `<p class="dk-warn">上一节的整理单还有 ${lastOpen} 条没确认：<a class="dk-link" href="#classes/${escapeHtml(last.id)}">去看那节课</a> 或者在下面「待确认」里点。</p>` : openPd.length ? `<p><a class="dk-link dk-to-pending" href="#">待确认 ${openPd.length} 条 ↓</a></p>` : ''}
+      ${openPd.length ? `<p><a class="dk-link dk-to-pending" href="#">还有 ${openPd.length} 条以前留下的没写进去 ↓</a></p>` : ''}
       ${last ? `<p class="dk-last"><span class="dk-k">上一节</span>${escapeHtml(String(last.date || '').slice(5).replace('-', '/'))}${last.block ? ` ${blockTitle(last.block)}` : ''}${lastLine ? `<span class="muted">：${escapeHtml(lastLine)}</span>` : ''} <a class="dk-link" href="#classes/${escapeHtml(last.id)}">看报告</a></p>` : ''}
       ${opens.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || blockTitle(x.block) || x.id)}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button></div>`; }).join('')}
       <div class="dk-next">${main ? `<p><span class="dk-k">备好的课</span>${inline(main.unit || blockTitle(block) || '（没写标题）')}${main.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>${main.goal ? `<p class="dk-goal muted" title="点一下看全文">${inline(main.goal)}</p>` : ''}`
@@ -373,10 +393,11 @@ export async function renderDesk(root, meta) {
   }
 
   // —— 待确认：所有课的改动单（memoview.js）；我点了才写 ——
-  const ops = createMemOps({ db, mem: () => data });
   const memoView = createMemoView({ db, ops, nameOf: nameIn(() => data) });
   let pendingWired = false;
   function paintPending() {
+    // 都直接写了：首页只有以前留下、还没写进去的才出这张卡
+    $('.dk-pending').hidden = !data.pending.some((p) => p.status === 'open' && (() => { const k = spaceOfDoc('pending', p, data); return !k || k === space; })());
     if (pendingWired) { memoView.refresh(); return; }
     pendingWired = true;
     const byAt = (a, b) => (b.at || 0) - (a.at || 0);

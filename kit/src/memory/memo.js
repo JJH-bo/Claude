@@ -9,9 +9,10 @@
 //   ````
 // 一行一条。学习台自己管自己（docs/autonomy-plan.md）：课堂里的 Claude 就是学习台的管理者。页面读懂后按档处理：
 //   直接写（direct）：偏好（profile）、失误（slips）、教学守则（lessons）、观察 / 提议 / 待办（observations）、
-//                     错题（errors）、弱点（weaknesses）、复现组（reviews）、下一节从哪接（position）——写完我在整理单上事后看，不对就撤销
-//   我确认才写（confirm）：规则（rules）——每一轮都整段带着，写错一条每节课都受影响
-//   不收：掌握（mastery）——页面按证据算、我确认（我的红线：课堂不能宣布掌握）
+//                     错题（errors）、弱点（weaknesses）、复现组（reviews）、下一节从哪接（position）、规则（rules）——
+//                     写完我想看就在下课那行小字、「管理」里看，不对就撤销（2026-11-03：我是来学习的，不要一条条确认）
+//   不收：掌握（mastery）——页面按证据算了直接写（我的红线：课堂不能宣布掌握）
+//   confirm 档留着兼容以前留下、还开着的改动单
 // 不冗杂（docs/autonomy-plan.md 第 4 节）：新弱点、复现组、偏好、规则和已有的几乎一样就不收（similarity），每一类有条数上限（CAPS），
 // 到了上限新的不收、下课整理时先合并（status=merged into=…）。
 // 每一条先变成一张改动单（pending）。直接写的马上执行；我确认才写的等我在页面上点「确认」（能先改再确认）或「不要」。
@@ -32,12 +33,12 @@ export const MEMO_KINDS = {
   weakness: { tier: 'direct', coll: 'weaknesses', label: '弱点' },
   review: { tier: 'direct', coll: 'reviews', label: '复现组' },
   position: { tier: 'direct', coll: 'position', label: '下一节' },
-  rule: { tier: 'confirm', coll: 'rules', label: '规则' },
+  rule: { tier: 'direct', coll: 'rules', label: '规则' },
   // 这节课改讲别的块（学生临时改了计划）：页面改 sessions 和之后证据挂的块，不进改动单（classroom.js 先拿出来，blockSwitch 查）
   block: { tier: 'page', coll: 'sessions', label: '这节课的块' },
 };
 // 不收的：拒绝时告诉它为什么
-const NOT_YOURS = { mastery: '掌握状态由页面按证据算、学生确认（课堂不能宣布掌握），你不写；看到的情况写成 note', rules: '写 rule（单数）' };
+const NOT_YOURS = { mastery: '掌握状态由页面按证据算（课堂不能宣布掌握），你不写；看到的情况写成 note', rules: '写 rule（单数）' };
 // 偏好的 topic 写什么都行；这两种最常见（课堂里看得出来的讲法、习惯）
 export const PREF_TOPICS = ['讲法', '习惯'];
 // 要写依据的几种：依据是证据（规则的依据通常是 say：学生说的那句话），结论才站得住
@@ -545,12 +546,12 @@ const logMeta = (pd, date, note) => ({ date, by: ['me', 'page', 'chat'].includes
  */
 export function applyPending(pd, mem = {}, { date = toDate(Date.now()), edits = null, now = Date.now() } = {}) {
   if (pd.status !== 'open') throw new Error(pd.status === 'done' ? '已经写进去了' : pd.status === 'rejected' ? '已经不要了' : '已经撤销了');
-  // 谁的名义写：直接写那档是课堂里的 Claude；要我确认的、我自己改的是我
-  const role = pd.tier === 'direct' ? 'class' : 'me';
+  // 谁的名义写：直接写那档是课堂里的 Claude（页面算的掌握、练习结果是页面）；要我确认的、我自己改的是我
+  const role = pd.tier === 'direct' ? (pd.by === 'page' ? 'page' : 'class') : 'me';
   assertWrite(role, pd.coll);
   const docs = Array.isArray(mem[pd.coll]) ? mem[pd.coll] : [];
   const old = docs.find((d) => String(d.id) === String(pd.target));
-  const note = pd.tier === 'confirm' ? `${pd.by === 'page' ? '页面按证据算的，' : pd.by === 'chat' ? '开发那边整理的，' : ''}我确认于 ${date}` : pd.tier === 'me' ? '我在学习台上改的' : `课堂 ${pd.session || ''}`.trim();
+  const note = pd.tier === 'confirm' ? `${pd.by === 'page' ? '页面按证据算的，' : pd.by === 'chat' ? '开发那边整理的，' : ''}我确认于 ${date}` : pd.tier === 'me' ? '我在学习台上改的' : pd.by === 'page' ? '页面按证据算的' : `课堂 ${pd.session || ''}`.trim();
   const isState = COLLECTIONS[pd.coll].kind === 'state';
   let doc, applied;
   if (pd.op === 'add') {
@@ -751,7 +752,14 @@ export function groupPending(pds = [], { min = 3 } = {}) {
 
 /** 这一轮记了什么（板顶那句话下面的小字）：「记下了：偏好 1 条；待你确认：错题 1 条」 */
 export function memoLine(pds = []) {
+  // 只数和学生有关的（错题、弱点、复现组……）；老师自己的失误、守则、观察合成一句「老师的笔记」
+  const TEACHER = new Set(['slip', 'lesson', 'note', 'propose']);
   const count = (list) => {
+    const mine = list.filter((p) => !TEACHER.has(p.kind));
+    const own = list.length - mine.length;
+    return [countBy(mine), own ? `老师的笔记 ${own} 条` : ''].filter(Boolean).join('、');
+  };
+  const countBy = (list) => {
     const m = new Map();
     for (const p of list) m.set(p.label || MEMO_KINDS[p.kind]?.label || p.kind, (m.get(p.label || MEMO_KINDS[p.kind]?.label || p.kind) || 0) + 1);
     return [...m].map(([k, n]) => `${k} ${n} 条`).join('、');

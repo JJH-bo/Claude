@@ -25,8 +25,8 @@ export const isDate = (s) => typeof s === 'string' && DATE_RE.test(s) && !Number
  */
 export const COLLECTIONS = {
   rules: {
-    // 课堂里的 Claude 写的规则要我确认（memo.js 的 confirm 档），确认时以 me 的身份写
-    label: '规则', kind: 'state', writers: ['chat', 'me'],
+    // 学生在课上定下、改了的规则，课堂里的 Claude 直接写（2026-11-03：不要一条条确认，我说了就改），能撤销
+    label: '规则', kind: 'state', writers: ['chat', 'class', 'me'],
     id: { re: /^rule-[A-Za-z0-9_-]+$/, eg: 'rule-01、rule-redline-3' },
     required: ['cat', 'text', 'since', 'source'],
     // for：给谁看（课堂里的 Claude 只带 class、both 的；不写当 both）；space：只管一科时写（不写全科都带）
@@ -91,7 +91,8 @@ export const COLLECTIONS = {
   },
   mastery: {
     // me：页面按证据算出来的提议（mastery.js，改动单 by: page），我点了「确认」才写；课堂里的 Claude 照旧不能写（红线）
-    label: '掌握状态', kind: 'state', writers: ['chat', 'me'],
+    // page：页面按证据算了直接写（不再等我确认），能撤销；课堂里的 Claude 照旧不能写（红线：课堂不能宣布掌握）
+    label: '掌握状态', kind: 'state', writers: ['chat', 'page', 'me'],
     id: { re: /^(?:[A-Z]{2}-)?L\d+(?:\.\d+){0,2}(?:#[A-Za-z0-9_-]+)?$/, eg: 'L2.2.1（一块）、L2.2.1#tr（块里的一个知识点）、EN-L1.1.1#past' },
     required: ['state'],
     enums: { state: ['未学', '讲过', '基础题过', '复现通过', '掉了'], status: ['active', 'void'] },
@@ -99,7 +100,7 @@ export const COLLECTIONS = {
     tracked: ['state', 'tier'],
   },
   reviews: {
-    label: '复现组', kind: 'state', writers: ['chat', 'class', 'me'],
+    label: '复现组', kind: 'state', writers: ['chat', 'class', 'page', 'me'],
     id: { re: /^R\d+$/, eg: 'R3' },
     required: ['title', 'tier'],
     // paused：我暂停了（不算到期）；done：停掉了；merged：并进了别的一组（into）；void：撤销了的新组

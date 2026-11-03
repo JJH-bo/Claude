@@ -94,14 +94,14 @@ test('masteryProposals：按块和知识点出提议；记忆里已经定下的�
   assert.equal(writes.length, 2);
   const pd = { id: writes[0].id, ...writes[0].doc };
   assert.equal(pd.by, 'page');
-  assert.equal(pd.tier, 'confirm');
+  assert.equal(pd.tier, 'direct'); // 页面算了直接写（2026-11-03），能撤销
   assert.match(pendingTitle(pd), /掌握：L2\.2\.1.*基础题过/);
   // 同样的提议已经开着：不再写
   assert.equal(masteryPendingWrites(ps, [pd]).filter((w) => w.doc.target === pd.target).length, 0);
   // 我点过不要：同样的依据不再提
   assert.equal(masteryPendingWrites(ps, [{ ...pd, status: 'rejected' }]).filter((w) => w.doc.target === pd.target).length, 0);
 
-  // 我确认：以 me 的身份写进 mastery，log 记着改动单；自检照样过
+  // 直接写：以 page 的身份写进 mastery，log 记着改动单；自检照样过
   const r = applyPending(pd, mem);
   const doc = r.writes.find((w) => w.coll === 'mastery').doc;
   assert.equal(doc.state, '基础题过');

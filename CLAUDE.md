@@ -9,7 +9,7 @@
 - 下一步的总计划（线代和 408 一起做到优秀：验收尺子、外壳升级、线代六章、408 加深）和进度：`docs/quality-plan.md`
 - 教学方向的升级（教学守则：失误归纳成守则不再累加；学习台备课出教案；板放不下自动分屏等不花额度的修复）：`docs/teach-plan.md`
 - 英语组件库全面提升（指着讲到词、错法诊断、选择式的空、一层层拆、意群断句、验收）：`docs/english-plan.md`
-- **学习台自己管自己**（外部 Claude 只做开发；课堂里的 Claude 管学习台，规则和掌握仍要我确认；记忆不冗杂：拦照抄、条数上限、顺着下课整理定期合并）和进度：`docs/autonomy-plan.md`。现在做学习台以它为准（2026-11-03 做完第 1、2 批，版本 2026-11-03b）。
+- **学习台自己管自己**（外部 Claude 只做开发；课堂里的 Claude 管学习台，规则和掌握仍要我确认；记忆不冗杂：拦照抄、条数上限、顺着下课整理定期合并）和进度：`docs/autonomy-plan.md`。现在做学习台以它为准（2026-11-03 做完第 1、2 批；之后改成什么都不用我确认，版本 2026-11-03e）。
 - 攻学习台的上限（学得会、学得牢：信心标定、按证据算掌握、页面自己跑的练习和混练、教学尺子、课堂计划块、学生逐行推导）和进度：`docs/learning-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
@@ -128,12 +128,12 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - 备份：`backup.js`（纯函数）把记忆库、资料包、每节课的报告（可选证据、黑板）拼成一个 JSON，`docs` 每条就是 ArtifactData batch 的样子；首页「导出备份」用 `downloads` 能力存（`store.js` 的 `getDownloads`，`?dev` 用下载链接）。首页「从备份恢复」页面自己写回（`restorePlan`：默认只补缺的，覆盖要我再点一次）；开发那边修数据照 `restoreBatches` 切成 batch。首页还显示 assets 用了多少（`assets.list()` 的 `usage`）。
 - 课堂里的 Claude 改记忆（desk-plan 第 2 批）：
   - 写法：输出里的 ```` ```board memo ```` 块，一行一条（`protocol.js` 的 `memoOp` → `memo.js` 的 `parseMemoLines`），不用工具（工具 `lesson_note`、`slip_note` 留着兼容，说明里不再推荐）。说明在 `prompt.js` 的 `MEMO_DOC`（`DESK_DOC` 里）。
-  - `memo.js`（纯函数）：分档 `MEMO_KINDS`（direct：pref / slip / lesson / note / propose / todo / error / weakness / review / position；confirm：rule；mastery 拒绝；`docs/autonomy-plan.md`）；不冗杂：新弱点、复现组、偏好、规则和已有的几乎一样不收（`similarity`），同一道题不记两次错题，每类有上限 `CAPS`（`overCaps`），合并写 `status=merged into=…`（`voidedIds` 当作废，摘要、页面都不带）；每科每 `TIDY_EVERY`（5）节课或到了上限，下课的 `closingPrompt({ tidy })` 带上 `tidyText` 的目录让它顺带合并（`tidyDue`）；`block` 由课堂自己处理：`blockSwitch` 查过后改这节课的块）、依据 `resolveBasis`（组件 id / 段 id 换成这节课的证据，`say` 是最近一句话）、`planEntry` 查编号字段取值、改动单 `pendingRecord`、执行 `applyPending`（直接写的用 class 的身份，确认的用 me；状态类记 log，`ref` 是改动单编号）、`rejectPending`、`undoPending`（状态类按 `applied` 退回，新加的改 `void`；历史类追加 `void` 的更正）、我自己改 `meChange`、作废的 `voidedIds`（`digest.js` 跳过它们，并列出还在等确认的）。
+  - `memo.js`（纯函数）：分档 `MEMO_KINDS`（都是 direct：pref / slip / lesson / note / propose / todo / error / weakness / review / position / rule；mastery 拒绝；`docs/autonomy-plan.md`）。**不要再加要我确认的东西**（2026-11-03 我说的：我是来学习的，不是来调教的；我说了就直接改，不对我撤销）；页面算的掌握、练一练的复现结果也直接写（`memops.js` 的 `applyNow`）；以前留下的 open 改动单首页打开时直接写进去（`desk.js` 的 `flushOpen`）；一个 memo 块最多 `MEMO_MAX`（12）条；上课时板上不挂记了什么，下课小结板上只有一行小字（`memoview` 的 line）；不冗杂：新弱点、复现组、偏好、规则和已有的几乎一样不收（`similarity`），同一道题不记两次错题，每类有上限 `CAPS`（`overCaps`），合并写 `status=merged into=…`（`voidedIds` 当作废，摘要、页面都不带）；每科每 `TIDY_EVERY`（5）节课或到了上限，下课的 `closingPrompt({ tidy })` 带上 `tidyText` 的目录让它顺带合并（`tidyDue`）；`block` 由课堂自己处理：`blockSwitch` 查过后改这节课的块）、依据 `resolveBasis`（组件 id / 段 id 换成这节课的证据，`say` 是最近一句话）、`planEntry` 查编号字段取值、改动单 `pendingRecord`、执行 `applyPending`（直接写的用 class 的身份，确认的用 me；状态类记 log，`ref` 是改动单编号）、`rejectPending`、`undoPending`（状态类按 `applied` 退回，新加的改 `void`；历史类追加 `void` 的更正）、我自己改 `meChange`、作废的 `voidedIds`（`digest.js` 跳过它们，并列出还在等确认的）。
   - `memops.js`：数据库这一层（课堂和首页共用）：`applyMemo`、`confirm`（自动编号被占了就换下一个）、`reject`、`undo`、`me`。确认只由 `memoview.js` 里我点的按钮调用。
   - `memoview.js`：改动单的画面（板顶那句话下面的一行小字、小结板上的整理单、首页的「待确认」）：确认 / 改 / 不要 / 撤销，点依据看那次作答原文。`classroom.js` 的 `decoratePage`（`boardview.js` 的 `decorate` 钩子）挂上去，板记着 `memo`（改动单 id，存进 `class_pages`）。
   - 下课：`desk.makeReport` 先算一份报告，`report.js` 的 `reportText` 放进 `closingPrompt({ report })`，小结和整理单同一次写；小结正文是 memo 块以外的文字。
-  - 首页只放上课要用的：上课、今天（到期的复现组先列三组，其余收起）、练一练（题库空时不出现）、待确认、补记（收起）；「我改记忆」「备份」「自检」「记忆库」在「管理」页（`#manage`）。
-  - 待确认：同一批的（开发那边整理的、页面算的掌握、同一节课提的）三条以上合成一组（`memo.js` 的 `groupPending`），「全部确认 / 全部不要 / 一条条看」；给我看的标题把编号换成名字（`pendingTitle(pd, nameOf)`，发给课堂 Claude 的照旧写编号）。
+  - 首页只放上课要用的：上课、今天（到期的复现组先列三组，其余收起）、练一练（题库空时不出现）、补记（收起）；还有没写进去的改动单时才有一张「还没写进去的」。「最近记下的」（能撤销）、「我改记忆」「备份」「自检」「记忆库」在「管理」页（`#manage`）。
+  - 改动单的列表：同一批的三条以上合成一组（`memo.js` 的 `groupPending`）；给我看的标题把编号换成名字（`pendingTitle(pd, nameOf)`，发给课堂 Claude 的照旧写编号）。
   - 待办 `todo`（`observations` 的 `kind: todo`）：课上被问到教案以外的内容，记下来；备课时 `plan.js` 的 `openTodos` 带上，补上了的写进教案 `todos`（课堂看得到），编号记进 `meta/todos` 的 `done`。
 - 教学守则（`docs/teach-plan.md`）：`lessons`（`T-…`，状态类）是失误归纳出来的「下次照着做」。上课时又犯写 `lesson id=… again=…`（不另记失误），只说板放不下的失误不收（`layoutOnly`）；下课时 `closingPrompt({ slips })`（`slipsToFold`：这一科还没归纳的失误全文）要它全部并进守则（改写、合并 `status=retired into=…`）；一科最多 `LESSONS_MAX` 条、几乎照抄的新守则不收（`similarity`）。`digest.js`：守则紧跟规则全文带，已归纳的失误（`absorbedSlips`）不再带。首页「我改记忆」能改、能不要（`meChange` 的 `lesson` / `lesson-retire`）。
 - 给我看的页面和第 4 批（desk-plan 第 3、4 批）：

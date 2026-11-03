@@ -5,6 +5,7 @@ import { toDate } from './schema.js';
 import { planEntry, pendingRecord, applyPending, rejectPending, undoPending, meChange, nextErrorId, nextWeaknessId, nextReviewId } from './memo.js';
 
 const NEXT = { errors: nextErrorId, weaknesses: nextWeaknessId, reviews: nextReviewId };
+export const MEMO_MAX = 12;
 
 /**
  * db：学习台的数据库（没有 scopeDb 过的）；mem()：页面手上的记忆库（各类的数组，一直在订阅）。
@@ -42,7 +43,10 @@ export function createMemOps({ db, mem }) {
     const local = { ...mem() };
     const pds = [];
     const rejected = [];
+    // 一个 memo 块最多记 MEMO_MAX 条（归纳守则的 lesson 不算）：记得太多学生看不过来，挑要紧的
+    let n = 0;
     for (const e of entries || []) {
+      if (e.kind !== 'lesson' && ++n > MEMO_MAX) { rejected.push({ line: e.line, error: `一次最多记 ${MEMO_MAX} 条（归纳守则不算），这条没记：挑要紧的` }); continue; }
       const ch = planEntry(e, { mem: local, evidence, session, block, date });
       if (ch.error) { rejected.push({ line: e.line, error: ch.error }); continue; }
       if (ch.op === 'add') local[ch.coll] = [...(local[ch.coll] || []), { id: ch.target, ...(ch.data || {}) }];
@@ -82,6 +86,13 @@ export function createMemOps({ db, mem }) {
     return r.pd;
   }
 
+  /** 直接写一张改动单（页面算的掌握、练习后的复现组结果）：写进去，改动单记成 done，能撤销 */
+  async function applyNow(pd) {
+    const r = applyPending({ ...pd, tier: 'direct' }, await fresh(pd.coll, pd.target));
+    await write(r.writes);
+    return r.pd;
+  }
+
   async function reject(pd0) {
     const r = rejectPending(await freshPending(pd0));
     await write(r.writes);
@@ -108,5 +119,5 @@ export function createMemOps({ db, mem }) {
     return r.pd;
   }
 
-  return { applyMemo, confirm, reject, undo, me };
+  return { applyMemo, applyNow, confirm, reject, undo, me };
 }

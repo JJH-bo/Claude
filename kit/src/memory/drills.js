@@ -212,7 +212,7 @@ export function drillOutcome({ drills = [], evidence = [], mem = {}, reviews = [
 
 const newId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
 
-/** 复现组的结果 → 改动单（by: page，等我确认；档位按结果变） */
+/** 复现组的结果 → 改动单（by: page，直接写、能撤销；档位按结果变） */
 export function reviewPendings(results, { session = null, date = toDate(Date.now()), now = Date.now(), mem = {} } = {}) {
   return results.map((r) => {
     const rv = (mem.reviews || []).find((x) => String(x.id) === r.id);
@@ -220,7 +220,7 @@ export function reviewPendings(results, { session = null, date = toDate(Date.now
     return {
       id: `pd-r${newId()}`,
       doc: {
-        kind: 'review', tier: 'confirm', by: 'page', coll: 'reviews', op: 'update', target: r.id,
+        kind: 'review', tier: 'direct', by: 'page', coll: 'reviews', op: 'update', target: r.id,
         patch: { result: r.passed ? '过' : '没过', tier: r.tier, last: date },
         reason: `页面按练习算的：这一组练了 ${r.n} 道，${r.passed ? '都一次做对、没标没把握' : `${r.bad} 道没一次做对（或标了没把握）`}`,
         basis: r.basis, label: '复现组', session, ...(space ? { space } : {}), status: 'open', at: now, log: [],

@@ -74,14 +74,14 @@ test('依据：证据 id、记忆里的编号、组件 / 段 id 换成证据、s
   assert.match(run('error q=x mine=y step=s cause=c').error, /要写依据/);
 });
 
-test('分档：规则要确认，别的都直接写；偏好什么 topic 都行', () => {
+test('分档：都直接写（规则也是，2026-11-03）；偏好什么 topic 都行', () => {
   const pref = run('pref topic=讲法 text="先看图再推公式" basis=say');
   assert.equal(pref.tier, 'direct');
   assert.equal(pref.coll, 'profile');
   assert.equal(run('pref topic=目标 text="考 130 以上" basis=say').tier, 'direct');
   assert.equal(run('todo text="学生问了相似对角化的几何意义"').data.kind, 'todo');
   const rule = run('rule cat=讲解 text="出题前先把要用到的规则讲完" basis=say');
-  assert.equal(rule.tier, 'confirm');
+  assert.equal(rule.tier, 'direct');
   assert.equal(rule.coll, 'rules');
   assert.match(run('rule text="x"').error, /要写依据/);
   assert.match(run('rule cat=随便 text="x" basis=say').error, /cat 只能是/);
@@ -114,7 +114,7 @@ test('分档：规则要确认，别的都直接写；偏好什么 topic 都行'
   assert.deepEqual(run('position next="先收 L2-08 的同类题" debts="例 2.3；例 2.4"').patch, { next: '先收 L2-08 的同类题', debts: ['例 2.3', '例 2.4'] });
 });
 
-test('直接写的：课堂里的 Claude 的身份写；越权的（掌握、规则）在代码层面拦住', () => {
+test('直接写的：课堂里的 Claude 的身份写；越权的（掌握）在代码层面拦住', () => {
   const mem = sampleMemory(TODAY);
   const pd = pendingRecord(run('pref topic=习惯 text="晚上学，别太长" basis=say'), { session: SID, turn: 4 });
   const r = applyPending(pd, mem, { date: TODAY });
@@ -124,8 +124,7 @@ test('直接写的：课堂里的 Claude 的身份写；越权的（掌握、规
   assert.deepEqual(hard(m), []);
   // 课堂里的 Claude 宣布掌握、直接改规则：assertWrite 拦住
   assert.throws(() => assertWrite('class', 'mastery'), /不能写 mastery/);
-  assert.throws(() => assertWrite('class', 'rules'), /不能写 rules/);
-  assert.throws(() => applyPending({ ...pendingRecord(run('rule cat=讲解 text="出题前先讲完规则" basis=say')), tier: 'direct' }, mem), /不能写 rules/);
+  assert.throws(() => applyPending({ ...pendingRecord(run('weakness id=W19 level=L0 basis=q-b5')), coll: 'mastery' }, mem), /不能写 mastery/);
   // 错题、弱点直接写进去，自检照样过
   const e = applyPending(pendingRecord(run('error step="第 1 步" cause="把 βᵀα 当矩阵" weakness=W19 basis=q-b5'), { session: SID }), m, { date: TODAY });
   const m2 = apply(m, e.writes);
@@ -133,7 +132,7 @@ test('直接写的：课堂里的 Claude 的身份写；越权的（掌握、规
   assert.deepEqual(hard(m2), []);
 });
 
-test('直接写的状态类记 log（by: class）；规则等确认：确认后照规矩写（note 写我确认的），能先改再确认；不要的留痕', () => {
+test('直接写的状态类记 log（by: class）；以前留下、还开着的改动单照旧能确认（能先改再确认）、能不要', () => {
   const mem = sampleMemory(TODAY);
   const w = pendingRecord(run('weakness id=W19 level=L0 basis=q-b5'), { session: SID });
   const r = applyPending(w, mem, { date: TODAY });
@@ -148,8 +147,8 @@ test('直接写的状态类记 log（by: class）；规则等确认：确认后�
   assert.deepEqual(r.pd.applied, [{ field: 'level', from: 'L1', to: 'L0' }, { field: 'last', from: addDays(TODAY, -6), to: TODAY }]);
   assert.deepEqual(hard(m), []);
   assert.throws(() => applyPending(r.pd, m), /已经写进去了/);
-  // 规则：等确认；改了再确认
-  const rl = pendingRecord(run('rule cat=讲解 text="出题前先把要用到的规则讲完" basis=say'), { session: SID });
+  // 以前留下的等确认的（confirm 档）：改了再确认
+  const rl = { ...pendingRecord(run('rule cat=讲解 text="出题前先把要用到的规则讲完" basis=say'), { session: SID }), tier: 'confirm' };
   assert.equal(rl.status, 'open');
   assert.equal(rl.target, 'rule-c1');
   const r2 = applyPending(rl, m, { date: TODAY, edits: { text: '出一组题之前，逐题列出要用到的规则，没讲过的先讲完' } });
@@ -162,7 +161,7 @@ test('直接写的状态类记 log（by: class）；规则等确认：确认后�
   const rv = run('rule id=rule-c1 status=void why="和 rule-01 重复"', { ...ctx(m2) });
   assert.deepEqual(rv.patch, { status: 'void', note: '和 rule-01 重复' });
   // 不要
-  const n = rejectPending(pendingRecord(run('rule cat=讲解 text="每块板先写这段要回答什么" basis=say')), { date: TODAY });
+  const n = rejectPending({ ...pendingRecord(run('rule cat=讲解 text="每块板先写这段要回答什么" basis=say')), tier: 'confirm' }, { date: TODAY });
   assert.equal(n.pd.status, 'rejected');
   assert.equal(n.writes.length, 1); // 只改改动单，位置没动
   assert.deepEqual(hard(apply(m2, n.writes)), []);
@@ -247,7 +246,7 @@ test('一轮记了什么：板顶下面那一行；改动单的标题', () => {
   assert.equal(nextSlipId([{ id: 'S-20261027-1-2' }], SID, TODAY), 'S-20261027-1-3');
 });
 
-test('数据库这一层：直接写的马上写，等确认的只写改动单；同一道题不记两次', async () => {
+test('数据库这一层：直接写的马上写；同一道题不记两次；一块最多 12 条', async () => {
   const db = fakeDb('memo-test');
   db._clear();
   const seed = sampleMemory(TODAY);
@@ -270,15 +269,17 @@ test('数据库这一层：直接写的马上写，等确认的只写改动单�
   const { pds, rejected } = await ops.applyMemo(entries, { session: SID, block: 'L2.2.2', turn: 6 });
   assert.equal(rejected.length, 2);
   assert.match(rejected[0].error, /这道题已经记过 L2-08/);
-  assert.deepEqual(pds.map((p) => [p.kind, p.status, p.target]), [['pref', 'done', pds[0].target], ['error', 'done', 'L2-08'], ['rule', 'open', 'rule-c1']]);
+  assert.deepEqual(pds.map((p) => [p.kind, p.status, p.target]), [['pref', 'done', pds[0].target], ['error', 'done', 'L2-08'], ['rule', 'done', 'rule-c1']]);
   mem = await read();
   assert.ok(mem.profile.some((p) => p.text === '先看图'));
   assert.ok(mem.errors.some((e) => e.id === 'L2-08'));
-  assert.ok(!(mem.rules || []).some((r) => r.id === 'rule-c1')); // 规则没确认就没写
-  await ops.confirm(pds[2]);
-  mem = await read();
   assert.ok(mem.rules.some((r) => r.id === 'rule-c1'));
-  await assert.rejects(ops.confirm(pds[2]), /已经写进去了/);
+  // 一个 memo 块最多 12 条（归纳守则不算）
+  const many = parseMemoLines(Array.from({ length: 14 }, (_, i) => `note text="观察 ${i}"`).join('\n')).entries;
+  const big = await ops.applyMemo(many, { session: SID, block: 'L2.2.2', turn: 7 });
+  assert.equal(big.pds.length, 12);
+  assert.match(big.rejected[0].error, /最多记 12 条/);
+  mem = await read();
   await ops.undo(pds[0]);
   mem = await read();
   assert.equal(mem.profile.find((p) => p.text === '先看图').status, 'void');

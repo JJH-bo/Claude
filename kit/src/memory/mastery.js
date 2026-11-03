@@ -145,7 +145,7 @@ export function masteryPendingWrites(proposals, pending = [], { now = Date.now()
     writes.push({
       id,
       doc: {
-        kind: 'mastery', tier: 'confirm', by: 'page', coll: 'mastery', op: p.op, target: p.target,
+        kind: 'mastery', tier: 'direct', by: 'page', coll: 'mastery', op: p.op, target: p.target,
         ...(p.op === 'add' ? { data: p.data } : { patch: p.patch }),
         reason: p.reason, basis: p.basis.slice(0, 20), label: '掌握', space: p.space, upto: p.upto,
         session: null, status: 'open', at: open?.at || now, log: open?.log || [],

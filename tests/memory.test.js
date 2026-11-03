@@ -18,11 +18,13 @@ test('需求第 2 节的十二类都在（加上 desk-plan 4.1 的改动单）�
   assert.deepEqual(MEMORY_COLLECTIONS.sort(), ['curriculum', 'drills', 'errors', 'evidence', 'mastery', 'observations', 'pending', 'position', 'profile', 'reviews', 'rules', 'sessions', 'slips', 'weaknesses', 'lessons'].sort());
   // 学习台自己管自己（docs/autonomy-plan.md）：错题、弱点、复现组、位置课堂里的 Claude 直接写；规则它写的要我确认（me 的身份写）
   // 掌握：页面按证据算的提议我点了确认才写（docs/learning-plan.md 2.2），课堂里的 Claude 照旧不能写
-  assert.deepEqual(COLLECTIONS.rules.writers, ['chat', 'me']);
-  assert.deepEqual(COLLECTIONS.mastery.writers, ['chat', 'me']);
+  // 2026-11-03：不要一条条确认——规则课堂直接写，掌握页面算了直接写（课堂里的 Claude 照旧不能写掌握）
+  assert.deepEqual(COLLECTIONS.rules.writers, ['chat', 'class', 'me']);
+  assert.deepEqual(COLLECTIONS.mastery.writers, ['chat', 'page', 'me']);
   // 课程地图：学习台上「挂课程地图」我确认了的，页面替我写（docs/textbook-plan.md）
   assert.deepEqual(COLLECTIONS.curriculum.writers, ['chat', 'me']);
-  for (const c of ['errors', 'weaknesses', 'reviews', 'position']) assert.deepEqual(COLLECTIONS[c].writers, ['chat', 'class', 'me'], c);
+  for (const c of ['errors', 'weaknesses', 'position']) assert.deepEqual(COLLECTIONS[c].writers, ['chat', 'class', 'me'], c);
+  assert.deepEqual(COLLECTIONS.reviews.writers, ['chat', 'class', 'page', 'me']); // 练一练的结果页面直接写
   assert.deepEqual(COLLECTIONS.profile.writers, ['chat', 'class', 'me']);
   assert.deepEqual(COLLECTIONS.evidence.writers, ['page']);
   assert.ok(COLLECTIONS.observations.writers.includes('class'));
@@ -32,9 +34,9 @@ test('需求第 2 节的十二类都在（加上 desk-plan 4.1 的改动单）�
   for (const c of ['weaknesses', 'mastery', 'reviews', 'position']) assert.equal(COLLECTIONS[c].kind, 'state', c);
 });
 
-test('canWrite / assertWrite：课堂里的 Claude 管记忆，但宣布掌握、直接改规则在代码层面拦住', () => {
-  for (const c of ['observations', 'slips', 'lessons', 'profile', 'errors', 'weaknesses', 'reviews', 'position']) assert.ok(canWrite('class', c), c);
-  for (const c of ['mastery', 'rules', 'evidence', 'curriculum']) assert.ok(!canWrite('class', c), c);
+test('canWrite / assertWrite：课堂里的 Claude 管记忆（规则也直接写），但宣布掌握在代码层面拦住', () => {
+  for (const c of ['observations', 'slips', 'lessons', 'profile', 'errors', 'weaknesses', 'reviews', 'position', 'rules']) assert.ok(canWrite('class', c), c);
+  for (const c of ['mastery', 'evidence', 'curriculum']) assert.ok(!canWrite('class', c), c);
   // 我点了确认才写的：掌握（页面算的提议）、规则（课堂里的 Claude 写的）；证据只有页面写
   for (const c of ['errors', 'weaknesses', 'reviews', 'position', 'profile', 'mastery', 'rules']) assert.ok(canWrite('me', c), c);
   assert.ok(!canWrite('me', 'evidence'));

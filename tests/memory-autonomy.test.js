@@ -29,12 +29,12 @@ function apply(mem, writes) {
 const write = (mem, body) => { const ch = run(body, mem); assert.ok(!ch.error, ch.error); const r = applyPending(pendingRecord(ch, { session: SID }), mem, { date: TODAY }); return { mem: apply(mem, r.writes), pd: r.pd }; };
 const hard = (m) => checkMemory(m, { today: TODAY }).problems.filter((p) => !p.soft);
 
-test('掌握不收；规则等确认；别的直接写', () => {
+test('掌握不收；别的（规则也）直接写', () => {
   const r = parseMemoLines('mastery id=L2.2.2 state=基础题过\nrules text=x');
   assert.equal(r.entries.length, 0);
   assert.match(r.errors[0], /页面按证据算/);
   assert.match(r.errors[1], /写 rule/);
-  for (const [body, tier] of [['error step=a cause=b basis=q-b5', 'direct'], ['weakness id=W19 level=L0 basis=q-b5', 'direct'], ['review id=R3 result=没过 basis=q-b5', 'direct'], ['position next="x"', 'direct'], ['rule text="出题前先把规则讲完" basis=say', 'confirm']]) {
+  for (const [body, tier] of [['error step=a cause=b basis=q-b5', 'direct'], ['weakness id=W19 level=L0 basis=q-b5', 'direct'], ['review id=R3 result=没过 basis=q-b5', 'direct'], ['position next="x"', 'direct'], ['rule text="出题前先把规则讲完" basis=say', 'direct']]) {
     assert.equal(run(body).tier, tier, body);
   }
 });
@@ -82,16 +82,17 @@ test('同一道题不记两次错题', () => {
   assert.match(run('error step=c cause=d basis=q-b5', mem).error, /这道题已经记过 L2-08/);
 });
 
-test('规则：新的编号 rule-c…，确认后写；改、作废也走确认', () => {
+test('规则：学生说了就直接写（新编号 rule-c…），改、作废也直接写；要有依据', () => {
   const mem = sampleMemory(TODAY);
   const ch = run('rule cat=讲解 text="出题前先把要用到的规则讲完" basis=say', mem);
   assert.equal(ch.target, 'rule-c1');
   assert.equal(ch.data.basis[0], 'ev-3');
-  assert.throws(() => applyPending({ ...pendingRecord(ch), tier: 'direct' }, mem), /不能写 rules/);
   const r = applyPending(pendingRecord(ch), mem, { date: TODAY });
+  assert.equal(r.pd.status, 'done');
   const m = apply(mem, r.writes);
+  assert.equal(m.rules.find((x) => x.id === 'rule-c1').log.at(-1).by, 'class');
   assert.deepEqual(hard(m), []);
-  assert.equal(run('rule id=rule-01 text="课堂不能宣布我掌握了：掌握由页面按证据算、学生确认。" basis=say', m).tier, 'confirm');
+  assert.equal(run('rule id=rule-01 text="课堂不能宣布我掌握了：掌握由页面按证据算。" basis=say', m).tier, 'direct');
   assert.match(run('rule id=rule-01 status=void', m).error, /why/);
 });
 
