@@ -128,6 +128,9 @@
 }
 .class-page-body.is-canvas .widget.act { padding: 2px 0 0; background: none; box-shadow: none; }
 .class-page-body.is-canvas .widget.act::before { display: none; }
+/* 重点、提示这类框：版面里也不框起来，左边一道粉笔线表示「这是要记住的」 */
+.class-page-body.is-canvas .callout { background: none; box-shadow: none; border-radius: 0; padding: 2px 0 2px 16px; border-left: 3px solid rgb(var(--yellow-rgb) / 0.6); }
+.class-page-body.is-canvas .callout::before { display: none; }
 .class-page-body.is-canvas .block { margin: 6px 0; }
 /* 段的标题和段里组件的标题常常是一回事：留段的（粉笔字的板书标题），组件的不再写一遍 */
 .class-page-body.is-canvas .stage-body > h2 + .block .w-title { display: none; }

@@ -4999,6 +4999,9 @@ body.class-on .dev-body { max-height: calc(100svh - var(--class-bar-h, 96px) - 1
 }
 .class-page-body.is-canvas .widget.act { padding: 2px 0 0; background: none; box-shadow: none; }
 .class-page-body.is-canvas .widget.act::before { display: none; }
+/* \u91CD\u70B9\u3001\u63D0\u793A\u8FD9\u7C7B\u6846\uFF1A\u7248\u9762\u91CC\u4E5F\u4E0D\u6846\u8D77\u6765\uFF0C\u5DE6\u8FB9\u4E00\u9053\u7C89\u7B14\u7EBF\u8868\u793A\u300C\u8FD9\u662F\u8981\u8BB0\u4F4F\u7684\u300D */
+.class-page-body.is-canvas .callout { background: none; box-shadow: none; border-radius: 0; padding: 2px 0 2px 16px; border-left: 3px solid rgb(var(--yellow-rgb) / 0.6); }
+.class-page-body.is-canvas .callout::before { display: none; }
 .class-page-body.is-canvas .block { margin: 6px 0; }
 /* \u6BB5\u7684\u6807\u9898\u548C\u6BB5\u91CC\u7EC4\u4EF6\u7684\u6807\u9898\u5E38\u5E38\u662F\u4E00\u56DE\u4E8B\uFF1A\u7559\u6BB5\u7684\uFF08\u7C89\u7B14\u5B57\u7684\u677F\u4E66\u6807\u9898\uFF09\uFF0C\u7EC4\u4EF6\u7684\u4E0D\u518D\u5199\u4E00\u904D */
 .class-page-body.is-canvas .stage-body > h2 + .block .w-title { display: none; }
