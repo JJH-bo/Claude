@@ -22,13 +22,19 @@
    "page": 1,
    "title": "先看形状",
    "md": "$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 都是 $2\\times1$ 的列向量，$\\boldsymbol\\beta^{\\mathrm T}$ 是 $1\\times2$ 的行。\n\n```quiz\nid: q-shape1\nq: $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？\n- [ ] 一个数（$1\\times1$）\n- [x] $2\\times2$ 的矩阵\n- [ ] $2\\times1$ 的列向量\n- [ ] 乘不了\nexplain: $(2\\times1)(1\\times2)$：外面的两个数决定形状，是 $2\\times2$。\n```"
+  },
+  {
+   "id": "b2",
+   "page": 1,
+   "title": "顺序反过来",
+   "md": "```quiz\nid: q-shape2\nq: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$（行在前、列在后）乘出来是什么形状？\n- [x] 一个数（$1\\times1$）\n- [ ] $2\\times2$ 的矩阵\n- [ ] $1\\times2$ 的行向量\n- [ ] 和 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 一样\nexplain: $(1\\times2)(2\\times1)$ 是 $1\\times1$：一个数，就是 $\\boldsymbol\\beta$ 和 $\\boldsymbol\\alpha$ 的内积。\n```"
   }
  ],
  "pages": [
   {
    "n": 1,
    "title": "先看形状",
-   "talk": "好，今天看秩一矩阵（rank-one matrix）$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 的幂。先从形状开始：同样两个向量，乘的顺序一换，出来的东西完全不同。\n\n不用算具体的数，选一个就行。"
+   "talk": "对，$(2\\times1)(1\\times2)$ 是 $2\\times2$。现在把顺序反过来，行在前、列在后。"
   }
  ],
  "cur": 1,
@@ -62,6 +68,18 @@
     "raw": "```quiz\nid: q-shape1\nq: $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？\n- [ ] 一个数（$1\\times1$）\n- [x] $2\\times2$ 的矩阵\n- [ ] $2\\times1$ 的列向量\n- [ ] 乘不了\nexplain: $(2\\times1)(1\\times2)$：外面的两个数决定形状，是 $2\\times2$。\n```",
     "at": 107
    }
+  },
+  "q-shape2": {
+   "seg": {
+    "id": "b2"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-shape2\nq: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$（行在前、列在后）乘出来是什么形状？\n- [x] 一个数（$1\\times1$）\n- [ ] $2\\times2$ 的矩阵\n- [ ] $1\\times2$ 的行向量\n- [ ] 和 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 一样\nexplain: $(1\\times2)(2\\times1)$ 是 $1\\times1$：一个数，就是 $\\boldsymbol\\beta$ 和 $\\boldsymbol\\alpha$ 的内积。",
+    "id": "q-shape2",
+    "raw": "```quiz\nid: q-shape2\nq: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$（行在前、列在后）乘出来是什么形状？\n- [x] 一个数（$1\\times1$）\n- [ ] $2\\times2$ 的矩阵\n- [ ] $1\\times2$ 的行向量\n- [ ] 和 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 一样\nexplain: $(1\\times2)(2\\times1)$ 是 $1\\times1$：一个数，就是 $\\boldsymbol\\beta$ 和 $\\boldsymbol\\alpha$ 的内积。\n```",
+    "at": 0
+   }
   }
  },
  "ops": [],
@@ -75,6 +93,11 @@
    "role": "student",
    "seq": 2,
    "text": "列在前行在后，应该是 2×2 的矩阵吧。\n[作答] b1 里的 quiz q-shape1：「$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？」做对了（共 1 次）\n[动作] b1 里的组件 q-shape1：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 3,
+   "text": "对，$(2\\times1)(1\\times2)$ 是 $2\\times2$。现在把顺序反过来，行在前、列在后。\n\n````board add id=b2 title=\"顺序反过来\"\n```quiz\nid: q-shape2\nq: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$（行在前、列在后）乘出来是什么形状？\n- [x] 一个数（$1\\times1$）\n- [ ] $2\\times2$ 的矩阵\n- [ ] $1\\times2$ 的行向量\n- [ ] 和 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 一样\nexplain: $(1\\times2)(2\\times1)$ 是 $1\\times1$：一个数，就是 $\\boldsymbol\\beta$ 和 $\\boldsymbol\\alpha$ 的内积。\n```\n````\n"
   }
  ],
  "turns": [
@@ -108,8 +131,20 @@
     }
    ],
    "msg": "列在前行在后，应该是 2×2 的矩阵吧。\n[作答] b1 里的 quiz q-shape1：「$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？」做对了（共 1 次）\n[动作] b1 里的组件 q-shape1：学生标了「有把握」"
+  },
+  {
+   "seq": 3,
+   "role": "teacher",
+   "bytes": 556,
+   "talk": "对，$(2\\times1)(1\\times2)$ 是 $2\\times2$。现在把顺序反过来，行在前、列在后。",
+   "ops": [
+    "add"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 1 块板「先看形状」\n\n老师写在板顶的话：对，$(2\\times1)(1\\times2)$ 是 $2\\times2$。现在把顺序反过来，行在前、列在后。\n\n## 先看形状\n$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 都是 $2\\times1$ 的列向量，$\\boldsymbol\\beta^{\\mathrm T}$ 是 $1\\times2$ 的行。\n\n【选择题 q-shape1】\n  $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（列在前、行在后）乘出来是什么形状？\n  A. 一个数（$1\\times1$）\n  B. $2\\times2$ 的矩阵\n  C. $2\\times1$ 的列向量\n  D. 乘不了\n\n## 顺序反过来\n【选择题 q-shape2】\n  $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$（行在前、列在后）乘出来是什么形状？\n  A. 一个数（$1\\times1$）\n  B. $2\\times2$ 的矩阵\n  C. $1\\times2$ 的行向量\n  D. 和 $\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 一样\n\n# 常驻栏\n## 这节课的记号\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 2,
+ "seq": 3,
  "pendingNotes": []
 }

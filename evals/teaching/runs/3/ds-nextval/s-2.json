@@ -1,0 +1,1 @@
+{"say": "选 A。T[2]是a，S[i]跟它不一样，T[1]也是a，所以应该也不一样吧？不太确定。", "acts": [{"comp": "q-waste", "value": "A"}], "sure": {"q-waste": false}}

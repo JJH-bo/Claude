@@ -22,6 +22,12 @@
    "page": 1,
    "title": "热身：求 next",
    "md": "```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: aabaac\nshow: next\nmode: quiz\n```"
+  },
+  {
+   "id": "b2",
+   "page": 2,
+   "title": "next 浪费在哪",
+   "md": "模式串 $T=$ a a b a a c，$next=$ 0 1 2 1 2 3。\n\n匹配时，主串的字符 $S[i]$ 和 $T[2]=\\text{a}$ **失配**了，按 next，$j$ 退到 $next[2]=1$，接着拿 $S[i]$ 和 $T[1]$ 比。\n\n```quiz\nid: q-waste\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [x] 一定失配\n- [ ] 一定匹配\n- [ ] 不一定，要看主串\nexplain: $S[i]\\ne T[2]=\\text{a}$，而 $T[1]$ 也是 a，所以 $S[i]\\ne T[1]$：这次比较白做了。\n```"
   }
  ],
  "pages": [
@@ -29,9 +35,14 @@
    "n": 1,
    "title": "热身：求 next",
    "talk": "好，先热个身：nextval 是从 next 来的，我们先把 next 算一遍。下面这个串，你写出它的 next 数组。\n\n六个数按位置 1 到 6 写，空格隔开就行。"
+  },
+  {
+   "n": 2,
+   "title": "next 浪费在哪",
+   "talk": "对，六个都对。nextval 要解决的是 next 的一个浪费，先看它浪费在哪：还是这个串，想一想下面这次比较。\n\n选好以后，用一句话告诉我你是凭什么判断的。"
   }
  ],
- "cur": 1,
+ "cur": 2,
  "progress": {},
  "tries": {
   "q-next1": 1
@@ -66,6 +77,18 @@
     "raw": "```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: aabaac\nshow: next\nmode: quiz\n```",
     "at": 0
    }
+  },
+  "q-waste": {
+   "seg": {
+    "id": "b2"
+   },
+   "f": {
+    "lang": "quiz",
+    "body": "id: q-waste\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [x] 一定失配\n- [ ] 一定匹配\n- [ ] 不一定，要看主串\nexplain: $S[i]\\ne T[2]=\\text{a}$，而 $T[1]$ 也是 a，所以 $S[i]\\ne T[1]$：这次比较白做了。",
+    "id": "q-waste",
+    "raw": "```quiz\nid: q-waste\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [x] 一定失配\n- [ ] 一定匹配\n- [ ] 不一定，要看主串\nexplain: $S[i]\\ne T[2]=\\text{a}$，而 $T[1]$ 也是 a，所以 $S[i]\\ne T[1]$：这次比较白做了。\n```",
+    "at": 136
+   }
   }
  },
  "ops": [],
@@ -79,6 +102,11 @@
    "role": "student",
    "seq": 2,
    "text": "算出来是 0 1 2 1 2 3，应该对吧？\n[作答] b1 里的 kmp q-next1「写出 next 数组」：写出结果，「写出模式串 aabaac 的 next 数组（从 j = 1 开始）。」做对了（共 1 次）\n[动作] b1 里的组件 q-next1：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 3,
+   "text": "对，六个都对。nextval 要解决的是 next 的一个浪费，先看它浪费在哪：还是这个串，想一想下面这次比较。\n\n````board new id=b2 title=\"next 浪费在哪\"\n模式串 $T=$ a a b a a c，$next=$ 0 1 2 1 2 3。\n\n匹配时，主串的字符 $S[i]$ 和 $T[2]=\\text{a}$ **失配**了，按 next，$j$ 退到 $next[2]=1$，接着拿 $S[i]$ 和 $T[1]$ 比。\n\n```quiz\nid: q-waste\nq: 这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n- [x] 一定失配\n- [ ] 一定匹配\n- [ ] 不一定，要看主串\nexplain: $S[i]\\ne T[2]=\\text{a}$，而 $T[1]$ 也是 a，所以 $S[i]\\ne T[1]$：这次比较白做了。\n```\n````\n\n选好以后，用一句话告诉我你是凭什么判断的。\n"
   }
  ],
  "turns": [
@@ -112,8 +140,20 @@
     }
    ],
    "msg": "算出来是 0 1 2 1 2 3，应该对吧？\n[作答] b1 里的 kmp q-next1「写出 next 数组」：写出结果，「写出模式串 aabaac 的 next 数组（从 j = 1 开始）。」做对了（共 1 次）\n[动作] b1 里的组件 q-next1：学生标了「有把握」"
+  },
+  {
+   "seq": 3,
+   "role": "teacher",
+   "bytes": 715,
+   "talk": "对，六个都对。nextval 要解决的是 next 的一个浪费，先看它浪费在哪：还是这个串，想一想下面这次比较。\n\n选好以后，用一句话告诉我你是凭什么判断的。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 2 块板「next 浪费在哪」\n\n老师写在板顶的话：对，六个都对。nextval 要解决的是 next 的一个浪费，先看它浪费在哪：还是这个串，想一想下面这次比较。\n\n选好以后，用一句话告诉我你是凭什么判断的。\n\n## next 浪费在哪\n模式串 $T=$ a a b a a c，$next=$ 0 1 2 1 2 3。\n\n匹配时，主串的字符 $S[i]$ 和 $T[2]=\\text{a}$ **失配**了，按 next，$j$ 退到 $next[2]=1$，接着拿 $S[i]$ 和 $T[1]$ 比。\n\n【选择题 q-waste】\n  这一次 $S[i]$ 和 $T[1]$ 的比较，结果会怎样？\n  A. 一定失配\n  B. 一定匹配\n  C. 不一定，要看主串\n\n# 常驻栏\n## 口径（王道）\n位置从 1 数；$next[1]=0$；$next[j]$ = $T[1..j-1]$ 最长相等前后缀的长度 $+1$。\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 2,
+ "seq": 3,
  "pendingNotes": []
 }

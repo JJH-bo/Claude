@@ -1,8 +1,6 @@
 # 第 1 块板「先看形状」
 
-老师写在板顶的话：好，今天看秩一矩阵（rank-one matrix）$A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$ 的幂。先从形状开始：同样两个向量，乘的顺序一换，出来的东西完全不同。
-
-不用算具体的数，选一个就行。
+老师写在板顶的话：对，$(2\times1)(1\times2)$ 是 $2\times2$。现在把顺序反过来，行在前、列在后。
 
 ## 先看形状
 $\boldsymbol\alpha$、$\boldsymbol\beta$ 都是 $2\times1$ 的列向量，$\boldsymbol\beta^{\mathrm T}$ 是 $1\times2$ 的行。
@@ -13,6 +11,14 @@ $\boldsymbol\alpha$、$\boldsymbol\beta$ 都是 $2\times1$ 的列向量，$\bold
   B. $2\times2$ 的矩阵
   C. $2\times1$ 的列向量
   D. 乘不了
+
+## 顺序反过来
+【选择题 q-shape2】
+  $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$（行在前、列在后）乘出来是什么形状？
+  A. 一个数（$1\times1$）
+  B. $2\times2$ 的矩阵
+  C. $1\times2$ 的行向量
+  D. 和 $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$ 一样
 
 # 常驻栏
 ## 这节课的记号

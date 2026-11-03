@@ -1,0 +1,13 @@
+对，$(2\times1)(1\times2)$ 是 $2\times2$。现在把顺序反过来，行在前、列在后。
+
+````board add id=b2 title="顺序反过来"
+```quiz
+id: q-shape2
+q: $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$（行在前、列在后）乘出来是什么形状？
+- [x] 一个数（$1\times1$）
+- [ ] $2\times2$ 的矩阵
+- [ ] $1\times2$ 的行向量
+- [ ] 和 $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$ 一样
+explain: $(1\times2)(2\times1)$ 是 $1\times1$：一个数，就是 $\boldsymbol\beta$ 和 $\boldsymbol\alpha$ 的内积。
+```
+````
