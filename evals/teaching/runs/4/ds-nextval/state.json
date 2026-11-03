@@ -1,0 +1,24 @@
+{
+ "scenario": "ds-nextval",
+ "subject": "数据结构",
+ "plan": false,
+ "pack": {
+  "main": {
+   "unit": "KMP：next 数组和 nextval 数组",
+   "goal": "学生能手算模式串的 next 和 nextval（王道口径：从 1 数，next[1] = 0），说清 nextval 为什么要比较 T[j] 和 T[next[j]]，并能用在匹配上。",
+   "scope": "前置：朴素匹配、next 数组（最长相等前后缀 + 1）。本节讲 nextval（王道口径）。常考：求 abaabcac、aaaab 的 nextval。",
+   "plan": "1. 复习 next：短的模式串先算一遍。\n2. 用 kmp 演示组件看 nextval 怎么一格格从 next 来。\n3. 关键格（T[j] 和 T[next[j]] 相等的那一格）先让学生猜。\n4. 自己算一个完整的 nextval，再换一个串确认。"
+  }
+ },
+ "segs": [],
+ "pages": [],
+ "cur": 0,
+ "progress": {},
+ "tries": {},
+ "results": {},
+ "compAt": {},
+ "ops": [],
+ "history": [],
+ "turns": [],
+ "seq": 0
+}

@@ -1,0 +1,15 @@
+nextval 是从 next 来的，所以先热身：这个短串的 next 你自己写一遍，口径照王道（从 1 数，$next[1]=0$）。
+
+````board new id=b1 title="热身：先求 next"
+模式串 $T=$ `ababaa`，位置从 1 数。
+
+```kmp
+id: q-next1
+title: 写出 next 数组
+pattern: ababaa
+show: next
+mode: quiz
+```
+````
+
+六个数用空格隔开写，写完交上来；拿不准的格子也先按你的想法填。
