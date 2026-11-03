@@ -104,6 +104,7 @@
   --slate-bg: linear-gradient(170deg, #fbf8f2, #f2ecdf);
   /* 卡片是浮在纸上的一张白卡（不是压暗的一块），带一点点影子 */
   --card-bg: rgb(255 253 248 / 0.72);
+  --card-solid: #fffdf8; --card-solid-rgb: 255 253 248; --card-hover: #fff;
   --card-shadow: 0 1px 2px rgb(92 70 40 / 0.06), 0 6px 18px rgb(92 70 40 / 0.06);
   color-scheme: light;
 }
@@ -253,6 +254,7 @@
   --sheet-bg-2: linear-gradient(170deg, #f7faf8, #e8efea);
   --slate-bg: linear-gradient(170deg, #f8fbf9, #ecf2ee);
   --card-bg: rgb(250 253 251 / 0.78);
+  --card-solid: #f9fbfa; --card-solid-rgb: 249 251 250; --card-hover: #fff;
   --card-shadow: 0 1px 2px rgb(30 60 54 / 0.06), 0 6px 18px rgb(30 60 54 / 0.07);
   color-scheme: light;
 }
@@ -553,36 +555,36 @@
 /* —— 水墨的黑板（课堂、实时黑板、自学单元）：iOS 的控件，宣纸上的墨 ——
    板的标题、组件标题、图上的标注用毛笔楷书；按钮、选项、提示框是圆角的白卡，一道很细的边，不画粉笔框；
    选中是一层淡墨，对是松绿，错是朱红；步骤的序号是一枚小小的墨点 */
-:root[data-theme^="ink"] {
+:root:is([data-theme^="ink"], [data-theme="paper"], [data-theme="celadon"]) {
   /* 黑板上的标题和学习台一样用思源宋体（2026-11-03 我说毛笔字不如外面学习台的字好看） */
   --hand: "Noto Serif SC", "Songti SC", "STSong", serif;
   --card-frame-a: 0.12;
   --btn-frame-a: 0.2;
 }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) :is(.btn, .q-opt, .callout, .fold, .fc-face, .widget.act, .lint)::before { border-width: 0.5px; border-style: solid; border-radius: inherit; filter: none; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .btn { border-radius: 12px; --frame: transparent; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .btn:not(.btn-primary):not(.btn-danger) { background: var(--btn-bg); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .btn:not(.btn-primary):not(.btn-danger):hover { background: var(--btn-bg-hi); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .btn-primary { --frame: transparent; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .q-opt { border-radius: 12px; background: var(--card-solid); box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.05); --frame: rgb(var(--chalk-rgb) / 0.14); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .q-opt:hover { background: var(--card-hover); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .q-opt.is-picked { background: rgb(var(--chalk-rgb) / 0.06); --frame: rgb(var(--chalk-rgb) / 0.5); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .q-opt.is-right { background: rgb(var(--green-rgb) / 0.08); --frame: rgb(var(--green-rgb) / 0.6); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .q-opt.is-wrong { background: rgb(var(--coral-rgb) / 0.07); --frame: rgb(var(--coral-rgb) / 0.55); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .callout { border-radius: 16px; background: var(--card-solid); box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); --frame: rgb(var(--chalk-rgb) / 0.1); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .fold { border-radius: 14px; --frame: rgb(var(--chalk-rgb) / 0.12); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) :is(.btn, .q-opt, .callout, .fold, .fc-face, .widget.act, .lint)::before { border-width: 0.5px; border-style: solid; border-radius: inherit; filter: none; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .btn { border-radius: 12px; --frame: transparent; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .btn:not(.btn-primary):not(.btn-danger) { background: var(--btn-bg); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .btn:not(.btn-primary):not(.btn-danger):hover { background: var(--btn-bg-hi); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .btn-primary { --frame: transparent; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .q-opt { border-radius: 12px; background: var(--card-solid); box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.05); --frame: rgb(var(--chalk-rgb) / 0.14); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .q-opt:hover { background: var(--card-hover); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .q-opt.is-picked { background: rgb(var(--chalk-rgb) / 0.06); --frame: rgb(var(--chalk-rgb) / 0.5); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .q-opt.is-right { background: rgb(var(--green-rgb) / 0.08); --frame: rgb(var(--green-rgb) / 0.6); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .q-opt.is-wrong { background: rgb(var(--coral-rgb) / 0.07); --frame: rgb(var(--coral-rgb) / 0.55); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .callout { border-radius: 16px; background: var(--card-solid); box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); --frame: rgb(var(--chalk-rgb) / 0.1); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .fold { border-radius: 14px; --frame: rgb(var(--chalk-rgb) / 0.12); }
 /* 常驻栏（这节课的记号）：一张白卡，不是虚线框 */
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .class-pin::before { border: 0.5px solid rgb(var(--chalk-rgb) / 0.12); border-radius: 14px; filter: none; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .class-pin { background: var(--card-solid); border-radius: 14px; box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.04); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .class-pin .stage-body > h2 { color: rgb(var(--yellow-rgb)); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .class-pin::before { border: 0.5px solid rgb(var(--chalk-rgb) / 0.12); border-radius: 14px; filter: none; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .class-pin { background: var(--card-solid); border-radius: 14px; box-shadow: 0 1px 2px rgb(var(--shade-rgb) / 0.04); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .class-pin .stage-body > h2 { color: rgb(var(--yellow-rgb)); }
 /* 步骤序号：一枚墨点，白字 */
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .st-n { isolation: isolate; color: var(--accent-ink); font: 600 16px/1 var(--sans); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .st-n::before { z-index: -1; inset: 4px; border: 0; border-radius: 50%; background: var(--chalk); filter: none; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .st-n { isolation: isolate; color: var(--accent-ink); font: 600 16px/1 var(--sans); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .st-n::before { z-index: -1; inset: 4px; border: 0; border-radius: 50%; background: var(--chalk); filter: none; }
 /* 快捷回答、输入框：iOS 的白胶囊 */
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .cb-q::before { border-radius: 999px; border: 0.5px solid rgb(var(--chalk-rgb) / 0.14); background: rgb(var(--card-solid-rgb) / 0.96); box-shadow: 0 2px 8px -2px rgb(var(--shade-rgb) / 0.12); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .cb-pill::before { border: 0.5px solid rgb(var(--chalk-rgb) / 0.14); border-radius: 26px; filter: none; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .cb-pill { background: rgb(var(--card-solid-rgb) / 0.9); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .cb-send { background: var(--chalk); color: var(--accent-ink); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .cb-q::before { border-radius: 999px; border: 0.5px solid rgb(var(--chalk-rgb) / 0.14); background: rgb(var(--card-solid-rgb) / 0.96); box-shadow: 0 2px 8px -2px rgb(var(--shade-rgb) / 0.12); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .cb-pill::before { border: 0.5px solid rgb(var(--chalk-rgb) / 0.14); border-radius: 26px; filter: none; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .cb-pill { background: rgb(var(--card-solid-rgb) / 0.9); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .cb-send { background: var(--chalk); color: var(--accent-ink); }
 
 /* 荧光笔（board mark 的 highlight、==涂色==）：深色黑板上淡了发灰发褐，涂浓一点；浅色纸上浓了压字，淡一点 */
 :root { --mk-fill-a: .46; --hl-a: .44; }
@@ -590,19 +592,19 @@
 
 /* 水墨的提示框：标签的中文是毛笔字，英文是一行小号的字母（不要毛笔里夹一串斜体）；
    版面里的提示框照样是一张白卡，不要左边那道粗线（白卡加粗线是一道弯的红边） */
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .callout-title { align-items: center; gap: 10px; font-size: 24px; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .callout-title .co-en { margin-left: 0; font: 600 11.5px/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; opacity: .7; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .callout-sub { font-family: var(--sans); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .class-page-body.is-canvas .callout { border-left: 0; padding: 16px 20px; border-radius: 16px; background: var(--card-solid); box-shadow: inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.1), 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .class-page-body.is-canvas .callout-key, :root:is([data-theme^="ink"], [data-theme="xuan"]) .class-page-body.is-canvas .callout-theorem { box-shadow: inset 0 0 0 0.5px rgb(var(--yellow-rgb) / 0.3), 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .callout-title { align-items: center; gap: 10px; font-size: 24px; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .callout-title .co-en { margin-left: 0; font: 600 11.5px/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; opacity: .7; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .callout-sub { font-family: var(--sans); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .class-page-body.is-canvas .callout { border-left: 0; padding: 16px 20px; border-radius: 16px; background: var(--card-solid); box-shadow: inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.1), 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .class-page-body.is-canvas .callout-key, :root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .class-page-body.is-canvas .callout-theorem { box-shadow: inset 0 0 0 0.5px rgb(var(--yellow-rgb) / 0.3), 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); }
 
 /* 水墨的黑板标题：宋体要有分量（手写体那几处写的是 400，宋体 400 太细） */
-:root:is([data-theme^="ink"], [data-theme="xuan"]) :is(.la-lesson h1, .la-lesson h2, .class-board-title, .class-page-title, .class-sheet-h, .class-pin .stage-body > h2) { font-weight: 700; letter-spacing: 0.02em; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) :is(.la-lesson h3, .w-title, .callout-title .co-zh, .st-t, .steps .w-title) { font-weight: 600; }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .callout-title { font-size: 21px; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) :is(.la-lesson h1, .la-lesson h2, .class-board-title, .class-page-title, .class-sheet-h, .class-pin .stage-body > h2) { font-weight: 700; letter-spacing: 0.02em; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) :is(.la-lesson h3, .w-title, .callout-title .co-zh, .st-t, .steps .w-title) { font-weight: 600; }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .callout-title { font-size: 21px; }
 /* 朱砂只留给印和日期（还有错、例外） */
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .la-lesson .dk-title::before { background: rgb(var(--coral-rgb)); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.22), inset 0 0 0 3px rgb(var(--coral-rgb)); }
-:root:is([data-theme^="ink"], [data-theme="xuan"]) .dk-date { color: rgb(var(--coral-rgb)); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .la-lesson .dk-title::before { background: rgb(var(--coral-rgb)); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.22), inset 0 0 0 3px rgb(var(--coral-rgb)); }
+:root:is([data-theme^="ink"], [data-theme="xuan"], [data-theme="paper"], [data-theme="celadon"]) .dk-date { color: rgb(var(--coral-rgb)); }
 
 /* —— 玄：主按钮、印、选中是系统蓝；卡片之间不要影子（iOS 深色模式靠底色深浅分层） —— */
 :root[data-theme="xuan"] .btn-primary { color: #fff; background: rgb(var(--blue-rgb)); box-shadow: none; }
@@ -664,3 +666,20 @@
 :root[data-theme="chalk"] .is-desk .btn:not(.btn-primary):not(.btn-danger) { --frame: rgb(var(--chalk-rgb) / 0.45); }
 :root[data-theme="chalk"] .dk-nav a[aria-current="true"] { background: rgb(var(--chalk-rgb) / 0.16); color: var(--chalk); box-shadow: inset 0 0 0 1.5px rgb(var(--chalk-rgb) / 0.5); }
 :root[data-theme="chalk"] .dk-card { border-radius: 16px 20px 15px 19px; }
+
+/* —— 每一种风格一个自己的颜色（印、主按钮用它）：水墨浓墨（印是朱砂）、墨夜泥金、纸本钢笔蓝、青瓷青瓷釉、黑板黄粉笔、玄系统蓝。
+   学科的颜色只留在科目的小圆点、「数学 · 下一节」那一行上（2026-11-03 逐一打磨：印跟着学科变色，看不出是哪一种风格） —— */
+:root[data-theme="paper"] { --brand-rgb: 38 88 160; }
+:root[data-theme="celadon"] { --brand-rgb: 32 112 98; }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .btn-primary { color: #fff; background: linear-gradient(180deg, rgb(var(--brand-rgb) / 1), rgb(var(--brand-rgb) / 0.88)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 8px 18px -10px rgb(var(--brand-rgb) / 0.7); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .btn-primary:hover { background: rgb(var(--brand-rgb) / 0.95); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .btn-primary:disabled { color: rgb(var(--brand-rgb)); background: rgb(var(--brand-rgb) / 0.07); box-shadow: none; --frame: rgb(var(--brand-rgb) / 0.35); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .la-lesson .dk-title::before { background: rgb(var(--brand-rgb)); color: #fff; border-radius: 7px; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.2); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .dk-date { color: rgb(var(--brand-rgb)); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .dk-look-btn[aria-pressed="true"] { box-shadow: inset 0 0 0 2px rgb(var(--brand-rgb)); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .st-n::before { background: rgb(var(--brand-rgb)); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .cb-send { background: rgb(var(--brand-rgb)); color: #fff; }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .is-desk .link-btn, :root:is([data-theme="paper"], [data-theme="celadon"]) .is-desk .dk-link { color: rgb(var(--brand-rgb)); }
+/* 黑板：印是一方黄粉笔描的框，里面一个粉笔字 */
+:root[data-theme="chalk"] .la-lesson .dk-title::before { background: rgb(var(--yellow-rgb) / 0.08); color: var(--yellow); font: 400 26px/1 var(--hand); box-shadow: inset 0 0 0 2px rgb(var(--yellow-rgb) / 0.8); filter: var(--rough); }
+:root[data-theme="chalk"] .dk-date { color: rgb(var(--yellow-rgb) / 0.9); }
