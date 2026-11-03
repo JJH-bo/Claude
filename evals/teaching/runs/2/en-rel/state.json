@@ -34,6 +34,12 @@
    "place": "pin",
    "title": "有没有逗号",
    "md": "删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）"
+  },
+  {
+   "id": "b4",
+   "page": 4,
+   "title": "填关系词",
+   "md": "```cloze\nid: cz-b4\ntitle: 填一个关系词\nq: 每个空填一个关系词（who / which / that 里选）。\ntext: 1. Beijing, {{which|!that=这里前面有逗号，是补充说明|!who=Beijing 是地方不是人}} is the capital of China, has a history of over 3,000 years.\n  2. Lu Xun, {{who|!that=这里前面有逗号，是补充说明|!which=Lu Xun 是人}} wrote *The True Story of Ah Q*, was born in Shaoxing.\n  3. The book {{that|which|!who=book 是物不是人}} I bought yesterday is very interesting.\nexplain: 1、2 前面有逗号，是补充说明（非限制性），指物用 which、指人用 who，不用 that；3 没有逗号，在挑出是哪本书（限制性），that 和 which 都行。\n```"
   }
  ],
  "pages": [
@@ -51,13 +57,19 @@
    "n": 3,
    "title": "删掉试试",
    "talk": "关键不在「几个」，在于**名词本身是不是已经确定是谁**。用「删掉试试」来判断，看板上。\n\n选完用一句话说说：你是怎么判断的？"
+  },
+  {
+   "n": 4,
+   "title": "填关系词",
+   "talk": "判断依据说得准。下面换成你来填关系词，注意每句有没有逗号。"
   }
  ],
- "cur": 3,
+ "cur": 4,
  "progress": {},
  "tries": {
   "q-b1": 1,
-  "q-b2": 1
+  "q-b2": 1,
+  "q-b3": 1
  },
  "results": {
   "q-b1": [
@@ -79,6 +91,18 @@
     "step": "b2",
     "type": "quiz",
     "q": "哪一句说的是**全班学生都考过了**，而且都早早回家了？",
+    "ok": true,
+    "attempts": 1,
+    "final": true
+   }
+  ],
+  "q-b3": [
+   {
+    "source": "record",
+    "block": "q-b3",
+    "step": "b3",
+    "type": "quiz",
+    "q": "哪一句写得自然？",
     "ok": true,
     "attempts": 1,
     "final": true
@@ -121,6 +145,18 @@
     "raw": "```quiz\nid: q-b3\nq: 哪一句写得自然？\n- [ ] My mother who is a teacher lives in Shanghai.\n- [x] My mother, who is a teacher, lives in Shanghai.\nexplain: 每个人只有一位母亲，my mother 已经确定是谁，删掉 who is a teacher 也知道说的是谁，从句只是补充，要加逗号。不加逗号会让人以为你有好几位母亲，要挑出当老师的那位。\n```",
     "at": 223
    }
+  },
+  "cz-b4": {
+   "seg": {
+    "id": "b4"
+   },
+   "f": {
+    "lang": "cloze",
+    "body": "id: cz-b4\ntitle: 填一个关系词\nq: 每个空填一个关系词（who / which / that 里选）。\ntext: 1. Beijing, {{which|!that=这里前面有逗号，是补充说明|!who=Beijing 是地方不是人}} is the capital of China, has a history of over 3,000 years.\n  2. Lu Xun, {{who|!that=这里前面有逗号，是补充说明|!which=Lu Xun 是人}} wrote *The True Story of Ah Q*, was born in Shaoxing.\n  3. The book {{that|which|!who=book 是物不是人}} I bought yesterday is very interesting.\nexplain: 1、2 前面有逗号，是补充说明（非限制性），指物用 which、指人用 who，不用 that；3 没有逗号，在挑出是哪本书（限制性），that 和 which 都行。",
+    "id": "cz-b4",
+    "raw": "```cloze\nid: cz-b4\ntitle: 填一个关系词\nq: 每个空填一个关系词（who / which / that 里选）。\ntext: 1. Beijing, {{which|!that=这里前面有逗号，是补充说明|!who=Beijing 是地方不是人}} is the capital of China, has a history of over 3,000 years.\n  2. Lu Xun, {{who|!that=这里前面有逗号，是补充说明|!which=Lu Xun 是人}} wrote *The True Story of Ah Q*, was born in Shaoxing.\n  3. The book {{that|which|!who=book 是物不是人}} I bought yesterday is very interesting.\nexplain: 1、2 前面有逗号，是补充说明（非限制性），指物用 which、指人用 who，不用 that；3 没有逗号，在挑出是哪本书（限制性），that 和 which 都行。\n```",
+    "at": 0
+   }
   }
  },
  "ops": [],
@@ -149,6 +185,16 @@
    "role": "claude",
    "seq": 5,
    "text": "关键不在「几个」，在于**名词本身是不是已经确定是谁**。用「删掉试试」来判断，看板上。\n\n````board new id=b3 title=\"删掉试试\"\n把从句删掉，看前面的名词还能不能让人知道说的是谁：\n\n- B 句删掉后：*My brother is a doctor.* 听的人知道是谁（我就那一个哥哥）→ 从句只是**补充**，加逗号。\n- A 句删掉后：*My brother is a doctor.* 如果我有三个哥哥，就不知道是哪个了 → 从句在**挑出**是哪个，不加逗号。\n\n所以「只有一个」是结果：名词已经确定（专有名词、my mother、全体学生……），从句就只能补充。\n\n```quiz\nid: q-b3\nq: 哪一句写得自然？\n- [ ] My mother who is a teacher lives in Shanghai.\n- [x] My mother, who is a teacher, lives in Shanghai.\nexplain: 每个人只有一位母亲，my mother 已经确定是谁，删掉 who is a teacher 也知道说的是谁，从句只是补充，要加逗号。不加逗号会让人以为你有好几位母亲，要挑出当老师的那位。\n```\n````\n\n````board pin id=k1 title=\"有没有逗号\"\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）\n````\n\n选完用一句话说说：你是怎么判断的？\n"
+  },
+  {
+   "role": "student",
+   "seq": 6,
+   "text": "选B。我只有一个妈妈，删掉从句也知道是谁，所以加逗号\n[作答] b3 里的 quiz q-b3：「哪一句写得自然？」做对了（共 1 次）\n[动作] b3 里的组件 q-b3：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 7,
+   "text": "判断依据说得准。下面换成你来填关系词，注意每句有没有逗号。\n\n````board new id=b4 title=\"填关系词\"\n```cloze\nid: cz-b4\ntitle: 填一个关系词\nq: 每个空填一个关系词（who / which / that 里选）。\ntext: 1. Beijing, {{which|!that=这里前面有逗号，是补充说明|!who=Beijing 是地方不是人}} is the capital of China, has a history of over 3,000 years.\n  2. Lu Xun, {{who|!that=这里前面有逗号，是补充说明|!which=Lu Xun 是人}} wrote *The True Story of Ah Q*, was born in Shaoxing.\n  3. The book {{that|which|!who=book 是物不是人}} I bought yesterday is very interesting.\nexplain: 1、2 前面有逗号，是补充说明（非限制性），指物用 which、指人用 who，不用 that；3 没有逗号，在挑出是哪本书（限制性），that 和 which 都行。\n```\n````\n"
   }
  ],
  "turns": [
@@ -224,8 +270,38 @@
    "notes": [],
    "plan": false,
    "view": "# 第 3 块板「删掉试试」\n\n老师写在板顶的话：关键不在「几个」，在于**名词本身是不是已经确定是谁**。用「删掉试试」来判断，看板上。\n\n选完用一句话说说：你是怎么判断的？\n\n## 删掉试试\n把从句删掉，看前面的名词还能不能让人知道说的是谁：\n\n- B 句删掉后：*My brother is a doctor.* 听的人知道是谁（我就那一个哥哥）→ 从句只是**补充**，加逗号。\n- A 句删掉后：*My brother is a doctor.* 如果我有三个哥哥，就不知道是哪个了 → 从句在**挑出**是哪个，不加逗号。\n\n所以「只有一个」是结果：名词已经确定（专有名词、my mother、全体学生……），从句就只能补充。\n\n【选择题 q-b3】\n  哪一句写得自然？\n  A. My mother who is a teacher lives in Shanghai.\n  B. My mother, who is a teacher, lives in Shanghai.\n\n# 常驻栏\n## 有没有逗号\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 6,
+   "role": "student",
+   "say": "选B。我只有一个妈妈，删掉从句也知道是谁，所以加逗号",
+   "acts": [
+    {
+     "comp": "q-b3",
+     "ok": true,
+     "type": "quiz"
+    },
+    {
+     "comp": "q-b3",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "选B。我只有一个妈妈，删掉从句也知道是谁，所以加逗号\n[作答] b3 里的 quiz q-b3：「哪一句写得自然？」做对了（共 1 次）\n[动作] b3 里的组件 q-b3：学生标了「有把握」"
+  },
+  {
+   "seq": 7,
+   "role": "teacher",
+   "bytes": 850,
+   "talk": "判断依据说得准。下面换成你来填关系词，注意每句有没有逗号。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 4 块板「填关系词」\n\n老师写在板顶的话：判断依据说得准。下面换成你来填关系词，注意每句有没有逗号。\n\n## 填关系词\n【填空 cz-b4】填一个关系词\n  每个空填一个关系词（who / which / that 里选）。\n  1. Beijing, （1）____ is the capital of China, has a history of over 3,000 years.\n  （按顺序写每个空，用 | 隔开，比如 \"who | has lived\"）\n\n# 常驻栏\n## 有没有逗号\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 5,
+ "seq": 7,
  "pendingNotes": []
 }

@@ -1,0 +1,13 @@
+判断依据说得准。下面换成你来填关系词，注意每句有没有逗号。
+
+````board new id=b4 title="填关系词"
+```cloze
+id: cz-b4
+title: 填一个关系词
+q: 每个空填一个关系词（who / which / that 里选）。
+text: 1. Beijing, {{which|!that=这里前面有逗号，是补充说明|!who=Beijing 是地方不是人}} is the capital of China, has a history of over 3,000 years.
+  2. Lu Xun, {{who|!that=这里前面有逗号，是补充说明|!which=Lu Xun 是人}} wrote *The True Story of Ah Q*, was born in Shaoxing.
+  3. The book {{that|which|!who=book 是物不是人}} I bought yesterday is very interesting.
+explain: 1、2 前面有逗号，是补充说明（非限制性），指物用 which、指人用 who，不用 that；3 没有逗号，在挑出是哪本书（限制性），that 和 which 都行。
+```
+````

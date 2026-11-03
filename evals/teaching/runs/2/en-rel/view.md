@@ -1,21 +1,12 @@
-# 第 3 块板「删掉试试」
+# 第 4 块板「填关系词」
 
-老师写在板顶的话：关键不在「几个」，在于**名词本身是不是已经确定是谁**。用「删掉试试」来判断，看板上。
+老师写在板顶的话：判断依据说得准。下面换成你来填关系词，注意每句有没有逗号。
 
-选完用一句话说说：你是怎么判断的？
-
-## 删掉试试
-把从句删掉，看前面的名词还能不能让人知道说的是谁：
-
-- B 句删掉后：*My brother is a doctor.* 听的人知道是谁（我就那一个哥哥）→ 从句只是**补充**，加逗号。
-- A 句删掉后：*My brother is a doctor.* 如果我有三个哥哥，就不知道是哪个了 → 从句在**挑出**是哪个，不加逗号。
-
-所以「只有一个」是结果：名词已经确定（专有名词、my mother、全体学生……），从句就只能补充。
-
-【选择题 q-b3】
-  哪一句写得自然？
-  A. My mother who is a teacher lives in Shanghai.
-  B. My mother, who is a teacher, lives in Shanghai.
+## 填关系词
+【填空 cz-b4】填一个关系词
+  每个空填一个关系词（who / which / that 里选）。
+  1. Beijing, （1）____ is the capital of China, has a history of over 3,000 years.
+  （按顺序写每个空，用 | 隔开，比如 "who | has lived"）
 
 # 常驻栏
 ## 有没有逗号
