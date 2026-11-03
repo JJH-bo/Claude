@@ -1,5 +1,5 @@
 // 页面风格：默认石墨（styles.css 的 :root），别的在 themes.css。课件 front matter 写 theme: 选，中英文名都认
-export const THEMES = { chalk: 'chalk', 墨绿黑板: 'chalk', 黑板: 'chalk', paper: 'paper', 纸本: 'paper', midnight: 'midnight', 深蓝: 'midnight', white: 'white', 白板: 'white', celadon: 'celadon', 青瓷: 'celadon', 护眼: 'celadon', graphite: '', 石墨: '', 夜读: '' };
+export const THEMES = { chalk: 'chalk', 墨绿黑板: 'chalk', 黑板: 'chalk', paper: 'paper', 纸本: 'paper', midnight: 'midnight', 深蓝: 'midnight', white: 'white', 白板: 'white', celadon: 'celadon', 青瓷: 'celadon', 护眼: 'celadon', candle: 'candle', 烛光: 'candle', dusk: 'dusk', 暮色: 'dusk', ink: 'ink', 水墨: 'ink', graphite: '', 石墨: '', 夜读: '' };
 
 /** front matter 里 theme 的值 → <html data-theme> 的值（'' 是默认石墨；不认识的返回 null） */
 export function themeOf(value) {
@@ -13,9 +13,12 @@ const KEY = 'la-theme';
 // 学习台里推荐的三种（2026-11-03 我要三种最舒服、最适合学习的）：夜读（石墨）、纸本、青瓷；别的照旧能用
 // sw：选的时候那块小样的颜色（页面底、卡片、字、重点色）
 export const PICKS = [
-  { id: '', name: '夜读', note: '深色石板，晚上、灯光暗的时候', sw: ['#171c22', '#232a32', '#eeebe2', '#f0be5c'] },
+  { id: '', name: '夜读', note: '深色石板，冷静，晚上、灯光暗的时候', sw: ['#171c22', '#232a32', '#eeebe2', '#f0be5c'] },
+  { id: 'candle', name: '烛光', note: '暖的深色，蓝光最少，很晚还在学的时候', sw: ['#1c1612', '#2a211b', '#f2e6d4', '#eeb25a'] },
+  { id: 'dusk', name: '暮色', note: '紫靛色的傍晚，柔和，傍晚到夜里', sw: ['#221e3a', '#2f2a50', '#eeeaf8', '#ffbe8c'] },
   { id: 'paper', name: '纸本', note: '暖白笔记纸，白天，像在本子上写', sw: ['#f4efe4', '#fffdf8', '#28251f', '#b06c0a'] },
   { id: 'celadon', name: '青瓷', note: '浅青灰，白天长时间看不刺眼', sw: ['#e5ece7', '#f8fbf9', '#1a2a28', '#b26812'] },
+  { id: 'ink', name: '水墨', note: '宣纸和墨，最安静，只有一点朱砂红', sw: ['#f1ede5', '#faf8f3', '#1e1e1e', '#b24828'] },
 ];
 // 以前就有的另外三种，收在「更多」里
 export const MORE = [

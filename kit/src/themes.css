@@ -257,12 +257,159 @@
   color-scheme: light;
 }
 
+/* —— 烛光：暖的深色，像夜里一盏烛灯照着书桌：深可可色的底、象牙白的字、烛黄、玫瑰、鼠尾草绿。
+   比夜读暖、蓝光少，适合很晚还在学的时候（2026-11-03 第二批推荐） —— */
+:root[data-theme="candle"] {
+  --chalk-rgb: 242 230 212;
+  --yellow-rgb: 238 178 90;
+  --blue-rgb: 146 184 206;
+  --pink-rgb: 232 146 146;
+  --green-rgb: 160 200 146;
+  --coral-rgb: 242 122 98;
+  --shade-rgb: 8 4 2;
+  --glow-rgb: 255 236 210;
+  --board-rgb: 29 23 19;
+  --board-2-rgb: 38 31 26;
+  --board-3-rgb: 21 17 14;
+  --bar-rgb: 27 22 18;
+  --halo-rgb: 29 23 19;
+  --muted: #a39482;
+  --orange: #f2a05c;
+  --lav: #c4a8e0;
+  --wood: #4a3626;
+  --wood-hi: #5e4632;
+  --wood-dk: #34261b;
+  --flash: #ffd27a;
+  --ink-white: #f2e6d4;
+  --ink-yellow: #eeb25a;
+  --ink-pink: #e89292;
+  --ink-blue: #92b8ce;
+  --accent-ink: #1d1610;
+  --grp-ink: #1d1610;
+  --g1: #92b8ce; --g2: #e89292; --g3: #a0c892; --g4: #c4a8e0; --g5: #eeb25a; --g6: #f2a05c;
+  --page-bg:
+    radial-gradient(900px 620px at 50% -18%, rgba(238, 170, 90, 0.16), transparent 66%),
+    radial-gradient(1200px 900px at 50% 120%, rgba(0, 0, 0, 0.35), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .92 0 0 0 0 .8 0 0 0 .04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #221a15 0%, #1c1612 60%, #18130f 100%);
+  --keypad-bg: linear-gradient(#2c231d, #231c17);
+  --key-bg: linear-gradient(#3a2f27, #30271f);
+  --key-active: #463830;
+  --card-front: #261e19;
+  --card-back: #2b221c;
+  --sheet-bg: linear-gradient(170deg, #271f19, #1c1612);
+  --sheet-bg-2: linear-gradient(170deg, #271f19, #19130f);
+  --slate-bg: linear-gradient(170deg, #2a211b, #1e1813);
+}
+
+/* —— 暮色：傍晚的天：深的紫靛色，底下一点晚霞的桃色光；长春花蓝、桃色、薄荷绿。
+   比夜读柔、比深蓝暖，适合傍晚到夜里 —— */
+:root[data-theme="dusk"] {
+  --chalk-rgb: 238 234 248;
+  --yellow-rgb: 255 190 140;
+  --blue-rgb: 152 182 255;
+  --pink-rgb: 242 152 202;
+  --green-rgb: 140 220 190;
+  --coral-rgb: 255 132 132;
+  --shade-rgb: 6 4 18;
+  --glow-rgb: 232 222 255;
+  --board-rgb: 28 25 46;
+  --board-2-rgb: 37 33 60;
+  --board-3-rgb: 21 19 36;
+  --bar-rgb: 26 24 43;
+  --halo-rgb: 28 25 46;
+  --muted: #a09bbd;
+  --orange: #ffad84;
+  --lav: #c6b3ff;
+  --wood: #3a3460;
+  --wood-hi: #4a4378;
+  --wood-dk: #2a2548;
+  --flash: #ffd59a;
+  --ink-white: #eeeaf8;
+  --ink-yellow: #ffbe8c;
+  --ink-pink: #f298ca;
+  --ink-blue: #98b6ff;
+  --accent-ink: #1c1930;
+  --grp-ink: #1c1930;
+  --g1: #98b6ff; --g2: #f298ca; --g3: #8cdcbe; --g4: #c6b3ff; --g5: #ffbe8c; --g6: #ffad84;
+  --page-bg:
+    radial-gradient(900px 520px at 92% 112%, rgba(255, 170, 130, 0.2), transparent 68%),
+    radial-gradient(800px 520px at 0% 100%, rgba(242, 140, 200, 0.1), transparent 70%),
+    radial-gradient(1000px 600px at 20% -10%, rgba(150, 170, 255, 0.1), transparent 70%),
+    linear-gradient(180deg, #1b1930 0%, #221e3a 55%, #2a2140 100%);
+  --keypad-bg: linear-gradient(#272341, #1f1c36);
+  --key-bg: linear-gradient(#332e54, #2a2647);
+  --key-active: #3d3762;
+  --card-front: #24203f;
+  --card-back: #292445;
+  --sheet-bg: linear-gradient(170deg, #26223f, #1c1a31);
+  --sheet-bg-2: linear-gradient(170deg, #26223f, #191729);
+  --slate-bg: linear-gradient(170deg, #29254a, #1e1b35);
+}
+
+/* —— 水墨：宣纸上的墨：近白的米色纸、浓淡几层墨灰，颜色压得很低，只有朱砂一点红（主按钮是一笔浓墨）。
+   最安静的一种，字以外几乎没有东西抢眼 —— */
+:root[data-theme="ink"] {
+  --chalk-rgb: 30 30 30;
+  --yellow-rgb: 178 72 40;
+  --blue-rgb: 52 82 118;
+  --pink-rgb: 150 60 86;
+  --green-rgb: 56 108 86;
+  --coral-rgb: 196 40 52;
+  --shade-rgb: 40 34 26;
+  --well-k: 0.5;
+  --glow-rgb: 40 34 26;
+  --board-rgb: 243 240 233;
+  --board-2-rgb: 236 232 223;
+  --board-3-rgb: 249 247 242;
+  --bar-rgb: 243 240 233;
+  --halo-rgb: 245 242 236;
+  --muted: #7d776d;
+  --orange: #a8582a;
+  --lav: #5e4f8a;
+  --body: rgb(var(--chalk-rgb) / 0.86);
+  --wood: #d6d0c4;
+  --wood-hi: #e2ddd2;
+  --wood-dk: #c4bcac;
+  --flash: #f2c14e;
+  --sel-ink: #111;
+  --ink-white: #1e1e1e;
+  --ink-yellow: #b24828;
+  --ink-pink: #963c56;
+  --ink-blue: #345276;
+  --accent-ink: #fbf8f2;
+  --grp-ink: #1e1e1e;
+  --g1: #d8e0ea; --g2: #ecd9de; --g3: #d8e6dd; --g4: #e1dcec; --g5: #f1e2cf; --g6: #eedcd0;
+  --grid: rgb(var(--chalk-rgb) / 0.07);
+  --axis: rgb(var(--chalk-rgb) / 0.45);
+  --page-bg:
+    radial-gradient(900px 600px at 85% -10%, rgba(60, 50, 40, 0.06), transparent 70%),
+    radial-gradient(700px 500px at 0% 110%, rgba(60, 50, 40, 0.05), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='2' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .25 0 0 0 0 .2 0 0 0 0 .14 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #f5f2eb 0%, #f1ede5 60%, #ece7dd 100%);
+  --keypad-bg: linear-gradient(#ebe6dc, #e1dbcf);
+  --key-bg: linear-gradient(#fcfaf6, #f2eee6);
+  --key-active: #e4ded2;
+  --card-front: #f7f4ee;
+  --card-back: #f1ece2;
+  --sheet-bg: linear-gradient(170deg, #faf8f3, #efebe2);
+  --sheet-bg-2: linear-gradient(170deg, #faf8f3, #ece7dd);
+  --slate-bg: linear-gradient(170deg, #fbf9f5, #f0ece4);
+  --card-bg: rgb(252 250 246 / 0.8);
+  --card-shadow: 0 1px 2px rgb(40 34 26 / 0.05), 0 6px 18px rgb(40 34 26 / 0.06);
+  color-scheme: light;
+}
+/* 水墨：主按钮是一笔浓墨（不是彩色的块），学习台那方「学」字印是朱砂 */
+:root[data-theme="ink"] .btn-primary { color: var(--accent-ink); background: linear-gradient(180deg, rgb(var(--chalk-rgb) / 0.92), rgb(var(--chalk-rgb) / 0.82)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 8px 18px -10px rgb(var(--shade-rgb) / 0.6); }
+:root[data-theme="ink"] .btn-primary:disabled { color: var(--chalk); background: rgb(var(--chalk-rgb) / 0.05); box-shadow: none; --frame: rgb(var(--chalk-rgb) / 0.3); }
+:root[data-theme="ink"] .dk-brand::before { background: linear-gradient(160deg, rgb(var(--yellow-rgb)), rgb(var(--yellow-rgb) / 0.8)); box-shadow: 0 8px 18px -10px rgb(var(--yellow-rgb) / 0.7); border-radius: 6px; }
+
 /* 浅色风格：浮起来的东西（输入框、菜单）阴影淡一点，纸上不该有浓黑的影子 */
-:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"]) .cb-pill { box-shadow: 0 6px 22px rgb(var(--shade-rgb) / 0.16), 0 1px 0 rgb(255 255 255 / 0.7) inset; }
-:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"]) :is(.cb-menu, .cb-pages, .cb-status) { box-shadow: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.12), 0 12px 32px rgb(var(--shade-rgb) / 0.16); }
-:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"]) .class-more { box-shadow: inset 0 0 0 1.4px rgb(var(--yellow-rgb) / 0.55), 0 6px 16px rgb(var(--shade-rgb) / 0.14); }
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) .cb-pill { box-shadow: 0 6px 22px rgb(var(--shade-rgb) / 0.16), 0 1px 0 rgb(255 255 255 / 0.7) inset; }
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) :is(.cb-menu, .cb-pages, .cb-status) { box-shadow: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.12), 0 12px 32px rgb(var(--shade-rgb) / 0.16); }
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) .class-more { box-shadow: inset 0 0 0 1.4px rgb(var(--yellow-rgb) / 0.55), 0 6px 16px rgb(var(--shade-rgb) / 0.14); }
 /* 浅色风格：面板是白一点的纸面，影子轻很多（深色风格那种影子在浅底上是一块脏印子） */
-:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"]) {
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) {
   --panel: linear-gradient(180deg, rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.6));
   --panel-edge: inset 0 1px 0 rgb(255 255 255 / 0.9), inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.08);
   --lift: 0 1px 2px rgb(var(--shade-rgb) / 0.08), 0 12px 28px -14px rgb(var(--shade-rgb) / 0.28);

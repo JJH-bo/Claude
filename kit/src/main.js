@@ -86,7 +86,7 @@ function renderAll() {
     // 课件写了 theme: 就用它；没写就用这台设备上选过的（学习台「管理」里选，theme.js 的 storedTheme）
     if (meta.theme !== undefined) {
       const theme = themeOf(meta.theme);
-      if (theme === null) console.warn(`不认识的 theme「${meta.theme}」，用默认的石墨。可以写 chalk（墨绿黑板）、paper（纸本）、celadon（青瓷）、midnight（深蓝）、white（白板）`);
+      if (theme === null) console.warn(`不认识的 theme「${meta.theme}」，用默认的石墨。可以写 chalk（墨绿黑板）、paper（纸本）、celadon（青瓷）、candle（烛光）、dusk（暮色）、ink（水墨）、midnight（深蓝）、white（白板）`);
       else if (theme) document.documentElement.dataset.theme = theme;
     } else applyTheme(storedTheme());
     session.reset(meta.unit || lessonTitle(body));
