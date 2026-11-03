@@ -440,7 +440,7 @@ if (cmd === 'init') {
   const sc = JSON.parse(read(arg));
   const plan = !rest.includes('--no-plan');
   fs.mkdirSync(dir, { recursive: true });
-  const system = buildSystem({ componentDocs: docs(), pack: sc.pack, board: { segs: [], pages: [], cur: 0 }, subject: sc.subject, tools: false, planDoc: plan });
+  const system = buildSystem({ componentDocs: docs(), pack: sc.pack, board: { segs: [], pages: [], cur: 0 }, subject: sc.subject, tools: false, planDoc: plan, canvas: true });
   fs.writeFileSync(P('system.md'), system);
   save({ scenario: sc.id, subject: sc.subject, plan, pack: sc.pack, segs: [], pages: [], cur: 0, progress: {}, tries: {}, results: {}, compAt: {}, ops: [], history: [], turns: [], seq: 0 });
   fs.writeFileSync(P('to-teacher.md'), `${sc.opening || '学生打开了课堂：「老师好，开始吧。」'}`);

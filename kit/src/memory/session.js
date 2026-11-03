@@ -212,7 +212,7 @@ export function memoryRead(mem, input = {}) {
 }
 
 function summaryOf(coll, d) {
-  const pick = { rules: ['cat', 'text', 'status'], profile: ['topic', 'text'], curriculum: ['level', 'title', 'scope'], errors: ['source', 'q', 'weakness', 'block', 'date'], weaknesses: ['title', 'scope', 'level', 'last', 'errors', 'status'], mastery: ['state', 'tier'], reviews: ['title', 'tier', 'last', 'result'], position: ['block', 'next', 'debts'], slips: ['by', 'date', 'text', 'lesson'], lessons: ['text', 'hits', 'last', 'status'], observations: ['kind', 'text', 'session', 'at'] }[coll] || [];
+  const pick = { rules: ['cat', 'text', 'status'], profile: ['topic', 'text'], curriculum: ['level', 'title', 'scope'], errors: ['source', 'q', 'weakness', 'block', 'date'], weaknesses: ['title', 'scope', 'level', 'last', 'errors', 'status'], mastery: ['state', 'tier'], reviews: ['title', 'tier', 'last', 'result'], position: ['block', 'next', 'debts'], slips: ['by', 'date', 'text', 'lesson'], lessons: ['text', 'hits', 'last', 'status'], observations: ['kind', 'text', 'session', 'at'], recall: ['q', 'a', 'block', 'tier', 'last', 'status'], drills: ['block', 'kind', 'q', 'status'] }[coll] || [];
   return Object.fromEntries(pick.filter((k) => d[k] !== undefined).map((k) => [k, typeof d[k] === 'string' && d[k].length > 300 ? d[k].slice(0, 299) + '…' : d[k]]));
 }
 

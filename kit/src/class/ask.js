@@ -82,6 +82,7 @@ export function spotText(spot) {
 /** 要指着讲时它能直接用的 mark 写法 */
 export function markHint(spot) {
   if (!spot) return '';
+  if (spot.block && spot.item) return `mark target=${spot.block} item=${spot.item}`;
   if (spot.block && spot.step) return `mark target=${spot.block} step=${spot.step}`;
   if (spot.term && spot.seg) return `mark target=${spot.seg} term=${spot.term}`;
   if (spot.block) return `mark target=${spot.block}`;

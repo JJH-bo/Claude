@@ -42,6 +42,11 @@ export function purgePlan(mem = {}, sid) {
       unlink.push({ path: `slips/${d.id}`, doc: { ...rest, wasSession: id } });
     } else del('slips', d);
   }
+  // 记忆点（这节课收的生词、要背的）留着，去掉课号（自检的 session 指向要查得到）
+  for (const d of mine('recall')) {
+    const { id: _, session: __, ...rest } = d;
+    unlink.push({ path: `recall/${d.id}`, doc: { ...rest, wasSession: id } });
+  }
   // 错题：弱点挂着的、别的错题更正指着的留着
   const errs = mine('errors');
   const gone = new Set(errs.map((e) => String(e.id)));

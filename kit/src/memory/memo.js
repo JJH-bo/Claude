@@ -204,13 +204,15 @@ const cmpNum = (a, b) => String(a).localeCompare(String(b), undefined, { numeric
  * 这节课改讲别的块：memo 的 block id=EN-L1.1.1。查一下课程地图里有没有、是不是同一科。
  * 返回 { block } 或 { error }。2026-11-02 学生临时要从头学，整节课的作答都记在了原来那块（第三章）下面
  */
-export function blockSwitch(entry, { mem = {}, block = '' } = {}) {
+export function blockSwitch(entry, { mem = {}, block = '', space = '' } = {}) {
   const id = String(entry?.attrs?.id || entry?.attrs?.block || '').trim();
   if (!id) return { error: '写 block id=块的编号（课程地图里的，比如 EN-L1.1.1）' };
   if (id === block) return { error: `这节课已经是 ${id} 了` };
   const cur = Array.isArray(mem.curriculum) ? mem.curriculum : [];
   if (cur.length && !cur.some((d) => String(d.id) === id)) return { error: `课程地图里没有 ${id}：从记忆目录的「课程地图」里挑编号` };
-  if (block && spaceOfId(block) !== spaceOfId(id)) return { error: `${id} 不是这一科的` };
+  // 没块开的课按这节课记的科比（英语里没选块开课，不能换到线代的块上去）
+  const here = block ? spaceOfId(block) : space;
+  if (here && here !== spaceOfId(id)) return { error: `${id} 不是这一科的` };
   return { block: id };
 }
 
@@ -273,6 +275,8 @@ export function planEntry(entry, ctx = {}) {
   if (!spec) return { error: `不认识「${kind}」` };
   const mem = ctx.mem || {};
   const date = ctx.date || toDate(Date.now());
+  // 哪一科：有块按块；没块（新的一科还没选块就开了课）按这节课记下的科，不一律当数学
+  const spaceHere = (blk) => (blk ? spaceOfId(blk) : ctx.space || spaceOfId(''));
   const get = (c) => (Array.isArray(mem[c]) ? mem[c] : []);
   const find = (c, id) => get(c).find((d) => String(d.id) === String(id));
   const { ids: basis, missing } = resolveBasis(a.basis, ctx);
@@ -367,9 +371,9 @@ export function planEntry(entry, ctx = {}) {
     }
     case 'slip': {
       if (!a.text) return { error: '失误要写 text' };
-      if (layoutOnly(a.text)) return { error: '板放不下页面量得出来，会自动分成几屏，不用记成失误（讲法、出题、判分上的失误照记）' };
+      if (layoutOnly(a.text)) return { error: '板放不下页面量得出来（稍长学生会上下滑），不用记成失误（讲法、出题、判分上的失误照记）' };
       {
-        const space = spaceOfId(ctx.block || '') || '';
+        const space = spaceHere(ctx.block);
         const l = alike(`${a.text} ${a.lesson || ''}`, activeLessons(get('lessons'), space).map((x) => ({ ...x, t: `${x.text} ${x.why || ''}` })), 't');
         if (l) return { error: `这是守则 ${l.id}（${cut(l.text, 30)}）说的事：写 lesson id=${l.id} again="这次怎么犯的"，不另记失误` };
         const gone = voidedIds(mem);
@@ -381,7 +385,7 @@ export function planEntry(entry, ctx = {}) {
     }
     case 'lesson': {
       // 守则：新的一条（text），改写已有的一条（id + text / slips），又犯一次（id + again），并掉（id + status=retired into=…）
-      const space = spaceOfId(ctx.block || '') || null;
+      const space = spaceHere(ctx.block);
       const slips = a.slips || [];
       for (const x of slips) if (!find('slips', x)) return { error: `slips 里的 ${x} 在教学失误里没有（写「还没归纳的失误」里列着的编号）` };
       const old = a.id ? find('lessons', a.id) : null;
@@ -496,13 +500,13 @@ export function planEntry(entry, ctx = {}) {
       if (a.id) return { error: `弱点表里没有 ${a.id}：新弱点不写 id（页面自动编），要改的写已有的编号` };
       if (!a.title || !a.scope || !a.level) return { error: '新弱点要写 title、scope（通用 / 链条 / 局部）、level（L0～L3）' };
       {
-        const space = spaceOfId(a.blocks?.[0] || ctx.block || '');
+        const space = spaceHere(a.blocks?.[0] || ctx.block);
         const live = liveDocs(mem, 'weaknesses', space);
         const near = nearest(a.title, live, 'title');
         if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.title, 40)}）是同一个弱点：改那一条（weakness id=${near.d.id} level=… errors=…），不新加` };
         if (live.length >= CAPS.weaknesses) return { error: `这一科的弱点已经有 ${live.length} 条（最多 ${CAPS.weaknesses}）：先把重复的并掉（weakness id=… status=merged into=…）、修好的关掉，再加新的` };
       }
-      return { ...base, op: 'add', target: nextWeaknessId(get('weaknesses')), data: { title: cut(a.title, 120), scope: a.scope, level: a.level, last: date, errors: errs, blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], status: 'active', basis, ...(sid ? { session: sid } : {}), ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
+      return { ...base, op: 'add', target: nextWeaknessId(get('weaknesses')), data: { title: cut(a.title, 120), scope: a.scope, level: a.level, last: date, errors: errs, blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], status: 'active', basis, ...(sid ? { session: sid } : {}), ...(ctx.block || ctx.space ? { space: spaceHere(ctx.block) } : {}) } };
     }
     case 'review': {
       const old = a.id ? find('reviews', a.id) : null;
@@ -543,7 +547,7 @@ export function planEntry(entry, ctx = {}) {
       }
       if (!a.title) return { error: '新复现组要写 title（还有 family、content、weaknesses、blocks）' };
       {
-        const space = spaceOfId(a.blocks?.[0] || ctx.block || '');
+        const space = spaceHere(a.blocks?.[0] || ctx.block);
         const live = liveDocs(mem, 'reviews', space);
         const near = nearest(`${a.title} ${a.family || ''}`, live.map((r) => ({ ...r, tf: `${r.title || ''} ${r.family || ''}` })), 'tf');
         if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.title, 40)}）是同一组：往那一组加题（review id=${near.d.id} add="…"），不新开` };
@@ -551,7 +555,7 @@ export function planEntry(entry, ctx = {}) {
       }
       for (const w of a.weaknesses || []) if (!find('weaknesses', w)) return { error: `weaknesses 里的 ${w} 在弱点表里没有` };
       // 新的一组：从明天开始（档位 1 天，last 是今天）
-      return { ...base, op: 'add', target: nextReviewId(get('reviews')), data: { title: cut(a.title, 120), ...(a.family ? { family: cut(a.family, 120) } : {}), content: a.content ? [cut(a.content, 300)] : [], weaknesses: a.weaknesses || [], blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], tier: 1, last: date, status: 'active', ...(sid ? { session: sid } : {}), ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
+      return { ...base, op: 'add', target: nextReviewId(get('reviews')), data: { title: cut(a.title, 120), ...(a.family ? { family: cut(a.family, 120) } : {}), content: a.content ? [cut(a.content, 300)] : [], weaknesses: a.weaknesses || [], blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], tier: 1, last: date, status: 'active', ...(sid ? { session: sid } : {}), ...(ctx.block || ctx.space ? { space: spaceHere(ctx.block) } : {}) } };
     }
     case 'recall': {
       // 要反复记的一条：q 问法、a 标准答案、block 挂哪一块（不写就是这节课的块）。从明天开始排（当天刚讲的不测）
@@ -574,7 +578,7 @@ export function planEntry(entry, ctx = {}) {
       }
       if (!a.q || !a.a) return { error: '新的记忆点要写 q="问法" 和 a="标准答案"（一条只问一件事；答案写成学生能对着检查的样子）' };
       const blk = String(a.block || ctx.block || '');
-      const space = blk ? spaceOfId(blk) : (ctx.space || 'math');
+      const space = spaceHere(blk);
       const live = get('recall').filter((d) => (d.status || 'active') === 'active' && recallSpace(d) === space);
       const near = nearest(a.q, live, 'q');
       if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.q, 40)}）是同一条：要改问法、答案写 recall id=${near.d.id} q="…" a="…"，不另加` };
@@ -583,7 +587,7 @@ export function planEntry(entry, ctx = {}) {
     }
     case 'position': {
       // 每科一条「下一节从哪接」：按这节课的块是哪一科
-      const pid = positionId(spaceOfId(a.block || ctx.block));
+      const pid = positionId(spaceHere(a.block || ctx.block));
       const old = find('position', pid);
       const patch = {};
       if (a.next) patch.next = cut(a.next, 400);
@@ -638,10 +642,13 @@ export function applyPending(pd, mem = {}, { date = toDate(Date.now()), edits = 
   const isState = COLLECTIONS[pd.coll].kind === 'state';
   let doc, applied;
   if (pd.op === 'add') {
-    if (old) throw new Error(`${pd.coll} 里已经有 ${pd.target} 了`);
+    // 编号固定的状态类（掌握的编号就是块）撤销过一次会留下一条 void 的：重新加时接着那条写（log 留着），
+    // 不然撤销一次这一块以后永远加不上（页面每次算出来都撞号，什么都写不进去）
+    const revive = old && isState && old.status === 'void' && !old.corrects;
+    if (old && !revive) throw new Error(`${pd.coll} 里已经有 ${pd.target} 了`);
     const data = { ...pd.data, ...(edits || {}) };
     // 新的一条状态类：把带档位、证据级的字段从无到有记一笔 log，自检和以后的撤销都看得到是谁、哪天定的
-    doc = isState ? { ...data, log: [...(data.log || []), ...COLLECTIONS[pd.coll].tracked.filter((f) => data[f] !== undefined).map((f) => ({ ...logMeta(pd, date, note), field: f, from: null, to: data[f], ref: pd.id }))] } : data;
+    doc = isState ? { ...data, ...(revive && data.status === undefined ? { status: 'active' } : {}), log: [...(revive ? old.log || [] : []), ...(data.log || []), ...COLLECTIONS[pd.coll].tracked.filter((f) => data[f] !== undefined).map((f) => ({ ...logMeta(pd, date, note), field: f, from: revive ? old[f] ?? null : null, to: data[f], ref: pd.id }))] } : data;
     applied = null;
   } else {
     if (!old) throw new Error(`${pd.coll} 里没有 ${pd.target} 了`);

@@ -25,7 +25,7 @@ import { resolvedErrors, voidedIds, activeLessons } from './memo.js';
 import { createPages } from './pages.js';
 import { reviewPack, deskBrief, briefId, todayReviews, reviewIdsOf, REVIEW_MAX } from './views.js';
 import { readOnlyDb } from './session.js';
-import { SPACES, SPACE_KEYS, DEFAULT_SPACE, filterSpace, spaceOfDoc, spaceOfId, subjectOf, positionId, packIds } from './space.js';
+import { SPACES, SPACE_KEYS, DEFAULT_SPACE, filterSpace, spaceOfDoc, spaceOfId, subjectOf, positionId, packIds, prefixOf } from './space.js';
 import { dueList } from './schema.js';
 import { masteryProposals, masteryPendingWrites } from './mastery.js';
 import { pickDrills, harvestDrills, drillLine, DRILL_N } from './drills.js';
@@ -155,6 +155,8 @@ export async function renderDesk(root, meta) {
   // 这一科的记忆（共用的几类全给）；pack 是这一科的资料包
   const sv = () => filterSpace(data, space);
   let pack = packs[space];
+  // 还没用过的那份资料包（开过课的算用掉了，见 newClass）
+  const livePack = () => (pack.main && !pack.main.usedBy ? pack : { main: null, problems: null });
   let lastRes = null;
   function setSpace(k) {
     if (!SPACES[k]) return;
@@ -253,7 +255,7 @@ export async function renderDesk(root, meta) {
   function writeBriefs(today) {
     if (failed.size) return;
     for (const k of SPACE_KEYS) {
-      const b = deskBrief(data, { space: k, today, kitUrl: KIT_URL, deskUrl: deskUrl(), pack: packs[k].main, books: booksView.books() });
+      const b = deskBrief(data, { space: k, today, kitUrl: KIT_URL, deskUrl: deskUrl(), pack: packs[k].main?.usedBy ? null : packs[k].main, books: booksView.books() });
       if (lastBrief[k] === b.text) continue;
       lastBrief[k] = b.text;
       put('meta', briefId(k), { space: k, text: b.text, kit: VERSION, today, at: Date.now() }).catch(() => {});
@@ -335,7 +337,8 @@ export async function renderDesk(root, meta) {
     // 上一节以后已经开过热身（做完或还开着）就不再出按钮：还开着的在下面「没下课的」那一行接着做
     const warmed = last && mine.sessions.some((x) => x.warmup && (x.startedAt || 0) > (last.endedAt || 0));
     const warm = warmed ? [] : warmupDrills(data, last, lastNext);
-    const main = pack.main;
+    // 备好的资料包开过一节课就算用掉了（usedBy）：主角卡退回 position 的块和「下一节从哪接」，不再按旧教案重讲一遍
+    const main = livePack().main;
     const block = main?.block || mine.position.find((d) => d.id === positionId(space))?.block || '';
     // 等我确认的改动单；上一节还没整理完（它的整理单里还有没点的）
     const openPd = (mine.pending || []).filter((p) => p.status === 'open');
@@ -351,6 +354,8 @@ export async function renderDesk(root, meta) {
     const rc = recallToday(data.recall, { today });
     const stat = (cls, go, n, unit, k) => `<button type="button" class="dk-stat ${cls}" data-go="${go}"><span class="dk-stat-n">${n}</span><span class="dk-stat-u">${unit}</span><span class="dk-stat-k">${k}</span></button>`;
     const others = opens.filter((x) => x !== open);
+    // 后台一写数据（补报告、归类、写掌握）就会重画这一块：正在填的备课表单（选的块、教材页、展开着）留住
+    const keep = { open: box.querySelector('.dk-prepfold')?.open, block: box.querySelector('.dk-prep-block')?.value, pages: box.querySelector('.dk-prep-pages')?.value };
     box.querySelector('.dk-body').innerHTML = `
       ${openPd.length ? `<p><a class="dk-link dk-to-pending" href="#">还有 ${openPd.length} 条以前留下的没写进去 ↓</a></p>` : ''}
       <div class="dk-hero">
@@ -372,6 +377,14 @@ export async function renderDesk(root, meta) {
       </div>
       ${others.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || blockTitle(x.block) || x.id)}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button><button type="button" class="btn btn-sm btn-danger dk-purge" data-sid="${escapeHtml(x.id)}" title="测试开的、不要的课：连黑板和记录一起删掉">删掉</button></div>`; }).join('')}
       ${blocksHere.length ? `<details class="dk-fold dk-prepfold"${prepBusy || prepMsg ? ' open' : ''}><summary><span class="dk-fold-t">${main ? '换一块 / 重新备课' : '让 Claude 备课'}</span><span class="muted">${main ? '' : '选一块，Claude 先备好教案（也可以直接开课）'}</span></summary>${planner.prepHtml({ suggested: main?.block || suggestBlock(blocksHere, pos), blocks: blocksHere, main, busy: prepBusy, msg: prepMsg })}</details>` : ''}`;
+    {
+      const fold = box.querySelector('.dk-prepfold');
+      if (fold && keep.open) fold.open = true;
+      const sel = box.querySelector('.dk-prep-block');
+      if (sel && keep.block && [...sel.options].some((o) => o.value === keep.block)) sel.value = keep.block;
+      const pg = box.querySelector('.dk-prep-pages');
+      if (pg && keep.pages !== undefined && keep.pages !== '') pg.value = keep.pages;
+    }
     box.querySelectorAll('.dk-stat[data-go]').forEach((b) => b.addEventListener('click', () => $(b.dataset.go)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
     box.querySelector('.dk-warm')?.addEventListener('click', async (e) => {
       e.currentTarget.disabled = true;
@@ -405,7 +418,7 @@ export async function renderDesk(root, meta) {
     box.querySelector('.dk-prep-go')?.addEventListener('click', async () => {
       const id = box.querySelector('.dk-prep-block').value;
       const pages = box.querySelector('.dk-prep-pages')?.value || '';
-      if (pack.main && !await ask(`重新备课会换掉现在备好的「${pack.main.unit || ''}」，接着？`, { ok: '重新备课' })) return;
+      if (livePack().main && !await ask(`重新备课会换掉现在备好的「${pack.main.unit || ''}」，接着？`, { ok: '重新备课' })) return;
       prepBusy = true;
       prepMsg = '开始备课…';
       paintClass();
@@ -431,7 +444,8 @@ export async function renderDesk(root, meta) {
       if (ledger?.hist && (plan.ledger.length || plan.unlink.length)) {
         const hist = { ...ledger.hist };
         for (const k of plan.ledger) delete hist[k];
-        for (const u of plan.unlink) hist[u.path] = fingerprint(u.doc);
+        // 只改指纹里本来就有的（历史类）：记忆点这类状态类不进 hist，加进去自检会当成「被删掉了」
+        for (const u of plan.unlink) if (u.path in hist) hist[u.path] = fingerprint(u.doc);
         ledger = { ...ledger, hist };
         lastLedger = JSON.stringify(ledger);
         await put('meta', 'ledger', { ...ledger, at: Date.now() });
@@ -447,6 +461,11 @@ export async function renderDesk(root, meta) {
         const c = path.split('/')[0];
         assertWrite(role(c), c);
         await db.doc(path).delete();
+      }
+      // 删掉的课用过的教案：退回「还没用」，可以再按它开一节
+      for (const k of SPACE_KEYS) {
+        const m = packs[k].main;
+        if (m?.usedBy === sid) { const { usedBy: _u, usedAt: _a, ...rest } = m; await db.doc(`pack/${packIds(k).main}`).set(rest).catch(() => {}); }
       }
       toast(`删掉了：${title}`);
       if (location.hash.slice(1) === `classes/${sid}`) location.hash = 'classes';
@@ -754,7 +773,7 @@ export async function renderDesk(root, meta) {
       }
       const today = toDate(Date.now());
       const books = await loadBooks(db).catch(() => null);
-      const file = backupFile({ memory: data, pack, sessions, books, evidence, boards, kit: VERSION, today });
+      const file = backupFile({ memory: data, packs, sessions, books, evidence, boards, kit: VERSION, today });
       const blob = new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' });
       await dl.save({ filename: backupName(today), data: blob });
       note.textContent = `导出了 ${file.docs.length} 条（${mb(blob.size)}）。`;
@@ -773,6 +792,14 @@ export async function renderDesk(root, meta) {
     try {
       const b = JSON.parse(await file.text());
       const have = new Set(MEMORY_COLLECTIONS.flatMap((c) => data[c].map((d) => `${c}/${d.id}`)));
+      // 资料包、教材、每节课下面的（报告、黑板）页面没订阅着：先看一遍数据库里有没有，
+      // 不然「只补缺的」也会拿旧备份冲掉现在备好的教案、教材条目、报告
+      const top = new Set(MEMORY_COLLECTIONS);
+      const extra = (Array.isArray(b?.docs) ? b.docs : []).filter((d) => d?.collection && !top.has(d.collection)).map((d) => `${d.collection}/${d.doc_id}`);
+      for (let i = 0; i < extra.length; i += 20) {
+        note.textContent = `正在比对现在的数据（${Math.min(i + 20, extra.length)} / ${extra.length}）…`;
+        await Promise.all(extra.slice(i, i + 20).map((path) => db.doc(path).get().then((x) => { if (x.exists) have.add(path); }, () => {})));
+      }
       const all = restorePlan(b, { have, overwrite: true });
       const pick = await choose(`备份里有 ${all.total} 条（${b.today || ''}），现在的记忆库里已经有其中 ${all.clash} 条。\n只补缺的不会冲掉这段时间新写的。`, [
         { label: '算了', value: null },
@@ -794,9 +821,20 @@ export async function renderDesk(root, meta) {
   // 开一节新课：sessions/{编号}，资料包抄一份进 sessions/{编号}/pack（以后对话里的 Claude 备下一节、改 pack/main，不影响这一节）
   // use：复现课用页面自己拼的资料包（views.js 的 reviewPack），不用 pack/main
   async function newClass(block, use = null) {
-    const main = use ? use.main : pack.main || null;
-    const problems = use ? use.problems : pack.problems;
+    const fresh = livePack();
+    const main = use ? use.main : fresh.main;
+    const problems = use ? use.problems : fresh.problems;
     const sid = await createClass(db, { block, main, problems, space, unit, taken: data.sessions.map((x) => x.id) });
+    if (!use && fresh.main) {
+      // 记下这份教案用掉了；教案里补上的待办这时才算补了（备了没上、重新备别的块，待办还在）
+      await db.doc(`pack/${packIds(space).main}`).set({ ...fresh.main, usedBy: sid, usedAt: Date.now() }).catch(() => {});
+      const ids = (fresh.main.todos || []).map((t) => t.id).filter(Boolean);
+      if (ids.length) {
+        const snap = await db.doc('meta/todos').get().catch(() => null);
+        const done = snap?.exists ? snap.data().done || [] : [];
+        await db.doc('meta/todos').set({ done: [...new Set([...done, ...ids])].slice(-500), at: Date.now() }).catch(() => {});
+      }
+    }
     goto(sid);
   }
 
@@ -925,13 +963,15 @@ async function enterClass(root, meta, sid, { readOnly = false } = {}) {
     doc = { ...doc, ...patch };
     return db.doc(`sessions/${sid}`).set(doc).catch(() => {});
   };
-  // 资料包写了块就用它的；没写就用开课时记下的
+  // 这节课记着的块（课上 memo 换过块也记在这里）优先；没记就用资料包写的
   const main = await scopeDb(db, sid).doc('pack/main').get().then((s) => (s.exists ? s.data() : null)).catch(() => null);
   // 改记忆（memo 块、整理单、确认 / 撤销）：用没 scopeDb 过的数据库，记忆库在根上
   const ops = createMemOps({ db, mem: () => mem });
-  const block = String(main?.block || doc.block || '');
+  const block = String(doc.block || main?.block || '');
   // 分科：课堂按这一块的门课带组件说明和教法（学习台页面开头的 subject: 管不了每节课）
-  session.subject = doc.subject || subjectOf(block);
+  // 块优先（课上换过门课 doc.subject 也跟着改了）；没块按这节课记的科：数学是线代，408、英语给那一科的第一门课
+  const space = doc.space || (block ? spaceOfId(block) : 'math');
+  session.subject = block ? subjectOf(block) : doc.subject || subjectOf(prefixOf(SPACES[space]?.courses?.[0]));
   const kind = kindOf(doc);
   const title = doc.title || meta.unit;
   // 实时黑板、自学单元是对话里的 Claude 开的：页面不写报告给课堂 Claude，用完了由谁点「用完了」都行，报告由首页补写（fixReports）
@@ -962,16 +1002,16 @@ async function enterClass(root, meta, sid, { readOnly = false } = {}) {
   }
   if (kind === 'unit') return enterUnit(root, meta, { db, store, sid, doc, block, title, readOnly, finish });
   // 教材（books/）：这一科的书和条目，开课时读一次。资料包点名的条目全文放进资料包，别的课堂里按需取
-  const books = await loadBooks(db, doc.space || spaceOfId(block)).catch(() => ({ books: [], chunks: [] }));
+  const books = await loadBooks(db, space).catch(() => ({ books: [], chunks: [] }));
   if (readOnly) {
     return renderClass(root, { ...meta, unit: doc.title || meta.unit }, {
-      store: { ...store, db: readOnlyDb(scopeDb(db, sid)), assets: null }, sid, block, mem, readOnly: true, books,
+      store: { ...store, db: readOnlyDb(scopeDb(db, sid)), assets: null }, sid, block, space, mem, readOnly: true, books,
       updateSession: () => Promise.resolve(), onHome: () => goto(`classes/${sid}`),
       memo: { ops, view: createMemoView({ db, ops, nameOf: nameIn(() => mem) }) },
     });
   }
   return renderClass(root, { ...meta, unit: doc.title || meta.unit }, {
-    store: { ...store, db: scopeDb(db, sid) }, sid, block, mem, updateSession, onHome: () => goto(''), books,
+    store: { ...store, db: scopeDb(db, sid) }, sid, block, space, mem, updateSession, onHome: () => goto(''), books,
     writeReport: ({ turns, steps } = {}) => writeReport(db, sid, { doc, turns, steps, update: updateSession }),
     // 下课时先算一份（还没下课：结束时间按现在算）放进给课堂 Claude 的输入
     makeReport: ({ turns, steps } = {}) => makeReport(db, sid, { doc: { ...doc, endedAt: doc.endedAt || Date.now() }, turns, steps }),

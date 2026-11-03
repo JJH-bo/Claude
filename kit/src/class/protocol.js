@@ -255,7 +255,8 @@ function segmentCommand(op, rest) {
       if (!t.quoted) {
         // 标题没加引号又带空格：后面不是 key=… 的词都算标题
         let end = t.end;
-        while (toks[k + 1] && !toks[k + 1].key) end = toks[++k].end;
+        // 末尾单独一个 hold 不算标题（add id=b4 title=提示 hold）：不然藏着的段直接露出来
+        while (toks[k + 1] && !toks[k + 1].key && !(op === 'add' && !toks[k + 1].quoted && toks[k + 1].value === 'hold' && !toks.slice(k + 2).some((x) => !x.key))) end = toks[++k].end;
         title = rest.slice(t.vstart, end);
       }
     } else if (!t.key) {

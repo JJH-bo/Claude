@@ -27,6 +27,7 @@ export function createAskHere({ board, onAsk, onWhy, onOther, onShown }) {
     if (!segEl || segEl.classList.contains('is-preview') || segEl.closest('.class-pins')) return null;
     const blockEl = target.closest('.block[data-bid]');
     const stepEl = target.closest('.st-item');
+    const dvRow = target.closest('tr.dv-line[data-cmd]');
     let el = target.closest(ANCHOR);
     if (el && !segEl.contains(el)) el = null;
     if (!el && stepEl) el = stepEl.querySelector('.st-head') || stepEl;
@@ -45,6 +46,8 @@ export function createAskHere({ board, onAsk, onWhy, onOther, onShown }) {
       segTitle: segEl.querySelector('.stage-body > h2')?.textContent?.trim() || '',
       ...(blockEl && segEl.contains(blockEl) ? { block: blockEl.dataset.bid, kind: [...blockEl.classList].find((c) => c.startsWith('block-'))?.slice(6) || '' } : {}),
       ...(stepEl ? { step: steps.indexOf(stepEl) + 1, stepTitle: stepEl.querySelector('.st-title')?.textContent?.trim() || '' } : {}),
+      // derive 的一行（tr.dv-line，data-cmd 是第几行）：预写的 why step= 按行对；要指着讲用 mark item=
+      ...(!stepEl && dvRow ? { step: Number(dvRow.dataset.cmd), item: Number(dvRow.dataset.cmd) } : {}),
       ...(el.matches('[data-lkmark]') ? { term: el.getAttribute('data-lkmark') } : {}),
       what,
       text: what === 'formula' ? `$${tex(el) || el.textContent}$` : textOf(el).slice(0, 300),

@@ -36,18 +36,21 @@ export function createMemOps({ db, mem }) {
    * 执行一个 memo 块（课堂一轮的输出、下课整理单）。entries：protocol.js 读出来的；ctx：{ session, block, turn }。
    * 直接写的马上写进去；要我确认的只写改动单。返回 { pds（新的改动单）, rejected: [{ line, error }] }
    */
-  async function applyMemo(entries, { session = null, block = null, turn = null } = {}) {
+  async function applyMemo(entries, { session = null, block = null, space = null, turn = null } = {}) {
     const evidence = session ? rows(await db.collection('evidence').where('session', '==', session).get().catch(() => null)) : [];
     const date = toDate(Date.now());
     // 同一块里的几条要编号的（两道新错题）：先在手上的副本里占住号，免得撞
     const local = { ...mem() };
     const pds = [];
     const rejected = [];
-    // 一个 memo 块最多记 MEMO_MAX 条（归纳守则的 lesson 不算）：记得太多学生看不过来，挑要紧的
+    // 一个 memo 块最多记 MEMO_MAX 条（归纳守则的 lesson 不算）：记得太多学生看不过来，挑要紧的。
+    // 整理（合并、作废、停掉、关掉）、判复现结果、改 position 不算：它们让记忆变少、变准，
+    // 下课整理单常常一次有好几行，算进去会把排在最后的合并、position 截掉（下课以后没人看得到被拒了）
+    const free = (e) => e.kind === 'lesson' || e.kind === 'position' || ['merged', 'void', 'retired', 'closed', 'done'].includes(e.attrs?.status) || (e.kind === 'review' && e.attrs?.result);
     let n = 0;
     for (const e of entries || []) {
-      if (e.kind !== 'lesson' && ++n > MEMO_MAX) { rejected.push({ line: e.line, error: `一次最多记 ${MEMO_MAX} 条（归纳守则不算），这条没记：挑要紧的` }); continue; }
-      const ch = planEntry(e, { mem: local, evidence, session, block, date });
+      if (!free(e) && ++n > MEMO_MAX) { rejected.push({ line: e.line, error: `一次最多记 ${MEMO_MAX} 条（归纳守则不算），这条没记：挑要紧的` }); continue; }
+      const ch = planEntry(e, { mem: local, evidence, session, block, space, date });
       if (ch.error) { rejected.push({ line: e.line, error: ch.error }); continue; }
       if (ch.op === 'add') local[ch.coll] = [...(local[ch.coll] || []), { id: ch.target, ...(ch.data || {}) }];
       // 同一块里对同一条改两次（守则又犯两次）：第二条要看到第一条改过的

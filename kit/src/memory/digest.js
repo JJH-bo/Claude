@@ -99,8 +99,9 @@ const sessionLine = (s, obs, n = 80) => {
  * tools：这个查看方式能不能用 memory_read；today：算复现组到期用。
  * 返回 { rules（给「角色和红线」那一节的规则全文）, text（全文 + 目录）, cut: [{ coll, more, ids }]（没放全文、在目录里的）, bytes }
  */
-export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, session = '', tools = true, today = toDate(Date.now()) } = {}) {
-  const view = classView(mem0, { block });
+export function memoryDigest(mem0 = {}, { block = '', space = '', budget = 24 * 1024, session = '', tools = true, today = toDate(Date.now()) } = {}) {
+  // space：没块开的课（新的一科还没选块）按这节课的科带，不落到数学
+  const view = classView(mem0, { block, space: block ? '' : space });
   const { mem, get, solved, position, here } = view;
   const { cur, near } = nearBlocks(get('curriculum'), here);
   const nearIds = new Set([here, ...near.map((d) => d.id)].filter(Boolean));

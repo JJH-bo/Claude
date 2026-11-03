@@ -6,7 +6,7 @@ title: 推 A²
 A^2 = (\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})(\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})
     = \boldsymbol\alpha(\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)\boldsymbol\beta^{\mathrm T}   // 结合律：中间先乘
     = (\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)\,\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}   // $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 是一个数
-    = \calc{tr(A)}\,A
+    = (\operatorname{tr}A)\,A
 ```
 
 - 每行一段 TeX（**不写 `$`**），`//` 后面是写在右边的旁注（Markdown，可以有 `$公式$`）。第一个 `=`（或 `\le`、`\Rightarrow` 这类关系符）前后分两栏，等号自动对齐；以 `=` 开头的行接着上一行。

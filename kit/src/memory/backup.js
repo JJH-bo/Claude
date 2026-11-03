@@ -3,6 +3,7 @@
 // 文件里每一条也是 ArtifactData batch 要的样子（collection、doc_id、data），开发那边修数据时照 restoreBatches 切成一批批写回。
 // 纯函数，有测试（tests/memory-report.test.js）。
 import { MEMORY_COLLECTIONS } from './schema.js';
+import { packIds } from './space.js';
 
 export const BACKUP_FORMAT = 'la-desk-backup';
 export const BACKUP_VERSION = 1;
@@ -20,7 +21,7 @@ const strip = (d) => { const { id: _, ...rest } = d || {}; return rest; };
  * 返回要存成文件的对象：{ format, v, kit, at, today, include, counts, docs: [{ collection, doc_id, data }] }
  */
 // books：{ books, chunks }，教材板块（转写要花额度，丢了重转不划算，所以备份带上文字；原页图在 assets 里，不进备份）
-export function backupFile({ memory = {}, pack = {}, sessions = {}, books = null, evidence = true, boards = false, kit = '', today = '', at = Date.now() } = {}) {
+export function backupFile({ memory = {}, pack = {}, packs = null, sessions = {}, books = null, evidence = true, boards = false, kit = '', today = '', at = Date.now() } = {}) {
   const docs = [];
   const counts = {};
   const add = (collection, d) => {
@@ -33,7 +34,14 @@ export function backupFile({ memory = {}, pack = {}, sessions = {}, books = null
     if (c === 'evidence' && !evidence) continue;
     for (const d of [...(memory[c] || [])].sort((a, b) => String(a.id).localeCompare(String(b.id)))) add(c, d);
   }
-  for (const k of ['main', 'problems']) if (pack?.[k]) add('pack', { ...pack[k], id: k });
+  // packs：{ math: { main, problems }, cs: …, en: … } 三科的资料包各按自己的编号存（pack/main-cs…）；
+  // 只给 pack 时是老的写法（数学那一份）
+  if (packs) {
+    for (const [sp, p] of Object.entries(packs)) {
+      const ids = packIds(sp);
+      for (const k of ['main', 'problems']) if (p?.[k]) add('pack', { ...p[k], id: ids[k] });
+    }
+  } else for (const k of ['main', 'problems']) if (pack?.[k]) add('pack', { ...pack[k], id: k });
   for (const b of books?.books || []) add('books', b);
   for (const c of books?.chunks || []) add(`books/${c.book}/chunks`, c);
   for (const sid of Object.keys(sessions || {}).sort()) {

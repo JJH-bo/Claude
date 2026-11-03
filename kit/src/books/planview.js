@@ -11,6 +11,7 @@ import { blockChunks, chunkLine } from './textbook.js';
 import { memoryDigest } from '../memory/digest.js';
 import { prefixOf, packIds, subjectOf, sharedFor, spaceOfId, filterSpace, COURSES } from '../memory/space.js';
 import { activeLessons } from '../memory/memo.js';
+import { reviewRank } from '../memory/views.js';
 import { COMPONENT_DOCS } from '../class/docs.js';
 import { allNames } from '../subject.js';
 import { CORE_COMPONENTS } from '../class/prompt.js';
@@ -107,7 +108,7 @@ export function createPlanner({ db, getAI, model, getData, space }) {
     const mine = filterSpace(data, sp);
     const revs = new Map(mine.reviews.map((x) => [String(x.id), x]));
     const due = dueList(mine.reviews, today).filter((d) => d.days <= 0)
-      .map((d) => ({ ...d, r: revs.get(d.id) })).sort((a, b) => (a.r?.result ? 1 : 0) - (b.r?.result ? 1 : 0) || (a.r?.result === '没过' ? 0 : 1) - (b.r?.result === '没过' ? 0 : 1) || a.days - b.days);
+      .map((d) => ({ ...d, r: revs.get(d.id) })).sort((a, b) => reviewRank(a.r) - reviewRank(b.r) || a.days - b.days);
     const dueText = due.map((d) => `- ${d.id} ${d.title}（${d.days < 0 ? `过期 ${-d.days} 天` : '今天到期'}；${d.r?.result ? `上次${d.r.result}` : '从没复现过'}${d.r?.content?.length ? `；内容：${[].concat(d.r.content).slice(0, 3).join('；')}` : ''}）`).join('\n');
     const lessons = activeLessons(data.lessons, sp).map((l) => `- ${l.id} ${l.text}`).join('\n');
     // 上课时记下的待办（学生问了教案以外的）：还没补的带上，补上了的记进 meta/todos（页面自己的）
@@ -122,7 +123,7 @@ export function createPlanner({ db, getAI, model, getData, space }) {
     const ids = packIds(sp);
     await db.doc(`pack/${ids.main}`).set(main);
     await db.doc(`pack/${ids.problems}`).set(problems);
-    if (main.todos?.length) await db.doc('meta/todos').set({ done: [...new Set([...doneTodos, ...main.todos.map((t) => t.id)])].slice(-500), at: Date.now() }).catch(() => {});
+    // 补上的待办等开课时才记成补了（desk.js 的 newClass）：备了没上、又重新备别的块，待办不丢
     onStep('备好了');
     return main;
   }

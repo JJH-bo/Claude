@@ -13,6 +13,18 @@ const reduceMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduc
  * bv：板视图（boardview.js）；segs：段表（Map：段 id → { id, hidden, pending?, failed?, sec }）。
  * 返回执行指令的函数和板上现有的标注（marks：标注 id → { id, seg（所在的段）, spec, host（画在哪一段上）}）。
  */
+/**
+ * figure set 的赋值：step=rotate#2 / end 先按事件找步号（演示组件的 stepAlias），别的照常算。
+ * 上课时执行、刷新后放回（课堂、实时黑板）都用这一个，免得放回时 step=end 算不出来、停在开头
+ */
+export function applyAssigns(api, assigns = {}) {
+  const vars = (api.vars || api.snapshot)?.call(api) || {};
+  for (const [name, src] of Object.entries(assigns || {})) {
+    const alias = name === 'step' ? api.stepAlias?.(src) : null;
+    api.set(name, alias ?? compile(src)(vars));
+  }
+}
+
 export function createBoardTools({ bv, segs }) {
   const board = bv.board;
   const marks = new Map();
@@ -71,7 +83,14 @@ export function createBoardTools({ bv, segs }) {
     bumpSeq(spec.id);
     const id = spec.id || `m${markSeq + 1}`;
     const prev = marks.get(id);
-    const r = markLayer(host).add(id, spec, { root, scene, name: t, animate });
+    // 目标所在的板现在藏着（学生翻回去看旧板、这一轮新开的板还没翻过去）：先不可见地摆出来，
+    // 照常找字、查写法——不然写错的 text= / term= / step= 也算标上了（写错要报出来），摆好再藏回去
+    const shut = [];
+    for (let el = host; el && el !== board.parentElement; el = el.parentElement) if (el.hidden) shut.push(el);
+    for (const el of shut) { el.hidden = false; el.style.visibility = 'hidden'; }
+    let r;
+    try { r = markLayer(host).add(id, spec, { root, scene, name: t, animate: animate && !shut.length }); }
+    finally { for (const el of shut) { el.hidden = true; el.style.visibility = ''; } }
     if (!r.ok) return { ok: false, error: r.error };
     if (!spec.id) markSeq++;
     // 同一个 id 换了地方：原来那条擦掉
@@ -137,12 +156,8 @@ export function createBoardTools({ bv, segs }) {
     const api = sc.api;
     try {
       if (op.action === 'set') {
-        const vars = (api.vars || api.snapshot)?.call(api) || {};
-        for (const [name, src] of Object.entries(op.assigns || {})) {
-          // 演示组件：step=rotate#2 / end 按事件找步号（老师数不出步号）
-          const alias = name === 'step' ? api.stepAlias?.(src) : null;
-          api.set(name, alias ?? compile(src)(vars));
-        }
+        // 演示组件：step=rotate#2 / end 按事件找步号（老师数不出步号）
+        applyAssigns(api, op.assigns);
       } else if (op.action === 'play') {
         if (!animate) api.set(op.name, op.to ?? 1);
         else if (api.play) api.play(op.name, op.from ?? 0, op.to ?? 1, op.ms ?? 1200);

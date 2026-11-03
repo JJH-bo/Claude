@@ -9,7 +9,6 @@
 // 作答和动作只写进 evidence（证据），观察、下课小结写进 observations，课堂 Claude 每一轮带着记忆摘要，多两个工具 slip_note、memory_read。
 import { renderLesson, mdToHtml, escapeHtml } from '../render.js';
 import { session } from '../session.js';
-import { compile } from '../expr.js';
 import { link } from '../link.js';
 import { getAI, errorText } from '../ai.js';
 import { getStore, isDev, assetUrl } from '../live/store.js';
@@ -29,7 +28,7 @@ import { createClassBar, MODEL_TAG } from './bar.js';
 import { createBoardView } from './boardview.js';
 import { extraProblems } from './selfcheck.js';
 import { initClassDevPanel, ensureDemoSlide } from './devpanel.js';
-import { createBoardTools } from './boardtools.js';
+import { createBoardTools, applyAssigns } from './boardtools.js';
 import { markText } from '../markspec.js';
 import { calcValue, exactText } from '../exact.js';
 import { strokesToBlob } from '../ink/engine.js';
@@ -41,7 +40,7 @@ import { earlierClasses } from '../memory/digest.js';
 import { choose } from '../dialog.js';
 import { lessonSheet, sheetMd } from '../memory/sheet.js';
 import { slipsToFold, blockSwitch, tidyDue, tidyText } from '../memory/memo.js';
-import { spaceOfId } from '../memory/space.js';
+import { spaceOfId, subjectOf } from '../memory/space.js';
 import { textbookForClass, readChunks, searchChunks, readHistory } from '../books/textbook.js';
 import { planLocal, markFired, reactNote, armedText, rebuildRules, dropForSeg } from './react.js';
 import { beatPlan, shouldPlay, DEFERRED_OPS } from './beats.js';
@@ -180,6 +179,10 @@ export async function renderClass(root, meta, desk = null) {
   // 拍子（beats.js）：正在播的这一轮。{ page, n（几拍）, max（播到第几拍）, segs: 拍 → [段 id], deferred: [{ b, op }], told（这一轮的记录）}
   let beat = null;
   const whys = new Map(); // 预写的「为什么」（board why）：段 id / 组件 id → [{ where, text }]
+  // 每条「为什么」挂在哪一段、哪一轮写的：段被改写 / 撤回时，之前几轮写的跟着作废（不然点「为什么」当场显示旧题的依据）
+  const whySeg = new Map();
+  const setWhy = (target, items, seg, seq) => { whys.set(target, items); whySeg.set(target, { seg: seg || target, seq }); };
+  const dropWhys = (segId, seq) => { for (const [k, v] of whySeg) if (v.seg === segId && v.seq < seq) { whys.delete(k); whySeg.delete(k); } };
 
   // 察觉卡住的开关（学生在「⋯」里可以开；记在这台设备上）。每提醒一次就是一整轮调用，默认关（docs/desk-plan.md 第 7 节）。
   // 本地试用带 ?stuck=秒数 时自动开
@@ -266,7 +269,7 @@ export async function renderClass(root, meta, desk = null) {
   function textbookNow(tools = true) {
     const b = desk?.books;
     if (!b?.chunks?.length) return { textbook: '', catalog: '', images: [] };
-    const block = (desk.mem?.curriculum || []).find((x) => x.id === (pack.main?.block || desk.block));
+    const block = (desk.mem?.curriculum || []).find((x) => x.id === (desk.block || pack.main?.block));
     // 这节课取过的条目一直留着（只算 Opus 5.5 讲完的轮：作废的轮不进 history 的有效记录）
     const calls = history.filter((t) => t && !t.discarded && t.role === 'claude' && Array.isArray(t.tools)).flatMap((t) => t.tools);
     const read = calls.length ? readHistory(calls, b.chunks, b.books) : [];
@@ -355,7 +358,13 @@ export async function renderClass(root, meta, desk = null) {
       // 还没用掉的预案（组件还在黑板上的）
       for (const [k, r] of rebuildRules(history)) reacts.set(k, r);
       // 预写的「为什么」：按先后放回去（后写的盖掉先写的）
-      for (const t of history) if (t.role === 'claude' && !t.discarded) for (const o of t.boardOps || []) if (o?.op === 'why' && o.ok) whys.set(o.target, o.items || []);
+      for (const t of history) {
+        if (t.role !== 'claude' || t.discarded) continue;
+        for (const o of t.boardOps || []) {
+          if (o?.op === 'why' && o.ok) setWhy(o.target, o.items || [], o.seg, t.seq);
+          else if (o?.ok && ['replace', 'hide', 'unpin'].includes(o.op)) dropWhys(o.id, t.seq);
+        }
+      }
       // 黑板现状里的作答结果：作答记录 + 揭开 / 拖动（按时间重放，规则和上课时一样）
       const recs = [
         ...an.map((r) => ({ source: 'record', ...r, type: r.kind, answer: r.kind === 'conjecture' ? r.text : undefined })),
@@ -456,7 +465,7 @@ export async function renderClass(root, meta, desk = null) {
       try {
         if (e.kind === 'drag') api.set(e.name, e.value);
         else if (e.kind === 'play') api.set(e.args?.name, e.args?.to ?? 1);
-        else for (const [name, src] of Object.entries(e.args?.assigns || {})) api.set(name, compile(src)((api.vars || api.snapshot)?.call(api) || {}));
+        else applyAssigns(api, e.args?.assigns);
       } catch { /* 恢复不了就保持初始的样子 */ }
     }
     // 图都回到原样了，再把标注画回去（标在图上的要按图现在的样子摆）
@@ -510,16 +519,19 @@ export async function renderClass(root, meta, desk = null) {
     const switches = entries0.filter((e) => e.kind === 'block');
     const entries = entries0.filter((e) => e.kind !== 'block');
     for (const e of switches) {
-      const r = blockSwitch(e, { mem: desk.mem, block: desk.block });
+      const r = blockSwitch(e, { mem: desk.mem, block: desk.block, space: desk.space });
       if (r.error) { addTurn({ role: 'system', kind: 'note', text: `[系统] memo 里「${e.line}」没生效：${r.error}` }); continue; }
       const was = desk.block;
       desk.block = r.block;
       desk.blocks = [...new Set([...(desk.blocks || [was].filter(Boolean)), r.block])];
-      desk.updateSession({ block: r.block, blocks: desk.blocks });
+      // 同一科换了门课（DS- → OS-）：组件说明、教法跟着换成那门课的
+      session.subject = subjectOf(r.block);
+      desk.space = spaceOfId(r.block);
+      desk.updateSession({ block: r.block, blocks: desk.blocks, subject: session.subject });
     }
     if (!entries.length) return { pds: [], rejected: [] };
     try {
-      const r = await desk.memo.ops.applyMemo(entries, { session: desk.sid, block: desk.block, turn: seq });
+      const r = await desk.memo.ops.applyMemo(entries, { session: desk.sid, block: desk.block, space: desk.space, turn: seq });
       const p = pages.get(pageN);
       if (p && r.pds.length) { p.memo = [...(p.memo || []), ...r.pds.map((x) => x.id)]; savePage(p); bv.paint(p); }
       if (r.rejected.length) addTurn({ role: 'system', kind: 'note', text: `[系统] memo 里有 ${r.rejected.length} 条没记：\n${r.rejected.map((x) => `- ${x.line}\n  原因：${x.error}`).join('\n')}` });
@@ -626,7 +638,8 @@ export async function renderClass(root, meta, desk = null) {
 
   // —— 预案：这一批作答页面自己接（react.js）。返回 true 表示接了，不用调用 Claude ——
   function tryLocal() {
-    if (busy || !queue.triggered || queue.texts.length || queue.images.length || hasFreshInk()) return false;
+    // 只读的「以前的课」、用不了 Claude 的页面：不当场接（不改板顶的话、不揭开藏着的段）
+    if (!teacher.available || busy || !queue.triggered || queue.texts.length || queue.images.length || hasFreshInk()) return false;
     const items = queue.actions.map((a) => ({ a, trig: trigs.get(a) }));
     const live = liveBlockIds();
     const plan = planLocal({ items, rules: reacts, present: (id) => live.has(id) });
@@ -835,7 +848,7 @@ export async function renderClass(root, meta, desk = null) {
       // 版面：放在 at= 写的地方（replace 不写就留在原处；new / add 不写就找空处）
       if (CANVAS && seg.place !== 'pin') seg.col = colFor(seg, op);
       // 改写了：之前几轮挂在这一段组件上的预案作废（这一轮后面再写的 react 照常挂上）
-      if (!isNew) dropForSeg(reacts, seg.id, opTurn.seq);
+      if (!isNew) { dropForSeg(reacts, seg.id, opTurn.seq); dropWhys(seg.id, opTurn.seq); }
       segs.set(seg.id, seg);
       // 版面：登记好了再排（排的时候按 segs 里这块板上的段搭结构）
       if (CANVAS && seg.place !== 'pin') layoutPage(seg.page);
@@ -854,6 +867,7 @@ export async function renderClass(root, meta, desk = null) {
       if (seg.sec) seg.sec.hidden = true;
       tools.dropMarks(seg.id);
       dropForSeg(reacts, seg.id, opTurn.seq);
+      dropWhys(seg.id, opTurn.seq);
       saveSeg(seg);
       return { op: 'hide', id: op.id, ok: true };
     }
@@ -896,8 +910,9 @@ export async function renderClass(root, meta, desk = null) {
     if (op.op === 'why') {
       if (!segs.has(op.target) && !liveBlockIds().has(op.target)) return { op: 'why', target: op.target, ok: false, error: `黑板上没有 ${op.target}（写段的 id 或组件的 id:）` };
       if (op.errors?.length) notes.push(`why ${op.target} 里有 ${op.errors.length} 行没读懂：\n${op.errors.map((e) => `  - ${e}`).join('\n')}`);
-      whys.set(op.target, op.items);
-      return { op: 'why', target: op.target, ok: true, items: op.items };
+      const wseg = segs.has(op.target) ? op.target : liveBlockIds().get(op.target);
+      setWhy(op.target, op.items, wseg, opTurn.seq);
+      return { op: 'why', target: op.target, ok: true, items: op.items, seg: wseg };
     }
     // 预案：学生在这个组件上作答以后页面当场接的话（react.js）
     if (op.op === 'react') {
@@ -1197,7 +1212,8 @@ export async function renderClass(root, meta, desk = null) {
 
   // 一次只跑一件事（讲一轮、重试、下课小结）。fn 返回 true 表示这一轮顺利结束：排着的动作接着发；
   // 失败了就先留着，等学生点重试或者再有新动作（不自动重试）
-  async function exclusive(fn) {
+  // after：这一轮完了以后接着发排着的、对话长了在后台写摘要；下课那一轮不要（下课以后再跑就是白花一整轮）
+  async function exclusive(fn, { after = true } = {}) {
     if (busy) return;
     busy = true;
     clearTimeout(timer);
@@ -1216,7 +1232,7 @@ export async function renderClass(root, meta, desk = null) {
       clearDraft();
       bar.setBusy(false);
       refresh();
-      if (ok) { schedule(false); compactLater(); }
+      if (ok && after) { schedule(false); compactLater(); }
     }
   }
 
@@ -1672,12 +1688,15 @@ export async function renderClass(root, meta, desk = null) {
   // 不是就全部撤掉。stream：{ done（处理过的块）, list（先画出来的段）, page（先开的新板）, prev（开新板前的当前板）, hidden（被改写、先藏起来的原段）} ——
   function streamOps(segments) {
     const out = new Set();
-    if (!stream) stream = { done: new Map(), list: [], page: null, prev: bv.cur, hidden: [] };
+    // vars / book：先画的段里的 let 块、答案会写进 session：这一轮作废时退回去（不然作废那一轮定义的量留着，之后的 \calc 用错值）
+    if (!stream) stream = { done: new Map(), list: [], page: null, prev: bv.cur, hidden: [], vars: { ...session.vars }, book: session.answerBook ? new Map(session.answerBook) : null };
     let i = 0;
     for (const s of segments) {
       if (!isOp(s)) continue;
       const key = `${i++}`;
       if (!['new', 'add', 'replace'].includes(s.op.op)) continue;
+      // 藏着的段（add … hold，或改写一段藏着的）不先画：多半是答案的讲解、下一小问，等预案揭开
+      if (s.op.hold || (s.op.op === 'replace' && segs.get(s.op.id)?.held)) continue;
       if (stream.done.has(key)) { if (stream.done.get(key)) out.add(s); continue; }
       const ok = previewSeg(s.op, s.body);
       stream.done.set(key, ok);
@@ -1720,6 +1739,10 @@ export async function renderClass(root, meta, desk = null) {
     if (!stream) return;
     for (const seg of stream.list) { dropScenesOf(seg.sec); seg.sec.remove(); segs.delete(seg.id); }
     for (const sec of stream.hidden) sec.hidden = false;
+    if (rollback) {
+      session.vars = stream.vars;
+      if (stream.book) session.answerBook = stream.book; else delete session.answerBook;
+    }
     if (rollback && stream.page) {
       bv.cur = stream.prev;
       bv.removePage(stream.page.n);
@@ -1748,7 +1771,7 @@ export async function renderClass(root, meta, desk = null) {
 
   // 学习台里：每一轮带着的记忆（页面一直订阅着记忆库，拼摘要在 prompt.js）
   function memoryArg() {
-    return desk ? { mem: desk.mem, block: desk.block, session: desk.sid } : null;
+    return desk ? { mem: desk.mem, block: desk.block, space: desk.space, session: desk.sid } : null;
   }
 
   // 工具记下的观察、失误：确认是 Opus 5.5 讲的这一轮才写。学习台里写进记忆库（observations、slips），单独的课堂写进 class_notes
@@ -2027,6 +2050,14 @@ export async function renderClass(root, meta, desk = null) {
     exclusive(async () => {
       // 学习台里：下课那一刻还没提交的草稿记成证据（写了一半的不丢）。小结没写成、再点下课时，没变的草稿不重复记
       if (desk) for (const d of allDrafts()) sink.put('evidence', draftEvidence(d, evCtx(d.step)));
+      // 刚作答完就点了下课（还在 1.5 秒的合并里）：这几下并进历史给小结看，不在小结之后再讲一轮
+      clearTimeout(timer);
+      if (queue.actions.length) {
+        const actions = queue.actions.splice(0);
+        addTurn({ role: 'student', text: actionsMessage(actions), say: '', actions: actions.map(actionText), page: bv.cur || undefined });
+      }
+      queue.triggered = false;
+      queue.now = false;
       bar.setStatus('thinking', 'Claude 在写这节课的小结…');
       ensureDraft();
       ctl = new AbortController();
@@ -2039,7 +2070,7 @@ export async function renderClass(root, meta, desk = null) {
       const sheet = sheetMd(repObj?.sheet || lessonSheet({ steps: steps() }));
       const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(false), board: boardState(), subject: session.subject, memory: memoryArg(), canvas: CANVAS, ...planArg() });
       // 每几节课（或者某一类到了上限）顺带整理：合并重复的弱点、复现组、关于学生的记录（memo.js 的 tidyDue）
-      const sp = spaceOfId(desk?.block || '');
+      const sp = desk?.block ? spaceOfId(desk.block) : desk?.space || spaceOfId('');
       const why = desk ? tidyDue(desk.mem, sp, desk.sid) : '';
       const tidy = why ? { why, text: tidyText(desk.mem, sp) } : null;
       const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review, opening: desk?.opening, slips: desk ? slipsToFold(desk.mem, sp) : '', plan: FEATURES.plan === false ? null : latestPlan(history), tidy }) }], maxBytes: promptLimit(), stub: teacher.tools });
@@ -2051,9 +2082,12 @@ export async function renderClass(root, meta, desk = null) {
       try {
         res = await teacher.call(fit.turns, { ...TEACH, cache: false, signal: ctl.signal, onText: ({ text }) => drawDraft(text, 'Claude 在写这节课的小结…') });
       } catch (e) {
+        dropPreviews({ rollback: true });
         failTurn(e, '下课小结', cost('failed'));
         return false;
       }
+      // 小结里不执行黑板指令：边写边显示时先画上来的段（小结里写了 board add 之类）都撤掉
+      dropPreviews({ rollback: true });
       if (res?.modelApplied !== MODEL) {
         addTurn({ role: 'system', kind: 'fallback', discarded: true, text: 'Opus 5.5 不可用，下课小结作废', modelApplied: res?.modelApplied || null, modelTierApplied: res?.modelTierApplied || null, cost: cost('failed') });
         bar.setStatus('error', 'Opus 5.5 暂时用不了，小结没写成，稍后再点「下课」。');
@@ -2093,7 +2127,7 @@ export async function renderClass(root, meta, desk = null) {
       bar.setStatus('notice', !desk ? '下课了。小结已经存好，回对话告诉 Claude「下课了」。' : '下课了。小结和课后报告已经存进学习台。');
       session.event('end', null, { turns: history.length });
       return true;
-    });
+    }, { after: false });
   }
 
   // —— 板上手写：学生用 Pencil 在当前板（和常驻栏）上新写的板书，跟着下一条消息导出成图发给课堂 Claude ——

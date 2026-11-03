@@ -21,9 +21,8 @@ import { planBoards, lintRecord, screenRecord, sameScreen, leadingHeading, statu
 import { actionText, reportable } from '../class/prompt.js';
 import { draftsIn } from '../drafts.js';
 import { VERSION } from '../version.js';
-import { createBoardTools } from '../class/boardtools.js';
+import { createBoardTools, applyAssigns } from '../class/boardtools.js';
 import { markText } from '../markspec.js';
-import { compile } from '../expr.js';
 import { parseLiveOp, opTargets, nextOps, resultLine, segSig, opKey, restorePlan, OP_WAIT, OP_SETTLE, OPS_KEEP } from './ops.js';
 
 const reduceMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -376,7 +375,7 @@ export async function renderLive(root, meta, desk = null) {
         if (!api) continue;
         try {
           if (f.action === 'play') api.set(f.args.name, f.args.to ?? 1);
-          else for (const [name, src] of Object.entries(f.args.assigns || {})) api.set(name, compile(src)((api.vars || api.snapshot)?.call(api) || {}));
+          else applyAssigns(api, f.args.assigns);
         } catch { /* 放不回去就保持初始的样子 */ }
       }
     } finally {

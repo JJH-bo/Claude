@@ -154,6 +154,8 @@ export function classRows(mem = {}) {
       minutes: s.report?.activeMs ? Math.round(s.report.activeMs / 60000) : null, line: s.report?.line || '',
       verify: s.verify || null, summary: cut(first, 80), usage: s.usage || null, review: s.review || null, startedAt: s.startedAt || 0,
       kind: ['live', 'unit'].includes(s.kind) ? s.kind : 'class',
+      // 练一练、课前热身（kind: drill）：列表里照旧算一行，「上一节」不算它
+      drill: s.kind === 'drill',
       skills: s.skills || null,
     };
   }).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0) || cmpId(b.id, a.id));
@@ -199,9 +201,12 @@ export const REVIEW_MAX = 3;
  * 到期的复现组按我的规则排先后（rule-pre-2）：从没复现 > 上次没过 > 过期久。
  * 返回 [{ id, title, days, course, subject, space, why }]（只要过期和今天到期的；停掉、暂停、并掉的不算）
  */
+// 复现组排在哪一档：0 从没复现过（还没判过结果；课堂新建的组带着建组那天的 last，不能拿 last 判）、1 上次没过、2 到期了。
+// 首页「今天复现」和备课的开头复现共用（books/planview.js），两边挑出来的才一样
+export const reviewRank = (r) => (!r?.result || /从未|还没/.test(String(r.result)) ? 0 : /没过|不过/.test(String(r.result)) ? 1 : 2);
 export function reviewQueue(mem = {}, { today = toDate(Date.now()) } = {}) {
   const rs = live(mem, 'reviews');
-  const rank = (r) => (!r.last || /从未|还没/.test(String(r.result || '')) ? 0 : /没过|不过/.test(String(r.result || '')) ? 1 : 2);
+  const rank = reviewRank;
   return dueList(rs, today).filter((d) => d.days <= 0).map((d) => {
     const r = rs.find((x) => String(x.id) === d.id);
     const b = list(r.blocks)[0] || '';
@@ -303,7 +308,7 @@ export function reviewPack(mem = {}, rids, { packs = [], sheets = [], today = to
 export function handoffText(mem = {}, { kitUrl = '', deskUrl = '', today = toDate(Date.now()), pack = null, space = 'math' } = {}) {
   const pos = (mem.position || []).find((p) => p.id === positionId(space));
   const rows = classRows(mem);
-  const last = rows.find((r) => r.status === 'closed');
+  const last = rows.find((r) => r.status === 'closed' && !r.drill);
   const opens = rows.filter((r) => r.status === 'open');
   const open = (mem.pending || []).filter((p) => p.status === 'open');
   const gone = voidedIds(mem);
@@ -311,9 +316,10 @@ export function handoffText(mem = {}, { kitUrl = '', deskUrl = '', today = toDat
   const due = dueList(live(mem, 'reviews'), today).filter((d) => d.days <= 0);
   const todo = [];
   const ids = packIds(space);
-  if (!pack) todo.push(`备下一节${SPACES[space]?.label || ''}课：往学习台写资料包 pack/${ids.main}、pack/${ids.problems}（说明书第六节「在学习台里开一节课」、第七节「分科」）。`);
-  if (proposals.length) todo.push(`看上一节课堂里的 Claude 的提议（observations 里 kind: proposal，${proposals.length} 条），掌握状态、规则只能由你决定。`);
-  if (open.length) todo.push(`还有 ${open.length} 张改动单等我确认（pending，status: open）：我在学习台上点，你不用代写。`);
+  // 学习台自己管自己（docs/autonomy-plan.md）：备课、改记忆、判复现都由学习台做，外部只做开发，这里只告诉它现状
+  if (!pack) todo.push(`下一节${SPACES[space]?.label || ''}课还没备：学习台首页「让 Claude 备课」自己备（资料包 pack/${ids.main}、pack/${ids.problems}），不用你代写。`);
+  if (proposals.length) todo.push(`上一节课堂里的 Claude 留了 ${proposals.length} 条提议（observations 里 kind: proposal）：开发时参考，不用你代写记忆。`);
+  if (open.length) todo.push(`还有 ${open.length} 张改动单没写进去（pending，status: open）：学习台首页打开时会自己写，不用你代写。`);
   return [
     `【学习台 · 接手 · ${SPACES[space]?.label || ''}】`,
     `- 学习台：${deskUrl || kitUrl || '（地址问我要：在 claude.ai 打开学习台时地址栏里的那个）'}。说明书、组件写法、记忆、每节课都在它里面：先用 Artifact 工具 action: "read"、path: "CLAUDE-PROJECT.md" 读说明书，记忆用 ArtifactData 读。`,
@@ -325,8 +331,8 @@ export function handoffText(mem = {}, { kitUrl = '', deskUrl = '', today = toDat
       : r.kind === 'unit' ? `- 自学单元 ${r.id}「${cut(r.title, 40)}」我还没学完。` : `- 有一节课堂还没下课：${r.id}。`)),
     due.length ? `- 到期的复现组：${due.map((d) => `${d.id}${d.days < 0 ? `（过期 ${-d.days} 天）` : ''}`).join('、')}（学习台首页能直接开复现课）。` : '',
     pack ? `- 已经备好的下一节：${cut(pack.unit || '', 60)}${pack.block ? `（${pack.block}）` : ''}。` : '',
-    todo.length ? `- 等你做的：\n${todo.map((t) => `  - ${t}`).join('\n')}` : '- 现在没有等你做的。',
-    open.length ? `- 等我确认的改动：${open.slice(0, 6).map((p) => cut(pendingTitle(p), 50)).join('；')}${open.length > 6 ? '……' : ''}` : '',
+    todo.length ? `- 现状（学习台自己处理，你只做开发）：\n${todo.map((t) => `  - ${t}`).join('\n')}` : '',
+    open.length ? `- 还没写进去的改动：${open.slice(0, 6).map((p) => cut(pendingTitle(p), 50)).join('；')}${open.length > 6 ? '……' : ''}` : '',
   ].filter(Boolean).join('\n');
 }
 

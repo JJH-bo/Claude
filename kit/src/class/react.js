@@ -110,6 +110,8 @@ export function classify(a, trig) {
   if (a.source === 'event' && type === 'reveal') return { kind: 'done', step };
   if (a.giveup || a.revealed || (a.source === 'event' && type === 'giveup')) return { kind: 'giveup', step };
   const ok = okOf(a);
+  // 选择题答错不单独发（quiz 只在答对时记一条，前面错选的在 wrong 里）：错选过再对的，可能是试出来的，交给老师
+  if (ok === true && type === 'quiz' && Array.isArray(a.wrong) && a.wrong.length) return null;
   if (ok === true) return { kind: 'right', step };
   if (ok === false) return { kind: 'wrong', step, misread: typeof a.misread === 'string' ? a.misread : '' };
   return null;
