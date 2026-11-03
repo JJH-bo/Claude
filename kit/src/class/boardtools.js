@@ -136,7 +136,11 @@ export function createBoardTools({ bv, segs }) {
     try {
       if (op.action === 'set') {
         const vars = (api.vars || api.snapshot)?.call(api) || {};
-        for (const [name, src] of Object.entries(op.assigns || {})) api.set(name, compile(src)(vars));
+        for (const [name, src] of Object.entries(op.assigns || {})) {
+          // 演示组件：step=rotate#2 / end 按事件找步号（老师数不出步号）
+          const alias = name === 'step' ? api.stepAlias?.(src) : null;
+          api.set(name, alias ?? compile(src)(vars));
+        }
       } else if (op.action === 'play') {
         if (!animate) api.set(op.name, op.to ?? 1);
         else if (api.play) api.play(op.name, op.from ?? 0, op.to ?? 1, op.ms ?? 1200);
@@ -163,8 +167,14 @@ export function createBoardTools({ bv, segs }) {
     return Object.keys(v).filter((k) => !(b.classList.contains('block-predict') && k === 'guess'));
   }
 
+  // 演示组件的一行概要（一共几步、每种问题在第几步）；别的图没有
+  function figureOutline(b) {
+    const sc = b.dataset.scene && session.scenes.get(b.dataset.scene);
+    try { return sc?.api.outline?.() || undefined; } catch { return undefined; }
+  }
+
   return {
-    marks, onCurrent, bumpSeq, markOp, placeMark, unmarkOp, dropMarks, figureOp, figureVars,
+    marks, onCurrent, bumpSeq, markOp, placeMark, unmarkOp, dropMarks, figureOp, figureVars, figureOutline,
     get nextMark() { return `m${markSeq + 1}`; },
   };
 }

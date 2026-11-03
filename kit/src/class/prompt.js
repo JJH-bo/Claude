@@ -530,7 +530,7 @@ function segmentLines(seg, { maxResults = Infinity } = {}) {
     if (!b?.id) continue;
     // 图能用 figure set / play 改的变量（课堂说明被压缩成摘要后，Claude 看不到当初写的命令，靠这里知道）
     const vars = Array.isArray(b.vars) ? b.vars.filter(Boolean).join('、') : String(b.vars ?? '').trim();
-    const name = `${b.kind || '组件'} ${b.id}${vars ? `（变量：${oneLine(vars, 160)}）` : ''}`;
+    const name = `${b.kind || '组件'} ${b.id}${vars ? `（变量：${oneLine(vars, 160)}）` : ''}${b.outline ? `（${oneLine(b.outline, 200)}）` : ''}`;
     const res = (b.results || []).map((r) => resultLine(r, b.id)).filter(Boolean).slice(-maxResults);
     const draft = oneLine(String(b.draft ?? '').trim(), 300);
     if (res.length) {

@@ -107,7 +107,7 @@ export function statusRecord({ cur = 0, view = 0, pages = [], recent = [], draft
     ops: (ops || []).map((o) => (typeof o === 'string' ? o : o?.line)).filter(Boolean).slice(-L.ops).map((l) => cut(l, L.line)),
     marks: (marks || []).filter((m) => m && m.step && (m.list || []).length).slice(0, L.marks).map((m) => cut(`${m.step}：${m.list.join('；')}`, 600)),
     figures: (figures || []).filter((f) => f && f.id).slice(0, L.figures).map((f) => ({
-      id: String(f.id), ...(f.kind ? { kind: String(f.kind) } : {}), step: String(f.step ?? ''), vars: (f.vars || []).map(String).slice(0, 30),
+      id: String(f.id), ...(f.kind ? { kind: String(f.kind) } : {}), step: String(f.step ?? ''), vars: (f.vars || []).map(String).slice(0, 30), ...(f.outline ? { outline: cut(f.outline, 300) } : {}),
     })),
   };
 }

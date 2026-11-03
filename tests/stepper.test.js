@@ -244,3 +244,21 @@ test('vary:（演示上的滑块）：名字 = 最小..最大，step、init、�
   assert.throws(() => parseVary('d = 1..9 init 12'), /init 要在 1 到 9 之间/);
   assert.throws(() => parseVary('a = 1..2; b = 1..2; c = 1..2; d = 1..2'), /最多 3 个/);
 });
+
+test('不数步号就能指：ask: rotate#2 只问第 2 次；step=rotate#2 / end 找步号；概要列出每种问题在第几步', async () => {
+  const { resolveAsks, parseAskField, stepOfEvent, stepOutline } = await import('../kit/src/stepperspec.js');
+  const { ENGINES } = await import('../kit/src/engines/registry.js');
+  const e = ENGINES.avl;
+  const r = e.run(e.parse({ avl: '15 3 7 10 9 8' }));
+  const rot = r.steps.map((s, k) => (k > 0 && [s.ask, ...(s.asks || [])].some((a) => a?.tag === 'rotate') ? k : -1)).filter((k) => k > 0);
+  assert.ok(rot.length >= 2);
+  const one = resolveAsks(parseAskField('rotate#2'), r.steps);
+  assert.deepEqual([...one.asks], [rot[1]]);
+  assert.deepEqual(one.errors, []);
+  assert.match(resolveAsks(parseAskField(`rotate#${rot.length + 1}`), r.steps).errors[0], new RegExp(`一共 ${rot.length} 次`));
+  assert.equal(stepOfEvent(r.steps, 'rotate#2'), rot[1]);
+  assert.equal(stepOfEvent(r.steps, 'end'), r.steps.length - 1);
+  assert.equal(stepOfEvent(r.steps, '7'), null, '数字照旧当表达式算');
+  assert.throws(() => stepOfEvent(r.steps, 'swap#1'), /没有「swap」/);
+  assert.match(stepOutline(r.steps, 3), new RegExp(`^一共 ${r.steps.length - 1} 步，现在第 3 步；.*rotate 在第 ${rot.join('、')} 步`));
+});

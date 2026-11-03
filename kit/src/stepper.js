@@ -7,7 +7,7 @@ import { parseFields } from './parse.js';
 import { session } from './session.js';
 import { widget, mdToHtml, tex2html, escapeHtml, calcProblems, calcScope } from './blocks/common.js';
 import { figureControls, sliderText } from './plot.js';
-import { commonSpec, resolveAsks, checkAsk, askAnswerText, stepLabel, parseAskField, fillSpec, checkFill, cellName, cellAnswer, fillOrder, misreadFill, trackFields, calcFields, parseVary } from './stepperspec.js';
+import { commonSpec, resolveAsks, checkAsk, askAnswerText, stepLabel, parseAskField, fillSpec, checkFill, cellName, cellAnswer, fillOrder, misreadFill, trackFields, calcFields, parseVary, stepOfEvent, stepOutline } from './stepperspec.js';
 import { markDraft } from './drafts.js';
 import { answerWidget, textAnswerSpec } from './blocks/answer.js';
 import { snapshot, animateFrom, settle } from './morph.js';
@@ -639,6 +639,10 @@ export function stepperBlock(engine) {
       },
       highlight: ctl.highlight,
       vars: () => ({ step: k, ...varyVals }),
+      // 黑板现状里给课堂 Claude 的一行：一共几步、每种问题在第几步
+      outline: () => stepOutline(steps, k),
+      // figure set step=rotate#2 / end：按事件找步号
+      stepAlias: (src) => stepOfEvent(steps, src),
       snapshot: () => ({ step: k, ...varyVals }),
       // 课堂里老师直接跳：不问（问题留给学生自己点「下一步」时）。vary 的滑块也能 set（figure set d=5）
       set(name, value) {
