@@ -11,7 +11,7 @@ import { blockChunks, chunkLine } from './textbook.js';
 import { memoryDigest } from '../memory/digest.js';
 import { prefixOf, packIds, subjectOf, sharedFor, spaceOfId, filterSpace, COURSES } from '../memory/space.js';
 import { activeLessons } from '../memory/memo.js';
-import { reviewRank } from '../memory/views.js';
+import { reviewRank, plainTitle } from '../memory/views.js';
 import { COMPONENT_DOCS } from '../class/docs.js';
 import { allNames } from '../subject.js';
 import { CORE_COMPONENTS } from '../class/prompt.js';
@@ -131,7 +131,7 @@ export function createPlanner({ db, getAI, model, getData, space }) {
   /** 首页「上课」卡里的备课区：选块、备课、看备好的 */
   function prepHtml({ suggested = '', blocks = [], main = null, busy = false, msg = '' } = {}) {
     return `<div class="dk-prep">
-        <div class="dk-mrow"><label class="mm-f" style="flex:1"><span>下一节讲哪一块</span><select class="dk-prep-block">${blocks.map((b) => `<option value="${esc(b.id)}"${b.id === suggested ? ' selected' : ''}>${esc(b.id)} ${esc(b.title || '')}${b.chunks?.length ? '' : '（没挂资料）'}</option>`).join('')}</select></label>
+        <div class="dk-mrow"><label class="mm-f" style="flex:1"><span>下一节讲哪一块</span><select class="dk-prep-block">${blocks.map((b) => `<option value="${esc(b.id)}"${b.id === suggested ? ' selected' : ''}>${esc(plainTitle(b.title) || b.id)}${b.chunks?.length ? '' : '（没挂资料）'}</option>`).join('')}</select></label>
         <label class="mm-f" style="width:9em"><span>教材页（可选）</span><input class="dk-prep-pages" inputmode="numeric" placeholder="比如 10-17" value="${esc(main?.pages || '')}"></label>
         <button type="button" class="btn dk-prep-go"${busy ? ' disabled' : ''}>${main ? '重新备课' : '让 Claude 备课'}</button></div>
         ${msg ? `<p class="muted dk-prep-msg">${esc(msg)}</p>` : ''}

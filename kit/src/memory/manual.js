@@ -5,6 +5,7 @@
 import { escapeHtml } from '../render.js';
 import { clipboardImages, htmlImageSrcs, toPng, srcToPng } from '../class/bar.js';
 import { MANUAL_VERDICTS } from './session.js';
+import { plainTitle } from './views.js';
 
 const MAX_UP = 4;
 
@@ -42,7 +43,7 @@ export function createManualForm(box, { blocks = () => [], images = true, onSave
   function fillBlocks() {
     const cur = sel.value;
     const list = blocks();
-    sel.innerHTML = `<option value="">不挂</option>${list.map((b) => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.id)} ${escapeHtml(String(b.title || '').slice(0, 30))}</option>`).join('')}`;
+    sel.innerHTML = `<option value="">不挂</option>${list.map((b) => `<option value="${escapeHtml(b.id)}">${escapeHtml(plainTitle(b.title).slice(0, 30) || b.id)}</option>`).join('')}`;
     if (list.some((b) => b.id === cur)) sel.value = cur;
   }
   fillBlocks();

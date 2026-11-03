@@ -20,7 +20,12 @@ const esc = escapeHtml;
 const ERR_PAGE = 20;
 const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]).map(String);
 const stateChip = (state, tier) => `<span class="dk-st st-${MASTERY_KEY[state] || 'none'}">${esc(state || '未学')}${state === '复现通过' && tier ? ` ${esc(tier)} 天档` : ''}</span>`;
-const logLines = (log) => (Array.isArray(log) ? log : []).slice(-8).reverse().map((l) => `<li><b>${esc(l.date || '')}</b> ${esc(({ chat: '对话里的 Claude', class: '课堂里的 Claude', me: '我', page: '页面' })[l.by] || l.by || '')}：${esc(l.field || '')} ${esc(fmt(l.from))} → ${esc(fmt(l.to))}${list(l.basis).length ? `<span class="muted">（依据 ${esc(list(l.basis).slice(0, 4).join('、'))}）</span>` : ''}${l.note ? `<span class="muted"> · ${esc(l.note)}</span>` : ''}</li>`).join('');
+// 给我看的变化记录：字段换成中文，编号一串（依据、挂的错题）只说几条，课号换成日期
+const FIELD_TEXT = { state: '掌握', tier: '档位', level: '证据级', last: '最近一次', result: '结果', status: '状态', basis: '依据', errors: '挂的错题', blocks: '相关的块', title: '标题', next: '下一节', block: '块', debts: '欠账', text: '内容', q: '问法', a: '答案', lapses: '没想起的次数' };
+const ID_LISTS = new Set(['basis', 'errors', 'blocks', 'weaknesses', 'evidence']);
+export const noSessionIds = (s) => String(s ?? '').replace(/\bc-\d{4}(\d{2})(\d{2})-\d+\b/g, (_, m, d) => `${Number(m)}/${Number(d)} 那节课`);
+const logVal = (f, v) => (ID_LISTS.has(f) ? (Array.isArray(v) ? `${v.length} 条` : v ? '1 条' : '无') : noSessionIds(fmt(v)));
+const logLines = (log) => (Array.isArray(log) ? log : []).slice(-8).reverse().map((l) => `<li><b>${esc(l.date || '')}</b> ${esc(({ chat: '开发那边', class: '课堂里的 Claude', me: '我', page: '页面' })[l.by] || l.by || '')}：${esc(FIELD_TEXT[l.field] || l.field || '')} ${esc(logVal(l.field, l.from))} → ${esc(logVal(l.field, l.to))}${list(l.basis).length ? `<span class="muted">（依据 ${list(l.basis).length} 条作答）</span>` : ''}${l.note ? `<span class="muted"> · ${esc(noSessionIds(l.note))}</span>` : ''}</li>`).join('');
 const evRow = (e) => ({ id: e.id, at: e.at, date: toDate(e.at), session: e.session || null, ok: e.ok ?? null, line: evidenceLine(e), images: list(e.images) });
 const fmt = (v) => (v === null || v === undefined ? '无' : Array.isArray(v) ? v.join('、') : String(v));
 
@@ -105,7 +110,7 @@ export function createPages(host, { getData, db, ops, goto, purge = null }) {
       ${rows.map((w) => `<div class="dk-blk${w.closed ? ' is-closed' : ''}">
         <button type="button" class="dk-blk-row" data-toggle="weak:${esc(w.id)}" aria-expanded="${open.has(`weak:${w.id}`)}"><span>${inline(w.title)}</span><span class="dk-tag">${esc(w.scope || '')}</span><span class="dk-tag lv-${esc(w.level || '')}">${esc(w.level || '')}</span>${w.hits?.n > 1 ? `<span class="dk-tag is-warn">出现 ${w.hits.n} 次</span>` : ''}${w.closed ? '<span class="dk-tag">关了</span>' : ''}</button>
         ${open.has(`weak:${w.id}`) ? `<div class="dk-panel">
-          ${w.hits?.n ? `<p><span class="dk-k">出现</span>${esc(hitText(w.hits))}</p>` : w.last ? `<p><span class="dk-k">最近</span>${esc(w.last)}</p>` : ''}
+          ${w.hits?.n ? `<p>${esc(hitText(w.hits))}</p>` : w.last ? `<p><span class="dk-k">最近</span>${esc(w.last)}</p>` : ''}
           ${list(w.blocks).length ? `<p><span class="dk-k">相关的块</span>${list(w.blocks).map((b) => inline(blockName(b))).join('、')}</p>` : ''}
           ${w.errorDocs.length ? `<div class="dk-memo-sub" role="heading" aria-level="3">挂的错题</div>${w.errorDocs.map((e) => errorCard(e, false)).join('')}` : ''}
           ${Array.isArray(w.log) && w.log.length ? `<div class="dk-memo-sub" role="heading" aria-level="3">怎么变过来的</div><ul class="dk-log">${logLines(w.log)}</ul>` : ''}
@@ -146,7 +151,7 @@ export function createPages(host, { getData, db, ops, goto, purge = null }) {
     const why = /^见/.test(String(e.cause || '').trim()) || e.cause === e.q ? '' : short(e.cause, 50);
     if (!open.has(full)) return `<div class="dk-err is-short${e.resolved ? ' is-resolved' : ''}"><button type="button" class="dk-err-row" data-toggle="${esc(full)}" aria-expanded="false"><span>${inline(head)}${why ? `<br><span class="muted">${inline(why)}</span>` : ''}</span><span class="muted">${esc(String(e.date || '').slice(5))}</span>${e.resolved ? '<span class="dk-tag is-ok">已解决</span>' : ''}</button></div>`;
     return `<div class="dk-err${e.resolved ? ' is-resolved' : ''}">
-      <button type="button" class="dk-err-row" data-toggle="${esc(full)}" aria-expanded="true"><span class="muted">${e.source ? inline(e.source) : ''}${e.date ? ` · ${esc(e.date)}` : ''}${e.weakness ? ` · ${inline(weakName(e.weakness))}` : ''}</span><span class="dk-link">收起</span></button>
+      <button type="button" class="dk-err-row" data-toggle="${esc(full)}" aria-expanded="true"><span class="muted">${e.source ? inline(noSessionIds(e.source)) : ''}${e.date ? ` · ${esc(e.date)}` : ''}${e.weakness ? ` · ${inline(weakName(e.weakness))}` : ''}</span><span class="dk-link">收起</span></button>
       ${e.q ? `<p><span class="dk-k">题面</span>${inline(e.q)}</p>` : ''}
       ${e.mine ? `<p><span class="dk-k">我的答案</span>${inline(e.mine)}</p>` : ''}
       ${e.step ? `<p><span class="dk-k">错在</span>${inline(e.step)}</p>` : ''}
@@ -163,7 +168,7 @@ export function createPages(host, { getData, db, ops, goto, purge = null }) {
     if (!rows.length) return '<p class="muted">还没有上过课。</p>';
     return `<section class="dk-card"><h2 class="dk-h">以前的课</h2><p class="dk-sub muted">测试开的、不要的课：点进去，最下面「删掉这节课」。</p>${rows.map((r) => `<a class="dk-class-row" href="#classes/${esc(r.id)}">
       <span class="dk-cr-d"><b>${esc((r.date || '').slice(5).replace('-', '/') || r.id)}</b></span>
-      <span class="dk-cr-m">${r.kind !== 'class' ? `<span class="dk-tag is-ok">${KIND_TEXT[r.kind]}</span>` : ''}${r.review ? '<span class="dk-tag">复现课</span>' : ''}${r.drill ? '<span class="dk-tag">练习</span>' : ''}${r.status === 'open' ? '<span class="dk-tag is-warn">没下课</span>' : ''} ${inline(r.title)}<br><span class="muted">${esc(r.summary || r.line || '')}</span></span>
+      <span class="dk-cr-m">${r.kind !== 'class' ? `<span class="dk-tag is-ok">${KIND_TEXT[r.kind]}</span>` : ''}${r.review ? '<span class="dk-tag">复现课</span>' : ''}${r.drill ? '<span class="dk-tag">练习</span>' : ''}${r.status === 'open' ? '<span class="dk-tag is-warn">没下课</span>' : ''} ${inline(r.title)}<br><span class="muted">${inline(r.summary || r.line || '')}</span></span>
       <span class="dk-cr-n">${r.minutes !== null ? `${r.minutes} 分钟` : ''}${r.usage?.calls ? `<br><span class="muted">${esc(tokenText(r.usage.bytes))}</span>` : ''}${r.verify ? `<br><span class="muted">核验 ${r.verify.turns}${r.verify.discarded ? ` · 作废 ${r.verify.discarded}` : ''}</span>` : ''}</span>
     </a>`).join('')}</section>`;
   }

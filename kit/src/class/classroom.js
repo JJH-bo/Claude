@@ -66,6 +66,10 @@ const QUICK_SAY = { 没懂: '没懂。', 想不出来: '想不出来。', 换个
  * updateSession(patch)（改 sessions/{sid}）, writeReport({ turns, steps })（下课后写课后报告）, onHome（回学习台首页）,
  * readOnly（「以前的课」翻看黑板：store 是只读的，不调用 Claude，不能发言）}
  */
+// 版面里不并排的组件、角上带 ⤢ 放大的组件
+const WIDE_NO = new Set(['scene', 'graph', 'space', 'image', 'sketch', 'predict']);
+const ZOOMABLE = new Set([...WIDE_NO, 'matrix', 'derive', 'code', 'trace', 'frames']);
+
 export async function renderClass(root, meta, desk = null) {
   // 版面模式（canvas.js，docs/canvas-plan.md）：课堂 Claude 自己排板。先在开关后面试：features.js 的 canvas，或地址带 ?canvas
   const CANVAS = FEATURES.canvas || /[?&]canvas\b/.test(location.search);
@@ -934,8 +938,7 @@ export async function renderClass(root, meta, desk = null) {
 
   // —— 版面（canvas.js）：Claude 说结构（这块板分几栏、每段放第几栏），页面按真实内容排：同一栏从上往下接，
   // 栏和栏之间一道竖线（不估高度、不写坐标；阅读顺序由结构定：一栏从上往下读，左右是两件事）——
-  const WIDE_NO = new Set(['scene', 'graph', 'space', 'image', 'sketch', 'predict']);
-  const ZOOMABLE = new Set([...WIDE_NO, 'matrix', 'derive', 'code', 'trace', 'frames']);
+  // （WIDE_NO、ZOOMABLE 在文件开头：刷新时 restore 先于这里跑到 layoutPage，放在这里会碰上暂时性死区，整份课堂记录读不出来）
   function langsOf(md) { return [...String(md).matchAll(/^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*([A-Za-z][\w-]*)/gm)].map((m) => m[1].toLowerCase()); }
   function ordOf(s) { return s.ord ?? s.seq; }
   // 一段放第几栏：写了就用；没写就接着这块板上一段的栏（顺着往下写）；这块板的第一段放第 1 栏

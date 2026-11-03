@@ -148,12 +148,24 @@ export function masteryProposals(mem = {}, { rule = MASTERY_RULE } = {}) {
       byTarget.get(t).push(it);
     }
   }
+  const evIds = new Set((mem.evidence || []).map((e) => String(e?.id)));
   const out = [];
+  // 页面算过、但现在一条证据都不剩的（删了那节课）：也要过一遍，退回页面改之前的状态
+  for (const m of mastery) if (m?.id && !byTarget.has(String(m.id)) && isTarget(String(m.id)) && (!blocks.size || blocks.has(blockOf(String(m.id))))) byTarget.set(String(m.id), []);
   for (const [target, list] of [...byTarget].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))) {
     const doc = mastery.find((m) => String(m.id) === target);
     const start = startOf(doc, pending);
     const after = list.filter((it) => (Number(it.end) || Number(it.first) || 0) > start.since).sort((a, b) => (a.first ?? 0) - (b.first ?? 0));
-    if (!after.length) continue;
+    if (!after.length) {
+      // 没有证据撑着页面定的结论了：退回页面改之前（我和对话里定的不动：startOf 只退页面改的那几次）
+      if (!doc || (start.state === (doc.state || '未学') && (start.tier ?? null) === (Number(doc.tier) || null))) continue;
+      // 只在依据的作答真的没了时退（删了课）；作答还在、只是归类换了块的，不动（免得已有的掌握来回跳）
+      const evs0 = (Array.isArray(doc.basis) ? doc.basis : []).filter((x) => /^ev-/.test(String(x)));
+      if (!evs0.length || evs0.some((x) => evIds.has(String(x)))) continue;
+      const value = { state: start.state, tier: start.state === '复现通过' ? start.tier : null };
+      out.push({ target, op: 'update', patch: value, basis: [], reason: '页面按证据算的：原来定这个状态的作答已经删掉了（删了那节课），退回页面改之前的状态', space: spaceOfId(target), upto: '' });
+      continue;
+    }
     const r = walk(after, start, rule);
     // 和记忆里现在的比（start 可能是退回去重算的那个状态）
     const curState = doc?.state || '未学';

@@ -809,9 +809,11 @@ export function resolvedErrors(mem = {}) {
  * 一张改动单一句话：「错题 L2-08：把 βᵀα 当矩阵」。nameOf(coll, id)：给我看时把编号换成名字（弱点、复现组、守则、偏好的标题），
  * 不给就照旧写编号（发给课堂里的 Claude 的那份要编号）
  */
+// 标题会按 Markdown 画：不截在公式中间（$ 落单了就成了原始 LaTeX）
+const cutM = (x, n) => { let c = cut(x, n); if (c.endsWith('…') && ((c.match(/(?<!\\)\$/g) || []).length) % 2) c = `${c.slice(0, c.lastIndexOf('$')).trimEnd()}…`; return c; };
 export function pendingTitle(pd, nameOf = null) {
   const d = pd.data || {}, p = pd.patch || {};
-  const nm = (coll, id) => { const t = nameOf ? nameOf(coll, id) : ''; return t ? `「${cut(t, 24)}」` : String(id ?? ''); };
+  const nm = (coll, id) => { const t = nameOf ? nameOf(coll, id) : ''; return t ? `「${cutM(t, 24)}」` : String(id ?? ''); };
   const me = () => nm(pd.coll, pd.target);
   const FIELD = { level: '证据级', scope: '影响面', status: '状态', errors: '挂的错题', blocks: '相关的块', title: '标题' };
   const what = {
@@ -829,7 +831,7 @@ export function pendingTitle(pd, nameOf = null) {
     position: () => p.next || d.next || (p.block ? `学到 ${nm('curriculum', p.block)}` : '改了'),
     mastery: () => { const st = p.state || d.state; const t = p.tier ?? d.tier; return `${nm('curriculum', String(pd.target).split('#')[0])}${String(pd.target).includes('#') ? ` ${String(pd.target).split('#')[1]}` : ''} → ${st}${st === '复现通过' && t ? `（第 ${t} 天那档）` : ''}`; },
   }[pd.kind];
-  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${!nameOf && pd.op === 'update' && !['weakness', 'review', 'lesson', 'mastery', 'rule', 'pref'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
+  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${!nameOf && pd.op === 'update' && !['weakness', 'review', 'lesson', 'mastery', 'rule', 'pref'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cutM(what ? what() : '', 80)}`;
 }
 
 /**

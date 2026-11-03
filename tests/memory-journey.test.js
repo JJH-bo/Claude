@@ -81,6 +81,9 @@ test('积压：3 组以内不说；18 组一次 3 组 6 次清完', () => {
 test('「这一周」那几句：只说真发生了的事，没有可说的就是空的', () => {
   assert.deepEqual(weekLines({}, { today: '2026-11-04' }), []);
   const mem = { ...memWithClasses(), evidence: ['2026-11-02', '2026-11-03', '2026-11-04'].map((d) => ({ src: 'record', at: at(d) })) };
+  // 今天没做过复现、没想过记忆点：不说「都做完了」（全新的学习台上完第一节课也是这样）
+  assert.ok(!weekLines(mem, { today: '2026-11-04', space: 'en' }).some((l) => l.k === 'done'));
+  mem.evidence.push({ src: 'recall', at: at('2026-11-04') });
   const lines = weekLines(mem, { today: '2026-11-04', space: 'en' });
   assert.deepEqual(lines.map((l) => l.k), ['streak', 'week', 'done', 'better', 'better']);
   assert.equal(lines[0].text, '连着学了 3 天');

@@ -9,6 +9,16 @@ import { classView, memoryCatalog, utf8 } from './digest.js';
 import { weaknessHits, pointCatalog } from './skills.js';
 
 const cut = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+/** 截短给我看的一句（会按 Markdown 画）：不截在公式中间（$ 落单了整句就成了原始 LaTeX） */
+export function cutMd(s, n) {
+  const t = String(s ?? '').replace(/\s+/g, ' ').trim();
+  if (t.length <= n) return t;
+  let c = t.slice(0, n - 1);
+  if (((c.match(/(?<!\\)\$/g) || []).length) % 2) c = c.slice(0, c.lastIndexOf('$')).trimEnd();
+  return `${c}…`;
+}
+/** 下拉框里的一行（不能画公式）：去掉 $ 和 TeX 命令，只留字 */
+export const plainTitle = (s) => String(s ?? '').replace(/\$/g, '').replace(/\\(?:mathbf|boldsymbol|mathrm|operatorname|text|mathit)\{([^}]*)\}/g, '$1').replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '').replace(/\s+/g, ' ').trim();
 // 截短带公式的文字：截断处落在 $…$ 里面时，退到那个公式前面（不然页面上露出半截 TeX）
 const cutTex = (s, n) => {
   const t = cut(s, n);
@@ -152,7 +162,7 @@ export function classRows(mem = {}) {
     return {
       id: s.id, date: s.date || '', block: s.block || '', title: s.title || '', status: s.status || '',
       minutes: s.report?.activeMs ? Math.round(s.report.activeMs / 60000) : null, line: s.report?.line || '',
-      verify: s.verify || null, summary: cut(first, 80), usage: s.usage || null, review: s.review || null, startedAt: s.startedAt || 0,
+      verify: s.verify || null, summary: cutMd(first, 80), usage: s.usage || null, review: s.review || null, startedAt: s.startedAt || 0,
       kind: ['live', 'unit'].includes(s.kind) ? s.kind : 'class',
       // 练一练、课前热身（kind: drill）：列表里照旧算一行，「上一节」不算它
       drill: s.kind === 'drill',
@@ -272,7 +282,8 @@ export function reviewPack(mem = {}, rids, { packs = [], sheets = [], today = to
   const name = (r) => `${r.id}「${r.title || ''}」${r.family ? `（机制族：${r.family}）` : ''}`;
   const when = ({ r, due }) => `第 ${r.tier} 天那档${due.days !== undefined ? `（${due.days < 0 ? `过期 ${-due.days} 天` : due.days === 0 ? '今天到期' : `还有 ${due.days} 天`}）` : ''}，上次 ${r.last || '还没做过'}${r.result ? `，结果：${r.result}` : ''}`;
   const main = {
-    unit: `复现 ${groups.map((r) => r.id).join('、')} · ${groups.map((r) => r.title || '').join('、')}`.trim(),
+    // 给我看的标题不写编号（编号在 review 里）
+    unit: `复现 · ${groups.map((r) => r.title || r.id).join('、')}`.trim(),
     goal: `检验${groups.map((r) => `「${r.title || r.id}」`).join('、')}现在还会不会：不看提示、独立做出新题、说得清依据。`,
     block: blocksAll[0] || null,
     review: groups.map((r) => String(r.id)),

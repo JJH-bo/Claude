@@ -236,7 +236,7 @@ export const layoutEngine = {
   table(input, r) {
     if (input.single) {
       const list = placed(input, r.lay.items[0]);
-      return { q: `按${input.big ? '大端' : '小端'}，把每个地址里的字节填上（十六进制）。`, qhtml: '', qhtml: view({ stage: 'start' }, input), dir: 'row', head: ['内容'], rows: list.map((x) => ({ label: fmtA(x.addr, input), cells: [{ v: hexAlts(`${hx2(x.b)}H`) }] })) };
+      return { q: `按${input.big ? '大端' : '小端'}，把每个地址里的字节填上（十六进制）。`, qhtml: view({ stage: 'start' }, input), dir: 'row', head: ['内容'], rows: list.map((x) => ({ label: fmtA(x.addr, input), cells: [{ v: hexAlts(`${hx2(x.b)}H`) }] })) };
     }
     const extra = [{ label: 'sizeof', v: String(r.lay.size), num: true }];
     if (input.look !== null) {

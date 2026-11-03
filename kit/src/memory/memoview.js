@@ -3,7 +3,7 @@
 // 等确认的「确认 / 改 / 不要」，写进去了的「撤销」（UNDO_DAYS 天内）。
 // 确认、不要、撤销只在这里由我点按钮触发（memops.js），课堂里的 Claude 的输出碰不到。
 import { ask } from '../dialog.js';
-import { escapeHtml } from '../render.js';
+import { escapeHtml, mdToHtml } from '../render.js';
 import { toast } from '../record.js';
 import { pendingTitle, memoLine, canUndo, groupPending } from './memo.js';
 import { UNDO_DAYS } from './schema.js';
@@ -91,7 +91,7 @@ export function createMemoView({ db, ops, nameOf = null }) {
       : p.status === 'done' && canUndo(p) ? `<button type="button" class="btn btn-sm mm-undo" title="${UNDO_DAYS} 天内能撤">撤销</button>` : '';
     const basis = (p.basis || []).slice(0, 8);
     return `<div class="mm-item is-${escapeHtml(p.status)} tier-${escapeHtml(tier)}" data-id="${escapeHtml(p.id)}">
-      <div class="mm-top"><span class="mm-badge">${escapeHtml(badge)}</span><span class="mm-title">${escapeHtml(pendingTitle(p, nameOf))}</span></div>
+      <div class="mm-top"><span class="mm-badge">${escapeHtml(badge)}</span><span class="mm-title">${(() => { const t = pendingTitle(p, nameOf); try { return mdToHtml(t, { inline: true }); } catch { return escapeHtml(t); } })()}</span></div>
       ${p.reason ? `<p class="mm-why">${escapeHtml(cut(p.reason, 200))}</p>` : ''}
       ${basis.length ? `<div class="mm-basis"><span class="muted">依据</span>${basis.map((b, i) => `<button type="button" class="mm-ev" data-ev="${escapeHtml(b)}" title="${escapeHtml(b)}">${basis.length > 1 ? `第 ${i + 1} 条` : '看原文'}</button>`).join('')}</div><div class="mm-evbox" hidden></div>` : ''}
       ${acts ? `<div class="mm-acts">${acts}</div>` : ''}

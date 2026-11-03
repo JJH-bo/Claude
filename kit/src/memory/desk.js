@@ -23,7 +23,7 @@ import { createMemOps } from './memops.js';
 import { createMemoView } from './memoview.js';
 import { resolvedErrors, voidedIds, activeLessons } from './memo.js';
 import { createPages } from './pages.js';
-import { reviewPack, deskBrief, briefId, todayReviews, reviewIdsOf, REVIEW_MAX } from './views.js';
+import { reviewPack, deskBrief, briefId, todayReviews, reviewIdsOf, REVIEW_MAX, plainTitle } from './views.js';
 import { readOnlyDb } from './session.js';
 import { SPACES, SPACE_KEYS, DEFAULT_SPACE, filterSpace, spaceOfDoc, spaceOfId, subjectOf, positionId, packIds, prefixOf } from './space.js';
 import { dueList } from './schema.js';
@@ -539,7 +539,7 @@ export async function renderDesk(root, meta) {
   function paintRecallAdd() {
     const f = $('.dk-radd-f');
     const blocks = sv().curriculum.filter((b) => b.level === 'block' || String(b.id).replace(/^[A-Z]{2}-/, '').split('.').length === 3).sort((a, b) => cmpId(a.id, b.id));
-    const opts = `<option value="">不挂块（${escapeHtml(SPACES[space].label)}）</option>${blocks.map((b) => `<option value="${escapeHtml(b.id)}">${escapeHtml(`${b.id} ${b.title || ''}`)}</option>`).join('')}`;
+    const opts = `<option value="">不挂块（${escapeHtml(SPACES[space].label)}）</option>${blocks.map((b) => `<option value="${escapeHtml(b.id)}">${escapeHtml(plainTitle(b.title) || b.id)}</option>`).join('')}`;
     if (raddWired) { const sel = f.querySelector('.dk-radd-b'); if (sel && sel.dataset.space !== space) { sel.innerHTML = opts; sel.dataset.space = space; } return; }
     raddWired = true;
     f.innerHTML = `<label class="mm-f"><span>问法（一条只问一件事）</span><textarea class="dk-radd-q" rows="2"></textarea></label>
@@ -824,7 +824,9 @@ export async function renderDesk(root, meta) {
     const fresh = livePack();
     const main = use ? use.main : fresh.main;
     const problems = use ? use.problems : fresh.problems;
-    const sid = await createClass(db, { block, main, problems, space, unit, taken: data.sessions.map((x) => x.id) });
+    // 没备课时这节课的标题用块的标题（以前是学习台的名字「数学 · 408 · 英语」，以前的课列表里看不出是哪节）
+    const blkTitle = block ? data.curriculum.find((d) => d.id === block)?.title || '' : '';
+    const sid = await createClass(db, { block, main, problems, space, unit: blkTitle || unit, taken: data.sessions.map((x) => x.id) });
     if (!use && fresh.main) {
       // 记下这份教案用掉了；教案里补上的待办这时才算补了（备了没上、重新备别的块，待办还在）
       await db.doc(`pack/${packIds(space).main}`).set({ ...fresh.main, usedBy: sid, usedAt: Date.now() }).catch(() => {});

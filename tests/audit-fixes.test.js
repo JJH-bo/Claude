@@ -84,3 +84,22 @@ test('add 的标题没加引号、后面跟 hold：hold 不被吞进标题', () 
   assert.equal(op.hold, true);
   assert.equal(op.title, '提示');
 });
+
+test('掌握：删了那节课（依据的作答都没了），页面定的状态退回去；我定的不动', async () => {
+  const { masteryProposals } = await import('../kit/src/memory/mastery.js');
+  const mem = {
+    curriculum: [{ id: 'L2.2.1', level: 'block' }],
+    evidence: [],
+    pending: [{ id: 'pd-a', by: 'page', status: 'done' }],
+    mastery: [
+      { id: 'L2.2.1', state: '基础题过', basis: ['ev-x1'], log: [{ field: 'state', from: '讲过', to: '基础题过', by: 'page', ref: 'pd-a', date: '2026-11-03' }] },
+    ],
+  };
+  const p = masteryProposals(mem);
+  assert.equal(p.length, 1);
+  assert.equal(p[0].patch.state, '讲过');
+  // 作答还在：不动
+  assert.equal(masteryProposals({ ...mem, evidence: [{ id: 'ev-x1', src: 'record', tags: ['L9.9.9'] }] }).length, 0);
+  // 我定的：不动
+  assert.equal(masteryProposals({ ...mem, mastery: [{ ...mem.mastery[0], log: [{ field: 'state', from: '讲过', to: '基础题过', by: 'me', date: '2026-11-03' }] }] }).length, 0);
+});

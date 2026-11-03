@@ -91,7 +91,8 @@ test('复现课：页面自己拼资料包（这一组、盯的弱点、错题�
   const { main, problems } = reviewPack(m, 'R3', { today: TODAY, packs: [{ block: 'L2.2.2', session: 'c-1', items: [{ q: '求 A^5', answer: '81A' }, { q: '求 A^5', answer: 'dup' }] }, { block: 'L9', items: [{ q: '别的' }] }] });
   assert.deepEqual(main.review, ['R3']);
   assert.equal(main.block, 'L2.2.2');
-  assert.match(main.unit, /^复现 R3/);
+  assert.match(main.unit, /^复现 · /);
+  assert.doesNotMatch(main.unit, /R3/, '给我看的标题不写编号');
   assert.match(main.student, /W19 内积和外积分不清/);
   assert.match(main.student, /L2-07：题「求 A²，A = αβᵀ」/);
   assert.match(main.plan, /review id=R3 result=过/);
@@ -122,7 +123,7 @@ test('今天复现：到期的按「从没复现 > 上次没过 > 过期久」�
   assert.equal(t[1].subject, '数据结构');
   const { main } = reviewPack(mem, t[0].pick.map((x) => x.id), { today: '2026-11-03' });
   assert.deepEqual(main.review, ['R3', 'R5', 'R1']);
-  assert.match(main.unit, /^复现 R3、R5、R1/);
+  assert.match(main.unit, /^复现 · 组R3、组R5、组R1/);
   assert.match(main.plan, /几组的题混着出、不说是哪一组/);
   assert.match(main.plan, /不是原题换数/);
   assert.match(main.plan, /没测到的点用 add=/);

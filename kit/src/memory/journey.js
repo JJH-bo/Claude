@@ -149,7 +149,9 @@ export function weekLines(mem = {}, { today = toDate(Date.now()), space = '', du
     const diff = w.now - w.before;
     lines.push({ k: 'week', text: `这 7 天学了 ${w.now} 分钟、${w.daysNow} 天${w.before ? `；前 7 天 ${w.before} 分钟${diff > 0 ? `，多了 ${diff} 分钟` : diff < 0 ? `，少了 ${-diff} 分钟` : ''}` : ''}` });
   }
-  if (days.has(today) && !dueToday && !recallToday) lines.push({ k: 'done', text: '今天到期的复现和要记的都做完了' });
+  // 今天真做过复现或想过记忆点，才说「都做完了」（全新的学习台上完第一节课，不该说做完了从来没有过的事）
+  const didToday = list(mem.reviews).some((r) => r?.last === today && r?.result) || list(mem.evidence).some((e) => e?.src === 'recall' && toDate(e.at) === today);
+  if (days.has(today) && !dueToday && !recallToday && didToday) lines.push({ k: 'done', text: '今天到期的复现和要记的都做完了' });
   for (const x of improvements(mem, { today, space }).slice(0, 3)) lines.push({ k: 'better', text: x.text });
   return lines;
 }
