@@ -21,4 +21,6 @@ export const FEATURES = {
   // 边写边显示（2026-11-03 我说更喜欢这样）：课堂 Claude 写完一段就先画上黑板，不等整轮写完；
   // 最后核验不是 Opus 5.5 时，这一轮画上去的全部撤掉（作废的规矩不变：不执行、不进对话历史）
   stream: true,
+  // 版面（class/canvas.js，docs/board-plan.md 第 4 节）：课堂 Claude 自己排板——这块板分几栏、每段放哪一栏，页面按真实内容排、栏间一道竖线
+  canvas: true,
 };
