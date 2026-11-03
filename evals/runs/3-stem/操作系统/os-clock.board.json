@@ -1,0 +1,46 @@
+{
+  "unit": "简单 CLOCK 置换",
+  "subject": "操作系统",
+  "steps": [
+    {
+      "id": "k1",
+      "seq": 1,
+      "pin": true,
+      "title": "简单 CLOCK",
+      "md": "每个物理块一个访问位。页被调入或命中：访问位置 1。\n缺页时从指针处往下扫：访问位 1 → 清 0、指针后移；访问位 0 → 换出这一页，新页放进来，指针移到下一块。"
+    },
+    {
+      "id": "s1",
+      "seq": 2,
+      "page": 1,
+      "title": "访问位全是 1 的时候",
+      "md": "三块都满、访问位都是 1，指针指着第 1 块。接下来依次访问 4、2、1：每一次先判断命中还是缺页，缺页时点出换出哪一页。\n\n```paging\nid: pg-sweep\ntitle: 指针转一圈\nalgo: clock\ninit: 1 1, 2 1, 3 1\nptr: 1\nrefs: 4 2 1\nask: hit, victim\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 1,
+      "md": "```conjecture\nid: cj-sweep\ntitle: 为什么转一圈\nq: 访问 4 时，指针为什么要把三块都扫一遍才换出？一句话。\nrubric: 要点 (1) 访问位是 1 的页这次不换，只清 0（给它第二次机会）；(2) 三块全是 1，扫一圈把它们都清成 0，回到起点才碰到访问位 0 的页。只说出 (1) 算部分正确。\nanswer: 访问位 1 的页刚被用过，只清 0 不换；三块全是 1，要把一圈都清成 0，回到第 1 块才找到访问位 0 的页，换出它。\nplaceholder: 因为……\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 2,
+      "title": "自己填过程表",
+      "md": "例题：引用串 1 2 3 4 1 2 5 1 2 3 4 5，3 个物理块，简单 CLOCK。前 3 次调入已经给出；后面每一列你自己填：各块的页和访问位、指针、缺页没有、换出哪一页。命中的那一列可以先「照抄」再改。\n\n```paging\nid: pg-fill\ntitle: CLOCK 过程表\nalgo: clock\nrefs: 1 2 3 4 1 2 5 1 2 3 4 5\nframes: 3\nmode: fill\ngiven: 3\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 3,
+      "title": "数缺页，再换一串",
+      "md": "表填完了，数一数一共缺页几次（一开始调入也算）。\n\n```paging\nid: pg-count\ntitle: 缺页几次\nalgo: clock\nrefs: 1 2 3 4 1 2 5 1 2 3 4 5\nframes: 3\nmode: quiz\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 3,
+      "md": "换一串：页面随机出引用串，写出依次换出的页。做对 2 题。\n\n```practice\nid: pr-clock\ntitle: 换一串\nuse: paging\nalgo: clock\nquiz: victims\ncount: 2\n```"
+    }
+  ]
+}

@@ -38,8 +38,9 @@
   {
    "id": "k2",
    "place": "pin",
-   "title": "什么时候白比",
-   "md": "在 $j$ 失配、退到 $k=next[j]$：若 $T[k]=T[j]$，这次比较**必然失配**，白比。"
+   "title": "白比和停下",
+   "md": "在 $j$ 失配、退到 $k=next[j]$：若 $T[k]=T[j]$，必然失配（白比），接着退；$T[k]\\ne T[j]$ 或退到 0 就停。停下的位置就是 $nextval[j]$。",
+   "hidden": false
   },
   {
    "id": "b4",
@@ -52,6 +53,12 @@
    "page": 4,
    "title": "再退一次",
    "md": "模式串 $T=$ a a b a a **b**，$next=$ 0 1 2 1 2 3。现在 $S[i]$ 和 $T[6]=\\text{b}$ 失配。\n\n```quiz\nid: q-chain2\nq: 跳过所有白比的比较，$j$ 最后应该退到几？（退到 0 就写 0。）\nanswer: 2\nexplain: $next[6]=3$，$T[3]=\\text{b}=T[6]$，白比；再退 $next[3]=2$，$T[2]=\\text{a}\\ne\\text{b}$，不一定失配，停在 2。\n```"
+  },
+  {
+   "id": "b6",
+   "page": 5,
+   "title": "一格格求 nextval",
+   "md": "```kmp\nid: k-nv1\ntitle: ababaab 的 nextval\npattern: ababaab\nshow: nextval\nask: nextval\n```"
   }
  ],
  "pages": [
@@ -74,9 +81,14 @@
    "n": 4,
    "title": "再退一次",
    "talk": "你退的每一步都对。这个「跳过白比、最后退到的位置」就叫 $nextval[j]$。你说没把握，是哪一步心里不稳？一句话说说。再换个串退一次。\n\n填好后说一句：你在哪一步停下的，为什么停。"
+  },
+  {
+   "n": 5,
+   "title": "一格格求 nextval",
+   "talk": "对，停在 2，理由也说清了：相同就接着退，遇到不同（或退到 0）就停。我把「什么时候停」补进常驻栏。现在把一整个串的 nextval 从左到右求一遍，每一格先你猜，再看页面怎么算。\n\n每一格照你刚才的退法猜；猜完留意页面每一格是怎么得出来的，有没有比一路退更快的办法。"
   }
  ],
- "cur": 4,
+ "cur": 5,
  "progress": {},
  "tries": {
   "q-next1": 1,
@@ -213,6 +225,18 @@
     "raw": "```quiz\nid: q-chain2\nq: 跳过所有白比的比较，$j$ 最后应该退到几？（退到 0 就写 0。）\nanswer: 2\nexplain: $next[6]=3$，$T[3]=\\text{b}=T[6]$，白比；再退 $next[3]=2$，$T[2]=\\text{a}\\ne\\text{b}$，不一定失配，停在 2。\n```",
     "at": 78
    }
+  },
+  "k-nv1": {
+   "seg": {
+    "id": "b6"
+   },
+   "f": {
+    "lang": "kmp",
+    "body": "id: k-nv1\ntitle: ababaab 的 nextval\npattern: ababaab\nshow: nextval\nask: nextval",
+    "id": "k-nv1",
+    "raw": "```kmp\nid: k-nv1\ntitle: ababaab 的 nextval\npattern: ababaab\nshow: nextval\nask: nextval\n```",
+    "at": 0
+   }
   }
  },
  "ops": [],
@@ -266,6 +290,11 @@
    "role": "student",
    "seq": 10,
    "text": "不稳的是不知道什么时候该停。这题T[6]=b，next[6]=3，T[3]=b一样，白比，继续退到next[3]=2；T[2]=a跟b不一样，不一定失配，所以停在2。\n[作答] b5 里的 quiz q-chain2：「跳过所有白比的比较，$j$ 最后应该退到几？（退到 0 就写 0。）」做对了（共 1 次）\n[动作] b5 里的组件 q-chain2：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 11,
+   "text": "对，停在 2，理由也说清了：相同就接着退，遇到不同（或退到 0）就停。我把「什么时候停」补进常驻栏。现在把一整个串的 nextval 从左到右求一遍，每一格先你猜，再看页面怎么算。\n\n````board pin id=k2 title=\"白比和停下\"\n在 $j$ 失配、退到 $k=next[j]$：若 $T[k]=T[j]$，必然失配（白比），接着退；$T[k]\\ne T[j]$ 或退到 0 就停。停下的位置就是 $nextval[j]$。\n````\n\n````board new id=b6 title=\"一格格求 nextval\"\n```kmp\nid: k-nv1\ntitle: ababaab 的 nextval\npattern: ababaab\nshow: nextval\nask: nextval\n```\n````\n\n每一格照你刚才的退法猜；猜完留意页面每一格是怎么得出来的，有没有比一路退更快的办法。\n"
   }
  ],
  "turns": [
@@ -420,8 +449,21 @@
     }
    ],
    "msg": "不稳的是不知道什么时候该停。这题T[6]=b，next[6]=3，T[3]=b一样，白比，继续退到next[3]=2；T[2]=a跟b不一样，不一定失配，所以停在2。\n[作答] b5 里的 quiz q-chain2：「跳过所有白比的比较，$j$ 最后应该退到几？（退到 0 就写 0。）」做对了（共 1 次）\n[动作] b5 里的组件 q-chain2：学生标了「有把握」"
+  },
+  {
+   "seq": 11,
+   "role": "teacher",
+   "bytes": 739,
+   "talk": "对，停在 2，理由也说清了：相同就接着退，遇到不同（或退到 0）就停。我把「什么时候停」补进常驻栏。现在把一整个串的 nextval 从左到右求一遍，每一格先你猜，再看页面怎么算。\n\n每一格照你刚才的退法猜；猜完留意页面每一格是怎么得出来的，有没有比一路退更快的办法。",
+   "ops": [
+    "pin",
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 5 块板「一格格求 nextval」\n\n老师写在板顶的话：对，停在 2，理由也说清了：相同就接着退，遇到不同（或退到 0）就停。我把「什么时候停」补进常驻栏。现在把一整个串的 nextval 从左到右求一遍，每一格先你猜，再看页面怎么算。\n\n每一格照你刚才的退法猜；猜完留意页面每一格是怎么得出来的，有没有比一路退更快的办法。\n\n## 一格格求 nextval\n【演示 kmp k-nv1】ababaab 的 nextval\n  输入：pattern: ababaab\n  第 6 步：T[1..5] = ababa：最长的相等前后缀是「aba」（长 3），所以 next[6] = 3 + 1 = 4。\n  第 7 步：T[1..6] = ababaa：最长的相等前后缀是「a」（长 1），所以 next[7] = 1 + 1 = 2。\n  第 8 步：再求 nextval：nextval[1] = 0；j ≥ 2 时，如果 T[j] = T[next[j]]，失配后退到 next[j] 还是会失配，所以 nextval[j] = nextval[next[j]]；不相等就是 next[j]。\n  第 9 步：nextval[1] = 0。\n  第 1 / 6 问（走到第 10 步之前）：nextval[2] 是多少？\n  （写出来）\n\n# 常驻栏\n## 口径（王道）\n位置从 1 数；$next[1]=0$；$next[j]$ = $T[1..j-1]$ 最长相等前后缀的长度 $+1$。\n## 白比和停下\n在 $j$ 失配、退到 $k=next[j]$：若 $T[k]=T[j]$，必然失配（白比），接着退；$T[k]\\ne T[j]$ 或退到 0 就停。停下的位置就是 $nextval[j]$。\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 10,
+ "seq": 11,
  "pendingNotes": []
 }

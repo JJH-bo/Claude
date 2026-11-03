@@ -56,7 +56,7 @@
   {
    "n": 3,
    "title": "[5] 和 5 一样吗",
-   "talk": "你的感觉没错：严格说它是一个 $1\\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。\n\n算完以后，拿结果和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 比一比。"
+   "talk": "形状和数都对。再往前一步：把 $(5,10)^{\\mathrm T}$ 和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 放一起看——乘 $1\\times1$ 矩阵 $[5]$，和直接乘数 $5$，结果有区别吗？在输入框里一句话说说。"
   }
  ],
  "cur": 3,
@@ -246,6 +246,11 @@
    "role": "student",
    "seq": 10,
    "text": "2×1 乘 1×1，中间都是1，结果 2×1：[5, 10] 的列。\n[作答] b4 里的 answer q-a11「按矩阵乘法乘」：填了 [[5],[10]]（对，第 1 次）\n[动作] b4 里的组件 q-a11：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 11,
+   "text": "形状和数都对。再往前一步：把 $(5,10)^{\\mathrm T}$ 和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 放一起看——乘 $1\\times1$ 矩阵 $[5]$，和直接乘数 $5$，结果有区别吗？在输入框里一句话说说。\n"
   }
  ],
  "turns": [
@@ -397,8 +402,18 @@
     }
    ],
    "msg": "2×1 乘 1×1，中间都是1，结果 2×1：[5, 10] 的列。\n[作答] b4 里的 answer q-a11「按矩阵乘法乘」：填了 [[5],[10]]（对，第 1 次）\n[动作] b4 里的组件 q-a11：学生标了「有把握」"
+  },
+  {
+   "seq": 11,
+   "role": "teacher",
+   "bytes": 231,
+   "talk": "形状和数都对。再往前一步：把 $(5,10)^{\\mathrm T}$ 和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 放一起看——乘 $1\\times1$ 矩阵 $[5]$，和直接乘数 $5$，结果有区别吗？在输入框里一句话说说。",
+   "ops": [],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 3 块板「[5] 和 5 一样吗」\n\n老师写在板顶的话：形状和数都对。再往前一步：把 $(5,10)^{\\mathrm T}$ 和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 放一起看——乘 $1\\times1$ 矩阵 $[5]$，和直接乘数 $5$，结果有区别吗？在输入框里一句话说说。\n\n## [5] 和 5 一样吗\n常驻栏里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=[\\,5\\,]$，一个 $1\\times1$ 矩阵。\n\n【作答题 q-a11】按矩阵乘法乘\n  按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}5\\end{bmatrix}$ 等于多少？\n  （写出答案）\n\n# 常驻栏\n## 这节课的记号\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 10,
+ "seq": 11,
  "pendingNotes": []
 }
