@@ -47,6 +47,10 @@ export function createDevTeacher({ fallback = false, pace = 1, script = null } =
     if (tooBig) throw fail('prompt_too_large', '这一轮的内容超过了 256 KiB');
     const bad = imageProblem(opts.images);
     if (bad) throw fail('image_rejected', bad);
+    // 验证脚本（tools/canvas-sim.mjs）：剧本放完了就一直「在想」，不往板上写东西，页面停在上一轮的样子
+    if (reply.kind === 'script-end' && globalThis.LAKitDevScriptWait) {
+      await new Promise((_, rej) => signal?.addEventListener('abort', () => rej(cancelled(''))));
+    }
     if (reply.kind === 'error') {
       await wait(THINK_MS * k / 2, signal);
       throw fail(reply.code, `模拟错误：${reply.code}`);

@@ -41,6 +41,7 @@ const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, d
 await ctx.addInitScript(([key, data, script]) => {
   try { localStorage.clear(); localStorage.setItem(key, data); } catch { /* */ }
   window.LAKitDevScript = script;
+  window.LAKitDevScriptWait = true;
   window.confirm = () => false;
 }, [`la-devdb:${unit}`, JSON.stringify(db), turns]);
 const page = await ctx.newPage();
@@ -69,7 +70,7 @@ const lastInput = () => page.evaluate(() => {
   return c ? c.input : null;
 });
 
-// 学生一步一步来：s-1、s-2……（.txt 是说的话；.json 是 { "answers": { "组件 id": ["格子 1", "格子 2"] | "选项的字" }, "say": "…" }）。
+// 学生一步一步来：s-1、s-2……（.txt 是说的话；.json 是 { "answers": { "组件 id": ["格子 1", "格子 2"] | "选项的字" }, "steps": { "组件 id": ["每一步写的想法"] }, "say": "…" }）。
 // 每一步之后等页面安静：调用了老师，模拟老师就交下一段 t-…；预案接住了就不调用
 const steps = [];
 for (let i = 1; ; i++) {
@@ -102,6 +103,18 @@ for (let i = 0; i < steps.length; i++) {
   if (i === steps.length - 1) logBefore = (await logNow()).length;
   if (i === 0 && !st.say && !st.answers) await page.locator('.class-start').click();
   for (const [bid, v] of Object.entries(st.answers || {})) await answer(bid, v);
+  // steps：每一步先写想法、点「写好了」、再揭开（{ "steps": { "ex-1": ["想法 1", "想法 2"] } }）
+  for (const [bid, list] of Object.entries(st.steps || {})) {
+    const blk = page.locator(`.block[data-bid="${bid}"]`).first();
+    for (const idea of list) {
+      const item = blk.locator('.st-item:not([hidden])').last();
+      await item.locator('textarea').first().fill(String(idea)).catch(() => {});
+      await item.locator('.st-submit').first().click().catch(() => {});
+      await page.waitForTimeout(300);
+      await item.locator('.st-reveal').first().click().catch(() => {});
+      await page.waitForTimeout(500);
+    }
+  }
   if (st.say) await say(st.say);
   await settleAll();
 }

@@ -42,7 +42,7 @@ import { spaceOfId } from '../memory/space.js';
 import { textbookForClass, readChunks, searchChunks } from '../books/textbook.js';
 import { planLocal, markFired, reactNote, armedText, rebuildRules, dropForSeg } from './react.js';
 import { beatPlan, shouldPlay, DEFERRED_OPS } from './beats.js';
-import { ROWS as CV_ROWS, COLS as CV_COLS, placeBlock, defaultSize, mapText, atText, rowsFor } from './canvas.js';
+import { ROWS as CV_ROWS, COLS as CV_COLS, MAX_ROW as CV_MAX, placeBlock, defaultSize, mapText, atText, rowsFor } from './canvas.js';
 
 export const MODEL = 'claude-opus-5-5';
 // 学生明确要求：讲课只能是 Opus 5.5、effort high；modelTier 只是平台要求的退路（退路的输出会被丢弃）
@@ -825,6 +825,8 @@ export async function renderClass(root, meta, desk = null) {
       seg.hidden = false;
       seg.sec.hidden = false;
       seg.sec.classList.add('beat-in');
+      // 版面：藏着时不占地方，揭开时放回它写的 at=（被别的段长过去占了，就放到最近的空处）
+      if (CANVAS && seg.at && seg.place !== 'pin') layoutSeg(seg, seg.at, notes);
       saveSeg(seg);
       return { op: 'show', id: op.id, ok: true, page: seg.page || undefined };
     }
@@ -847,9 +849,10 @@ export async function renderClass(root, meta, desk = null) {
   }
 
   // —— 版面（canvas.js）：段按 at= 摆进格子；比格子大先缩小，还放不下就在块里滑；记下实际要几行给 Claude 看 ——
+  const WIDE_NO = new Set(['scene', 'graph', 'space', 'image', 'sketch', 'predict']);
   function langsOf(md) { return [...String(md).matchAll(/^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*([A-Za-z][\w-]*)/gm)].map((m) => m[1].toLowerCase()); }
   function layoutSeg(seg, want, notes, { auto = false } = {}) {
-    const others = [...segs.values()].filter((s) => s !== seg && s.page === seg.page && s.place !== 'pin' && !s.hidden && !s.pending && s.at && s.sec);
+    const others = [...segs.values()].filter((s) => s !== seg && s.page === seg.page && s.place !== 'pin' && !s.hidden && !s.held && !s.pending && s.at && s.sec);
     const r = placeBlock(others.map((s) => s.at), want, defaultSize(langsOf(seg.md), seg.md.length));
     if (r.moved) notes?.push(`${seg.id} 的 at=${atText(want)} 和板上别的段重叠，页面挪到了 at=${atText(r.at)}（要换地方先 move 或 hide 挡着的段）。`);
     else if (auto && r.auto) notes?.push(`${seg.id} 没写 at=，页面放在了 at=${atText(r.at)}。`);
@@ -894,10 +897,28 @@ export async function renderClass(root, meta, desk = null) {
     // 估小了、下面又空着：先往下加长（一屏以内），加长了不够再缩小
     const want = rowsFor(need + (sec.clientHeight - avail), cvRow, cvGap);
     const rows = seg.at.r2 - seg.at.r1 + 1;
-    if (want > rows && seg.at.r2 < CV_ROWS) {
-      const others = [...segs.values()].filter((x) => x !== seg && x.page === seg.page && x.place !== 'pin' && !x.hidden && x.at).map((x) => x.at);
+    // 藏着的段不占地方（揭开时再找位置）
+    const others = want > rows ? [...segs.values()].filter((x) => x !== seg && x.page === seg.page && x.place !== 'pin' && !x.hidden && !x.held && x.at).map((x) => x.at) : [];
+    const free = (a) => !others.some((o) => o.c1 <= a.c2 && a.c1 <= o.c2 && o.r1 <= a.r2 && a.r1 <= o.r2);
+    // 字多的段（推导、步骤、题）旁边空着：先往旁边加宽，变矮了就不用往下长（图按比例画，加宽反而更高，不加宽）
+    if (want > rows && !seg.widened && !langsOf(seg.md).some((l) => WIDE_NO.has(l))) {
+      let { c1, c2 } = seg.at;
+      while (c2 < CV_COLS && free({ ...seg.at, c1: c2 + 1, c2: c2 + 1 })) c2++;
+      while (c1 > 1 && free({ ...seg.at, c1: c1 - 1, c2: c1 - 1 })) c1--;
+      seg.widened = true;
+      if (c2 - c1 > seg.at.c2 - seg.at.c1) {
+        seg.at = { ...seg.at, c1, c2 };
+        seg.grew = true;
+        sec.style.gridColumn = `${c1} / ${c2 + 1}`;
+        saveSeg(seg);
+        requestAnimationFrame(() => fitSeg(seg));
+        return;
+      }
+    }
+    if (want > rows && seg.at.r2 < CV_MAX) {
+      // 往下长可以超出一屏（学生滑一下），比缩小、在块里滑好读
       let r2 = seg.at.r2;
-      while (r2 < Math.min(CV_ROWS, seg.at.r1 + want - 1) && !others.some((o) => o.c1 <= seg.at.c2 && seg.at.c1 <= o.c2 && o.r1 <= r2 + 1 && r2 + 1 <= o.r2)) r2++;
+      while (r2 < Math.min(CV_MAX, seg.at.r1 + want - 1) && !others.some((o) => o.c1 <= seg.at.c2 && seg.at.c1 <= o.c2 && o.r1 <= r2 + 1 && r2 + 1 <= o.r2)) r2++;
       if (r2 > seg.at.r2) {
         seg.at = { ...seg.at, r2 };
         seg.grew = true;
@@ -951,7 +972,7 @@ export async function renderClass(root, meta, desk = null) {
   function canvasState() {
     if (!CANVAS) return null;
     if (!cvCell) sizeCanvas();
-    const blocks = [...segs.values()].filter((s) => s.page === bv.cur && s.place !== 'pin' && !s.hidden && s.at).map((s) => ({ id: s.id, at: s.at }));
+    const blocks = [...segs.values()].filter((s) => s.page === bv.cur && s.place !== 'pin' && !s.hidden && !s.held && s.at).map((s) => ({ id: s.id, at: s.at }));
     return { map: mapText(blocks), cell: cvCell };
   }
 
