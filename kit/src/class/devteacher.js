@@ -20,7 +20,8 @@
 // 「测试:记忆」学习台里上课：真的调用 memory_read、lesson_note（提议）、slip_note 三个工具，写一段标了 point= 的题；
 // 「测试:出题」自定义练习模板（practice type: custom，页面随机出题）；「测试:公式」写含 n 的式子（answer 的 formula: n）；
 // 「测试:示意图」sketch 当场画的图 + highlight + label= 标注；「测试:推导」derive 分拍板书 + figure play step；
-// 「测试:原图」image 贴讲义原图（本地用一张模拟的）；「测试:排序」演示组件 sort（快排一次划分，先猜枢轴落在哪）+ figure play step + mark。
+// 「测试:原图」image 贴讲义原图（本地用一张模拟的）；「测试:排序」演示组件 sort（快排一次划分，先猜枢轴落在哪）+ figure play step + mark；
+// 「测试:预案」board react + add … hold（答错、答对都由页面接，不再调用）；「测试:拍子」一轮分四拍（说一句、写一段、圈一下……）。
 // 系统发来的「[动作] … 没有动静」（察觉卡住）→ 轻轻问一句；只带「[板书]」的消息 → 说收到了。
 
 export const DEV_LIMITS = Object.freeze({ maxPromptBytes: 262144, images: Object.freeze({ maxCount: 4, maxInputBytes: 20000000, mediaTypes: Object.freeze(['image/png', 'image/jpeg']) }) });
@@ -148,6 +149,45 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
       text: join('（模拟老师）这一轮故意写了两块新板，第一块还很长。',
         board(`new id=b${n} title="很长的一块板"`, Array.from({ length: 14 }, (_, i) => para(i + 1)).join('\n\n')),
         board(`new id=b${n + 1} title="第二块新板"`, '这一段本来想换新板，页面会并到上面那块板上。')),
+    };
+  }
+
+  // 预案（docs/board-plan.md）：出一道题，预先写好答对 / 答错 / 想不出来各接什么，答对了揭开藏着的下一题。
+  // 学生在这两道题上作答，页面当场接，不再调用模拟老师（开发面板的调用记录不涨）
+  if (!isSystem && /测试\s*[:：]?\s*预案/.test(said)) {
+    const n = nextSeq(turns, memo);
+    const q = (id, x, hint) => fence('answer', [`id: ${id}`, 'title: 算一个', String.raw`q: $A=\begin{bmatrix}1&1\\2&2\end{bmatrix}$，$\mathbf x=${x}$，$A\mathbf x$ 等于多少？`, 'let A = [[1, 1], [2, 2]]', `answer: A*${x.replace(/\\?[()]/g, (c) => (c.endsWith('(') ? '[' : ']'))}`, `hint: ${hint}`].join('\n'));
+    return {
+      kind: 'react',
+      text: join(
+        pic + '（模拟老师）先算一个。你答完，页面按我预先写好的话接，不再叫我。',
+        board(`new id=b${n} title="先算一个"`, q(`q-${n}`, '(3, -1)', '第一个分量是第一行和 $(3,-1)$ 的点积。')),
+        board(`add id=b${n + 1} hold title="再来一个"`, q(`q-${n + 1}`, '(1, 0)', '乘 $(1,0)$ 就是取出第一列。')),
+        board(`react target=q-${n}`, [
+          `right show=b${n + 1}: 对，$(2, 4)$。再来一个：乘 $(1,0)$ 会得到什么？`,
+          String.raw`wrong: 先只算第一个分量：第一行 $(1,1)$ 和 $(3,-1)$ 的点积是几？再试一次。`,
+          `giveup show=b${n + 1}: 没关系：第一个分量 $1\\cdot3+1\\cdot(-1)=2$，第二个 $2\\cdot3+2\\cdot(-1)=4$。下面换一个更简单的试试。`,
+        ].join('\n')),
+        board(`react target=q-${n + 1}`, 'right: 对：乘 $(1,0)$ 就是取出 $A$ 的第一列。（模拟老师：再往下就要叫我了）'),
+      ),
+    };
+  }
+
+  // 拍子（docs/board-plan.md）：说一句、写一段、再说一句、圈一下……页面一拍一拍地播，学生点「下一拍」
+  if (!isSystem && /测试\s*[:：]?\s*拍子/.test(said)) {
+    const n = nextSeq(turns, memo);
+    return {
+      kind: 'beats',
+      text: join(
+        pic + '（模拟老师）这一轮分四拍讲。先看这个矩阵：两行成比例。',
+        board(`new id=b${n} title="秩一矩阵"`, String.raw`$$A=\begin{bmatrix}\hl{r1}{1\;\;1}\\\hl{r2}{2\;\;2}\end{bmatrix}$$`),
+        '第二行正好是第一行的 2 倍——圈出来看。',
+        board(`mark target=b${n} term=r2 note="= 2 × 第一行"`),
+        '所以它能拆成一列乘一行：',
+        board(`add id=b${n + 1} title="拆开"`, String.raw`$$A=\begin{bmatrix}1\\2\end{bmatrix}\begin{bmatrix}1&1\end{bmatrix}=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$$`),
+        '最后，你来判断：',
+        board(`add id=b${n + 2} title="判断"`, fence('quiz', [`id: q-${n + 2}`, String.raw`q: $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$ 是`, '- [x] 一个数', '- [ ] 2×2 矩阵'].join('\n'))),
+      ),
     };
   }
 

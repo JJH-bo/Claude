@@ -12,6 +12,7 @@
 - **学习台自己管自己**（外部 Claude 只做开发；课堂里的 Claude 管学习台，规则和掌握仍要我确认；记忆不冗杂：拦照抄、条数上限、顺着下课整理定期合并）和进度：`docs/autonomy-plan.md`。现在做学习台以它为准（2026-11-03 做完第 1、2 批；之后改成什么都不用我确认，版本 2026-11-03e）。
 - 数学和 408 再提升一轮（演示组件当练习题、演示上的滑块、答案的新写法、学生自己画波形和填过程表、含参数的精确计算、量一遍）和进度：`docs/stem-plan.md`
 - 攻学习台的上限（学得会、学得牢：信心标定、按证据算掌握、页面自己跑的练习和混练、教学尺子、课堂计划块、学生逐行推导）和进度：`docs/learning-plan.md`
+- **黑板不像对话框**（预案 `board react`：学生作答后页面当场接、不调用；拍子：一轮一拍一拍地播；固定画面的板为什么不做）和进度：`docs/board-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
 ## 分支
@@ -37,7 +38,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - `live-demo.html?dev`：实时黑板，右上角开发面板扮演对话里的 Claude
   - `408-demo.html`：计算机四门课的全部演示组件
   - `desk-demo.html?dev`：学习台（记忆库、在学习台里上课；「测试:记忆」见下文「学习台和记忆库」）
-  - `class-demo.html?dev`：课堂模式，模拟老师按剧本回放（不调用 Claude）；剧本里故意有一段写错的组件（`circle` 那行），控制台报「看不懂这一行」是正常的。在输入框里打暗号看教具：「测试:教具」（`let` 块 + `matrix` 的乘积 + 逐行 `mark` + `\calc`）、「测试:幂」（滑块和 `figure play` 让矩阵动起来）、「测试:指图」（图上的 `label=` / `at=` 标注）、「测试:出题」（`practice` 的自定义题型）、「测试:公式」（写含 n 的式子）、「测试:示意图」（`sketch`）、「测试:推导」（`derive` + `figure play step`）、「测试:原图」（`image`，本地用一张模拟的讲义图）、「测试:排序」（演示组件 `sort` + `figure play step` + `mark`）
+  - `class-demo.html?dev`：课堂模式，模拟老师按剧本回放（不调用 Claude）；剧本里故意有一段写错的组件（`circle` 那行），控制台报「看不懂这一行」是正常的。在输入框里打暗号看教具：「测试:教具」（`let` 块 + `matrix` 的乘积 + 逐行 `mark` + `\calc`）、「测试:幂」（滑块和 `figure play` 让矩阵动起来）、「测试:指图」（图上的 `label=` / `at=` 标注）、「测试:出题」（`practice` 的自定义题型）、「测试:公式」（写含 n 的式子）、「测试:示意图」（`sketch`）、「测试:推导」（`derive` + `figure play step`）、「测试:原图」（`image`，本地用一张模拟的讲义图）、「测试:排序」（演示组件 `sort` + `figure play step` + `mark`）、「测试:预案」（`board react` + `add … hold`：答错、答对都由页面接，开发面板里调用次数不涨）、「测试:拍子」（一轮分四拍，点「下一拍」、「‹」、快捷「继续」）
     - `la-demo.html`：线代的过程组件（elim、det、eig、schmidt、quad、frames）
     - `practice-demo.html`：演示组件当练习题（`practice use:`）；`answer-demo.html`：答案的新写法（`ans()`、数集、方程、定点数、含参数、按格的 Aⁿ）
 - iPad 尺寸：竖屏 820×1180，横屏 1180×820。云端会话里可以用预装的 Playwright + Chromium 截图检查。
@@ -96,7 +97,9 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 ### 课堂模式（`kit/src/class/`）
 
 - `classroom.js`：控制器。一屏一块板（`board new` 换板，旧板翻页看）、板顶那句话、常驻栏、一屏放不放得下的测量（`--board-h`）、学生作答排队（1.5 秒合并，拖动跟着下一条一起发；没提交的草稿也跟着下一条发，见 `drafts.js`）、调用课堂 Claude、执行黑板指令、写法自检和自动重写、刷新后恢复。板书标注记在 `marks`（id → 所在段和 spec），段被改写 / 撤回时一起擦掉，刷新后按 `boardOps` 的时间线重放；工具 `calc`（精确计算）、`component_doc`（组件的完整写法），查看方式支持工具时才给。板顶那句话后面标出平台核验的模型（`class_pages.talkBy`），「⋯」菜单写核验 / 作废了几轮，下课小结的最后一行（`foot`）和 `class_notes` 的 `verify` 由页面写。对话太长时的摘要也只用 Opus 5.5 high，在一轮讲完后后台写（不让学生等）；学生附的图直接交给 Claude，不等它传进 assets。学生发的消息不上黑板。学生在当前板、常驻栏上新写的板书（`ink/` 的笔画，按段的位置拼成一张图），跟着下一条消息导出成图发给课堂 Claude（`[板书]` 那一行；有没发的板书时输入框空着也能发，`bar.js` 的 `inkPending`，板书一变 `ink/overlay.js` 发 `ink-change`）；当前板上有题没做、学生很久没动静时，提醒课堂 Claude 轻轻问一句（`stuck.js`；每提醒一次就是一整轮调用，默认关、「⋯」里能开，`?dev&stuck=8` 自动打开并把等待改成 8 秒）。每次调用 Claude 记一条花费 `cost`（`usage.js`：发出去的字节、为什么调用、调了几次工具）在那一轮的 `class_turns` 上，「⋯」里显示这节课一共约多少 token、多跑了几轮为什么，学习台里合计写进 `sessions/{编号}.usage`。
-- `protocol.js`：解析课堂 Claude 的输出。普通文字是对学生说的话（写在板顶）；```` ```board ```` 围栏块是黑板指令（new / add / replace / hide / pin / unpin / figure / mark / unmark）。纯函数，支持流式前缀；`mark` 块闭合以后才把块里的各行拼成 `marks`。
+- `protocol.js`：解析课堂 Claude 的输出。普通文字是对学生说的话（写在板顶）；```` ```board ```` 围栏块是黑板指令（new / add / replace / hide / show / pin / unpin / figure / mark / unmark / react）。纯函数，支持流式前缀；`mark` 块闭合以后才把块里的各行拼成 `marks`。
+- 预案（`react.js`，纯函数，`docs/board-plan.md`）：`board react target=组件` 一行一条「right / wrong / misread "…" / giveup / done [step=] [show=段]: 说的话」。`classroom.js` 的 `flush` 先 `tryLocal`：这一批排着的动作都归得进没用过的预案（`planLocal`；学生打了字、附图、板书、「没把握」都不行）就当场接——话写到板顶（`talkBy: 'pre'`，标「Opus 5.5 预写」），揭开 `add … hold` 藏着的段，记一条学生的轮和一条 `kind: react` 的系统轮（下一次调用时 Claude 看得到），不调用。每条只用一次、答对整组收起、段被改写撤回作废；刷新后 `rebuildRules` 从 `class_turns` 重建；黑板现状里列着没用的预案和「藏着」的段。`usage.js` 记页面接了几次（`local`）。
+- 拍子（`beats.js`，纯函数）：一轮里话和指令交替时分拍（一拍 = 一段话 + 后面的指令，没有改板面指令的拍并进前一拍，第二拍以后有 new 就不播）。段照常马上画好，后几拍的先藏（`beat-wait`）；hide / show / mark / unmark / figure 到那一拍才执行、补进这一轮的 `boardOps`。板顶一次一拍（`boardview.js` 画「‹ 2 / 4 下一拍 ›」，`onBeat`），这一拍的段亮、别的淡；学生有动作、要调用 Claude、下课之前 `finishBeats` 一下子播完；快捷「继续」在还有拍子时只走下一拍。`class_pages` 存 `beats`，刷新后停在最后一拍。`features.js` 的 `beats` 开关。
 - `prompt.js`：每一轮发给课堂 Claude 的内容（红线 `DEFAULT_RULES`、黑板指令说明 `PROTOCOL_DOC`、组件手册、资料包、黑板现状、对话历史和压缩）。纯函数。最近 `STUB_AFTER`（6）轮以前 Claude 写的长段原文换成一行「页面省略了……」（`stubBoardText`，有工具时才省），工具 `board_read` 按段 id 取回。
 - `docs.js` + `kit/build-docs.js`：构建时从 `CLAUDE-PROJECT.md` 第三节截出组件手册打包进去。小节里 `<!-- 完整写法 -->` 以前是精简版（每一轮都带），以后是不常用的写法：课堂 Claude 用工具 `component_doc` 按名字取；某个组件写错要重写时，页面把它的完整写法附在提醒里；资料包 `main.components` 点了名的组件直接带完整写法（`subject.js` 的 `docsForSubject` / `componentDoc`，`prompt.js` 的 `systemDocs` / `lintDocs`）。对话里写课件的 Claude 读整份 `CLAUDE-PROJECT.md`，两部分都看得到。
 - `bar.js`：底部输入框（附图、手写板、「⋯」菜单、iPad 软键盘）和它上面的一条：翻页（上一块 / 下一块 / 板列表 / 回到当前板）、快捷回答。不显示消息。

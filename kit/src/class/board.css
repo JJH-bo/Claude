@@ -91,6 +91,22 @@
 .class-talk > :last-child { margin-bottom: 0; }
 .class-talk .katex-display { margin: 6px 0; overflow-x: auto; overflow-y: hidden; }
 @keyframes talkIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* 拍子（beats.js）：板顶一次一拍，下面一排「‹ 2 / 4 下一拍 ›」；这一拍写的段亮、别的淡 */
+.class-beats { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-family: var(--sans); font-size: 15px; }
+.class-beats button {
+  min-width: 44px; min-height: 44px; padding: 0 14px; border-radius: 12px; font: inherit; color: var(--chalk);
+  background: rgb(var(--chalk-rgb) / 0.06); border: 1px solid rgb(var(--chalk-rgb) / 0.22); cursor: pointer;
+}
+.class-beats button:disabled { opacity: .35; cursor: default; }
+.class-beats .class-beat-next { color: var(--yellow); border-color: rgb(var(--yellow-rgb) / 0.55); background: rgb(var(--yellow-rgb) / 0.1); font-weight: 600; }
+.class-beat-at { color: rgb(var(--chalk-rgb) / 0.6); min-width: 3.5em; text-align: center; }
+.class-seg.beat-wait { display: none; }
+.class-seg.beat-in { animation: beatIn .45s ease both; }
+@keyframes beatIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.class-page-body > .class-seg { transition: opacity .3s ease; }
+.class-page.is-beating .class-page-body > .class-seg:not(.beat-focus) { opacity: .45; }
+.class-seg.beat-focus { animation: beatFocus 1.4s ease; border-radius: 10px; }
+@keyframes beatFocus { 0% { box-shadow: 0 0 0 0 rgb(var(--yellow-rgb) / 0); } 30% { box-shadow: 0 0 0 6px rgb(var(--yellow-rgb) / 0.22); } 100% { box-shadow: 0 0 0 0 rgb(var(--yellow-rgb) / 0); } }
 /* 正在写这一轮：原来的话先藏起来，换成草稿 */
 .class-page.is-drafting > .class-talk { display: none; }
 

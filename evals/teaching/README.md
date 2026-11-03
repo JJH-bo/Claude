@@ -21,7 +21,7 @@ node tools/teach-sim.mjs init evals/teaching/runs/<轮>/<场景>-noplan evals/te
 ```
 
 1. 每个目录开一个老师子代理、一个学生子代理（说明照 `runs/1/` 那一轮的写法：老师不许看场景文件和学生那边的文件，学生不许看老师那边的）。
-2. 轮流：老师写 `t-N.txt` → `teach-sim.mjs teacher`；学生写 `s-N.json` → `teach-sim.mjs student`。每节 8 轮左右。
+2. 轮流：老师写 `t-N.txt` → `teach-sim.mjs teacher`；学生写 `s-N.json` → `teach-sim.mjs student`。每节 8 轮左右。`student` 打印「页面按预案接了」时（老师写的 `board react` 接住了这次作答，`docs/board-plan.md`）**不跑老师**，学生接着看 `view.md` 再答；接过的几轮跟着下一次发给老师。`score` 里的 `localTurns` 是页面接了几轮（每一轮本来都是一次调用）。
 3. `node tools/teach-sim.mjs transcript <目录>` 写 `transcript.md`；`node tools/teach-sim.mjs score <目录…>` 出页面能算的指标。
 4. 一个评卷子代理读 `transcript.md` 和场景的 `misconception`、`rubric`，照下面的细则打分。
 5. 结果写进 `results.md`。

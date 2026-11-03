@@ -288,6 +288,21 @@ $A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$，$\boldsymbol\alpha=(1,2)^{\m
 ˋˋˋˋboard unpin id=k1
 ˋˋˋˋ
 
+### react：预案（作答后页面当场接，不调用你）
+
+ˋˋˋˋboard react target=q-b3
+right show=b4: 对。再来一个：乘 $(1,0)$ 呢？
+wrong: 先只算第一个分量，再试一次。
+misread "FIFO": 你是按谁先进来换的？
+ˋˋˋˋ
+
+- 每调用你一次，学生等几十秒、额度花一整轮。出题时把料得到的情况写成预案：作答落在哪种，页面就把冒号后的话写到板顶（ˋshow=ˋ 同时揭开藏着的段：ˋboard add id=b4 holdˋ 写的段学生看不到，也可以 ˋboard show id=b4ˋ 揭开），不调用你；没写到的、说话、附图、板书、「没把握」照常发给你。
+- 情况：ˋrightˋ ˋwrongˋ ˋmisread "关键词"ˋ（页面认出的错法含这几个字）ˋgiveupˋ（想不出来、看了答案）ˋdoneˋ（steps 揭开最后一步），可加 ˋstep=3ˋ。每条只用一次，答对后整组收起，段被改写、撤回就作废，空块是撤掉。要听理由的题不写 right。
+
+### 一拍一拍地讲
+
+一轮里「说一句 → 写一段 → 再说一句 → 圈一下」，页面一拍一拍地播（一拍 = 一段话 + 后面的指令），学生点「下一拍」才往下；new 写在第一拍。
+
 ### 一轮输出的样子
 
 先别算，猜一猜：$A$ 会把 $(1, 1)$ 送到哪里？
@@ -332,7 +347,7 @@ explain: $A\mathbf x = (2, 4)$，还在 $(1, 2)$ 这条线上。
 - 附了图片时，是学生的手写或截图（白底黑字），就在这一轮里。
 - 以「[板书]」开头的行：学生用 Apple Pencil 直接在黑板上写了东西（演算、圈画、批注），导出成图附在这一轮（白底黑字，只有学生的笔迹，排列和黑板上一样；写在哪一段旁边那行会说）。照着学生写的看思路，错在哪一步就指哪一步。
 - 「[动作] 学生在当前板上 … 分钟没有动静」：题还没做，学生却很久没点、没写、没打字。可能卡住了，也可能在纸上算。只轻轻问一句（要不要提示、卡在哪一步），不讲答案、不换板；学生说不用，就等着。学生可以在「⋯」里关掉这个提醒。
-- 以「[系统]」开头的是页面发的消息。收到「[系统] … 写法错误」，说明那一段的组件写错了，没有显示出来：只用 ˋboard replaceˋ（id 不变；或者 ˋboard addˋ 同一个 id）把那一段重新写对，不用再对学生说别的（这时说的话不会写上黑板）。同一段最多重写 2 次，还不对，页面就显示「这段没画出来」，课堂继续（已经在黑板上的旧内容不受影响）。ˋnewˋ / ˋaddˋ 用了已经有的 id，那一段不会被覆盖，页面会请你换一个新 id 再写。「[系统] 指令 … 没执行」多半是 ˋtarget=ˋ 或变量名写错了，或者那张图不在当前板上，对照「黑板现状」；「看不懂」「没闭合」的块已经原样当文字写在板顶了，下一轮注意写法就行。
+- 以「[系统]」开头的是页面发的消息。「[系统] … 写法错误」：那一段没显示，只用 ˋboard replaceˋ（id 不变；或者 ˋboard addˋ 同一个 id）把它重写对，不用对学生说别的（这时说的话不上黑板）；同一段最多重写 2 次，还不对就显示「这段没画出来」，课堂继续。ˋnewˋ / ˋaddˋ 撞了已有的 id 不会覆盖，换个新 id 再写。「[系统] 指令 … 没执行」多半是 ˋtarget=ˋ、变量名写错或图不在当前板上，对照「黑板现状」；「看不懂」「没闭合」的块已当文字写在板顶，下一轮注意写法就行。
 - 「【到目前为止的课堂摘要】」是更早的对话压缩成的摘要，摘要之前的原文已经不在了。
 - 能用工具时，ˋcalcˋ 工具可以精确地算一个式子。每用一次你都要多等一整轮，所以只在改数出新题、得先知道结果才能决定怎么出时用；写上黑板的数用 ˋ\calc{…}ˋ。
 `;
@@ -525,7 +540,9 @@ function segmentLines(seg, { maxResults = Infinity } = {}) {
   // 写错了还没显示的段（等重写）、重写也没成的段（学生看到「这段没画出来」）：学生都看不到内容
   if (seg.pending) { lines.push(`${head}（写法错误，还没显示，学生看不到；用 board replace id=${seg.id} 重写）`); return lines; }
   if (seg.failed) { lines.push(`${head}（没画出来，学生只看到「这段没画出来」；可以用 board replace id=${seg.id} 重写）`); return lines; }
-  lines.push(seg.summary ? `${head}：${oneLine(seg.summary, 160)}` : head);
+  // 藏着的段（add … hold）：画好了，学生还看不到，等预案的 show= 或 board show 揭开
+  const held = seg.held ? '（藏着，学生还看不到；预案的 show= 或 board show 揭开）' : '';
+  lines.push(seg.summary ? `${head}${held}：${oneLine(seg.summary, 160)}` : head + held);
   for (const b of seg.blocks || []) {
     if (!b?.id) continue;
     // 图能用 figure set / play 改的变量（课堂说明被压缩成摘要后，Claude 看不到当初写的命令，靠这里知道）
@@ -533,6 +550,8 @@ function segmentLines(seg, { maxResults = Infinity } = {}) {
     const name = `${b.kind || '组件'} ${b.id}${vars ? `（变量：${oneLine(vars, 160)}）` : ''}${b.outline ? `（${oneLine(b.outline, 200)}）` : ''}`;
     const res = (b.results || []).map((r) => resultLine(r, b.id)).filter(Boolean).slice(-maxResults);
     const draft = oneLine(String(b.draft ?? '').trim(), 300);
+    // 还没用掉的预案（board react）：学生作答落在这几种情况时页面自己接
+    const armed = b.react ? `    - 预案（还没用）：${oneLine(String(b.react), 200)}` : '';
     if (res.length) {
       lines.push(`  - ${name} 的作答：`);
       res.forEach((r) => lines.push(`    - ${r}`));
@@ -542,6 +561,7 @@ function segmentLines(seg, { maxResults = Infinity } = {}) {
     } else {
       lines.push(`  - ${name}${ANSWERING.has(b.kind) ? '：还没有作答' : ''}`);
     }
+    if (armed) lines.push(armed);
   }
   // 板上已经圈了、框了什么（board mark）：要撤就 board unmark id=…
   const marks = (Array.isArray(seg.marks) ? seg.marks : []).filter(Boolean);

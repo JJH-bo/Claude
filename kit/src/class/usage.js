@@ -36,7 +36,9 @@ export function usageOf(turns = []) {
     if (tools) extra.tools = (extra.tools || 0) + tools;
   }
   const extraCalls = Object.values(extra).reduce((a, b) => a + b, 0);
-  return { calls, bytes, tokens: approxTokens(bytes), avgBytes: calls ? Math.round(bytes / calls) : 0, need, extra, extraCalls };
+  // 页面按预案自己接了几次（react.js）：每一次本来都是一整轮调用
+  const local = (turns || []).filter((t) => t?.kind === 'react' && !t.discarded).length;
+  return { calls, bytes, tokens: approxTokens(bytes), avgBytes: calls ? Math.round(bytes / calls) : 0, need, extra, extraCalls, ...(local ? { local } : {}) };
 }
 
 /** 「约 4.2 万 token」「约 800 token」 */
@@ -51,5 +53,5 @@ export function tokenText(bytes) {
 export function usageText(u) {
   if (!u?.calls) return '';
   const why = Object.entries(u.extra || {}).filter(([, n]) => n > 0).map(([k, n]) => `${WHY_TEXT[k] || k} ${n}`);
-  return `调用 Claude ${u.calls} 轮，共${tokenText(u.bytes)}（每轮平均${tokenText(u.avgBytes)}）${u.extraCalls ? `；多跑 ${u.extraCalls} 轮：${why.join('、')}` : ''}`;
+  return `调用 Claude ${u.calls} 轮，共${tokenText(u.bytes)}（每轮平均${tokenText(u.avgBytes)}）${u.extraCalls ? `；多跑 ${u.extraCalls} 轮：${why.join('、')}` : ''}${u.local ? `；页面按预案接了 ${u.local} 次，没调用` : ''}`;
 }
