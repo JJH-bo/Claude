@@ -33,13 +33,22 @@ export function createDevAI() {
       problems: [{ q: '模拟的题：算 $2+3$', answer: '5', point: '加法', source: '自编' }], student: '',
     });
   }
+  // 知识点归类（memory/skills.js）：每道题按题号单双归到这一科第一块的两个知识点，错了的挂第一个弱点
+  function skills(prompt) {
+    const block = prompt.match(/## 课程地图（这一科的块）\n(\S+)/)?.[1] || 'L1.1.1';
+    const weak = prompt.match(/## 这一科还开着的弱点[^\n]*\n(W\d+)/)?.[1] || '';
+    const rows = [...prompt.matchAll(/^(\d+)\. .*：(\S*) /gm)];
+    const out = [`point ${block}#dev-a 模拟知识点甲`, `point ${block}#dev-b 模拟知识点乙`];
+    for (const [, n, seq] of rows) out.push(`item ${n} ${block}#dev-${Number(n) % 2 ? 'a' : 'b'}${weak && seq.includes('✗') ? ` ${weak}` : ''}`);
+    return out.join('\n');
+  }
   return {
     tools: true,
     images: { maxCount: 4, maxInputBytes: 20000000, mediaTypes: ['image/png', 'image/jpeg'] },
     async call(prompt, opts = {}) {
       await new Promise((r) => setTimeout(r, 300));
       const p = String(prompt);
-      const text = p.startsWith('你在把一本教材的扫描页') ? transcribe(p) : p.startsWith('你在帮学生整理学习台的课程地图') ? map(p) : p.startsWith('你是这个学生的老师，现在给下一节课备课') ? prep(p) : '{}';
+      const text = p.startsWith('你在把一本教材的扫描页') ? transcribe(p) : p.startsWith('你在帮学生整理学习台的课程地图') ? map(p) : p.startsWith('你是这个学生的老师，现在给下一节课备课') ? prep(p) : p.startsWith('你在给学生的一节课的题归类') ? skills(p) : '{}';
       opts.onText?.({ text, delta: text });
       return { text, truncated: false, modelApplied: 'claude-opus-5-5', modelTierApplied: 'complex' };
     },
