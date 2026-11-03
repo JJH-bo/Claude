@@ -1,0 +1,25 @@
+对，正好是 $5A$。这个 $5$ 前面出现过。下面不看具体的数，用 $\boldsymbol\alpha$、$\boldsymbol\beta$ 推一遍，看 $5$ 是从哪来的。
+
+````board new id=b6 title="5 从哪来"
+```steps
+id: ex-a2
+title: 用 α、β 推 A²
+q: $A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$，$\boldsymbol\alpha$、$\boldsymbol\beta$ 是列向量。说明 $A^2$ 是 $A$ 的倍数，并说出是几倍。
+
+step: 写出 A²
+ask: 先别算矩阵。$A^2$ 用 $\boldsymbol\alpha$、$\boldsymbol\beta$ 怎么写？
+show: $A^2=(\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})(\boldsymbol\alpha\boldsymbol\beta^{\mathrm T})=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$
+
+step: 换个括号
+ask: 结合律允许随便加括号。四个里面，中间哪两个先乘最省事？乘出来是什么形状？
+choices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量
+answer: 一个数
+show: $A^2=\boldsymbol\alpha\,\hl{mid}{(\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)}\,\boldsymbol\beta^{\mathrm T}$，中间是 $(1\times2)(2\times1)$，一个数。
+
+step: 把数提到前面
+ask: 用常驻栏 k2 那条，把 $A^2$ 写成「一个数 × $A$」。这个数是什么？为什么能挪到前面？一句话。
+show: $A^2=(\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)\,\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}=(\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha)\,A$；这里 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=\calc{b'*a}$，所以 $A^2=\calc{b'*a}A$。
+```
+````
+
+每一步先在框里写你的想法，再揭开。

@@ -1,15 +1,14 @@
-# 第 4 块板「算一个 A²」
+# 第 5 块板「5 从哪来」
 
-老师写在板顶的话：对，没区别：$1\times1$ 矩阵 $[c]$ 乘上去，效果就是每个数乘 $c$，所以就把它当数 $c$ 用，还可以写到最前面。这条记在常驻栏里。下面回到这节课的 $A$，先算一个具体的 $A^2$。
+老师写在板顶的话：对，正好是 $5A$。这个 $5$ 前面出现过。下面不看具体的数，用 $\boldsymbol\alpha$、$\boldsymbol\beta$ 推一遍，看 $5$ 是从哪来的。
 
-算出来以后，看看它和 $A$ 长得像不像。
+每一步先在框里写你的想法，再揭开。
 
-## 算一个 A²
-$A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}=\begin{bmatrix}1\\2\end{bmatrix}\begin{bmatrix}3&1\end{bmatrix}=\begin{bmatrix}3 & 1 \\ 6 & 2\end{bmatrix}$
-
-【作答题 q-a2】算 A²
-  按矩阵乘法算 $A^2=AA$，其中 $A=\begin{bmatrix}3 & 1 \\ 6 & 2\end{bmatrix}$。
-  （写出答案）
+## 5 从哪来
+【分步例题 ex-a2】用 α、β 推 A²
+  $A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$，$\boldsymbol\alpha$、$\boldsymbol\beta$ 是列向量。说明 $A^2$ 是 $A$ 的倍数，并说出是几倍。
+  第 1 步 写出 A²：先别算矩阵。$A^2$ 用 $\boldsymbol\alpha$、$\boldsymbol\beta$ 怎么写？
+  （写一句你的想法）
 
 # 常驻栏
 ## 这节课的记号

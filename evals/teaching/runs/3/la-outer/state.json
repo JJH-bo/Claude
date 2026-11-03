@@ -52,6 +52,12 @@
    "page": 4,
    "title": "算一个 A²",
    "md": "$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}3&1\\end{bmatrix}=\\calc{A}$\n\n```answer\nid: q-a2\ntitle: 算 A²\nq: 按矩阵乘法算 $A^2=AA$，其中 $A=\\calc{A}$。\nanswer: A*A\nbefore: A^2 =\nhint: $(1,1)$ 位是 $A$ 的第一行和第一列的点积。\nexplain: $A^2=\\calc{A*A}$。\n```"
+  },
+  {
+   "id": "b6",
+   "page": 5,
+   "title": "5 从哪来",
+   "md": "```steps\nid: ex-a2\ntitle: 用 α、β 推 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 是列向量。说明 $A^2$ 是 $A$ 的倍数，并说出是几倍。\n\nstep: 写出 A²\nask: 先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\nshow: $A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n\nstep: 换个括号\nask: 结合律允许随便加括号。四个里面，中间哪两个先乘最省事？乘出来是什么形状？\nchoices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量\nanswer: 一个数\nshow: $A^2=\\boldsymbol\\alpha\\,\\hl{mid}{(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)}\\,\\boldsymbol\\beta^{\\mathrm T}$，中间是 $(1\\times2)(2\\times1)$，一个数。\n\nstep: 把数提到前面\nask: 用常驻栏 k2 那条，把 $A^2$ 写成「一个数 × $A$」。这个数是什么？为什么能挪到前面？一句话。\nshow: $A^2=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,A$；这里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'*a}$，所以 $A^2=\\calc{b'*a}A$。\n```"
   }
  ],
  "pages": [
@@ -74,9 +80,14 @@
    "n": 4,
    "title": "算一个 A²",
    "talk": "对，没区别：$1\\times1$ 矩阵 $[c]$ 乘上去，效果就是每个数乘 $c$，所以就把它当数 $c$ 用，还可以写到最前面。这条记在常驻栏里。下面回到这节课的 $A$，先算一个具体的 $A^2$。\n\n算出来以后，看看它和 $A$ 长得像不像。"
+  },
+  {
+   "n": 5,
+   "title": "5 从哪来",
+   "talk": "对，正好是 $5A$。这个 $5$ 前面出现过。下面不看具体的数，用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 推一遍，看 $5$ 是从哪来的。\n\n每一步先在框里写你的想法，再揭开。"
   }
  ],
- "cur": 4,
+ "cur": 5,
  "progress": {},
  "tries": {
   "q-shape1": 1,
@@ -236,6 +247,18 @@
     "raw": "```answer\nid: q-a2\ntitle: 算 A²\nq: 按矩阵乘法算 $A^2=AA$，其中 $A=\\calc{A}$。\nanswer: A*A\nbefore: A^2 =\nhint: $(1,1)$ 位是 $A$ 的第一行和第一列的点积。\nexplain: $A^2=\\calc{A*A}$。\n```",
     "at": 124
    }
+  },
+  "ex-a2": {
+   "seg": {
+    "id": "b6"
+   },
+   "f": {
+    "lang": "steps",
+    "body": "id: ex-a2\ntitle: 用 α、β 推 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 是列向量。说明 $A^2$ 是 $A$ 的倍数，并说出是几倍。\n\nstep: 写出 A²\nask: 先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\nshow: $A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n\nstep: 换个括号\nask: 结合律允许随便加括号。四个里面，中间哪两个先乘最省事？乘出来是什么形状？\nchoices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量\nanswer: 一个数\nshow: $A^2=\\boldsymbol\\alpha\\,\\hl{mid}{(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)}\\,\\boldsymbol\\beta^{\\mathrm T}$，中间是 $(1\\times2)(2\\times1)$，一个数。\n\nstep: 把数提到前面\nask: 用常驻栏 k2 那条，把 $A^2$ 写成「一个数 × $A$」。这个数是什么？为什么能挪到前面？一句话。\nshow: $A^2=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,A$；这里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'*a}$，所以 $A^2=\\calc{b'*a}A$。",
+    "id": "ex-a2",
+    "raw": "```steps\nid: ex-a2\ntitle: 用 α、β 推 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 是列向量。说明 $A^2$ 是 $A$ 的倍数，并说出是几倍。\n\nstep: 写出 A²\nask: 先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\nshow: $A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n\nstep: 换个括号\nask: 结合律允许随便加括号。四个里面，中间哪两个先乘最省事？乘出来是什么形状？\nchoices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量\nanswer: 一个数\nshow: $A^2=\\boldsymbol\\alpha\\,\\hl{mid}{(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)}\\,\\boldsymbol\\beta^{\\mathrm T}$，中间是 $(1\\times2)(2\\times1)$，一个数。\n\nstep: 把数提到前面\nask: 用常驻栏 k2 那条，把 $A^2$ 写成「一个数 × $A$」。这个数是什么？为什么能挪到前面？一句话。\nshow: $A^2=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,A$；这里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'*a}$，所以 $A^2=\\calc{b'*a}A$。\n```",
+    "at": 0
+   }
   }
  },
  "ops": [],
@@ -309,6 +332,11 @@
    "role": "student",
    "seq": 14,
    "text": "算出来是 [[15,5],[30,10]]，好像是 A 的 5 倍？\n[作答] b5 里的 answer q-a2「算 A²」：填了 [[15,5],[30,10]]（对，第 1 次）\n[动作] b5 里的组件 q-a2：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 15,
+   "text": "对，正好是 $5A$。这个 $5$ 前面出现过。下面不看具体的数，用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 推一遍，看 $5$ 是从哪来的。\n\n````board new id=b6 title=\"5 从哪来\"\n```steps\nid: ex-a2\ntitle: 用 α、β 推 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 是列向量。说明 $A^2$ 是 $A$ 的倍数，并说出是几倍。\n\nstep: 写出 A²\nask: 先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\nshow: $A^2=(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})(\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T})=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$\n\nstep: 换个括号\nask: 结合律允许随便加括号。四个里面，中间哪两个先乘最省事？乘出来是什么形状？\nchoices: 一个数 | 一个 2×2 矩阵 | 一个 1×2 行向量\nanswer: 一个数\nshow: $A^2=\\boldsymbol\\alpha\\,\\hl{mid}{(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)}\\,\\boldsymbol\\beta^{\\mathrm T}$，中间是 $(1\\times2)(2\\times1)$，一个数。\n\nstep: 把数提到前面\nask: 用常驻栏 k2 那条，把 $A^2$ 写成「一个数 × $A$」。这个数是什么？为什么能挪到前面？一句话。\nshow: $A^2=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)\\,A$；这里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{b'*a}$，所以 $A^2=\\calc{b'*a}A$。\n```\n````\n\n每一步先在框里写你的想法，再揭开。\n"
   }
  ],
  "turns": [
@@ -508,8 +536,20 @@
     }
    ],
    "msg": "算出来是 [[15,5],[30,10]]，好像是 A 的 5 倍？\n[作答] b5 里的 answer q-a2「算 A²」：填了 [[15,5],[30,10]]（对，第 1 次）\n[动作] b5 里的组件 q-a2：学生标了「有把握」"
+  },
+  {
+   "seq": 15,
+   "role": "teacher",
+   "bytes": 1582,
+   "talk": "对，正好是 $5A$。这个 $5$ 前面出现过。下面不看具体的数，用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 推一遍，看 $5$ 是从哪来的。\n\n每一步先在框里写你的想法，再揭开。",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 5 块板「5 从哪来」\n\n老师写在板顶的话：对，正好是 $5A$。这个 $5$ 前面出现过。下面不看具体的数，用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 推一遍，看 $5$ 是从哪来的。\n\n每一步先在框里写你的想法，再揭开。\n\n## 5 从哪来\n【分步例题 ex-a2】用 α、β 推 A²\n  $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 是列向量。说明 $A^2$ 是 $A$ 的倍数，并说出是几倍。\n  第 1 步 写出 A²：先别算矩阵。$A^2$ 用 $\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 怎么写？\n  （写一句你的想法）\n\n# 常驻栏\n## 这节课的记号\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量\n## 1×1 矩阵当数用\n$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=[\\,c\\,]$ 就当数 $c$：$\\boldsymbol\\alpha\\,[\\,c\\,]=c\\,\\boldsymbol\\alpha$\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 14,
+ "seq": 15,
  "pendingNotes": []
 }
