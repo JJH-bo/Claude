@@ -112,6 +112,7 @@
   --field-edge: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.13);
 
   --hand: "Caveat", "Long Cang", "Kaiti SC", "STKaiti", "KaiTi", cursive;
+  --display: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif; /* 学习台的标题和大数字（书桌上的字），黑板上不用 */
   --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", "Microsoft YaHei", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: dark;
