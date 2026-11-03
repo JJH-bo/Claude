@@ -1,0 +1,13 @@
+那题是我写的问题，只显示了一个空，你填的 who 是对的。至于「为什么逗号后面不行」：that 引导从句时只有「挑出是哪一个」这一种用法；逗号的意思恰好是「不挑，只补充」，两者冲突，所以英语里规定逗号后面换成 which / who。看板上这一句，两个空一个挑、一个补充。
+
+````board new id=b6 title="一句里两个空"
+```cloze
+id: cz-b6
+title: 一个挑，一个补充
+q: 每个空填一个关系词（who / which / that），能填 that 的地方就填 that。
+text: The phone {{that|which|!who=phone 是物}} I bought last week has broken, but my old phone, {{which|!that=前面有逗号，是补充说明，不用 that|!who=phone 是物}} I have used for five years, still works.
+explain: 第 1 空没有逗号，从我的手机里挑出「上周买的那部」，that / which 都行；第 2 空有逗号，my old phone 已经确定是哪部，从句只是补充，只能用 which。
+```
+````
+
+填完用一句话说：第 1 空为什么 that 可以？

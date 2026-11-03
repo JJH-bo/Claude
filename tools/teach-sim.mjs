@@ -66,7 +66,11 @@ function parseQuiz(src) {
   }
   return { fields, options };
 }
-const field = (body, k) => body.match(new RegExp(`^\\s*${k}\\s*[:：]\\s?(.*)$`, 'mi'))?.[1]?.trim() || '';
+// 一个字段：这一行，加上后面缩进的续行（cloze 的 text: 常写成好几行）
+const field = (body, k) => {
+  const m = body.match(new RegExp(`^\\s*${k}\\s*[:：]\\s?(.*(?:\\n[ \\t]+\\S.*)*)`, 'mi'));
+  return m ? m[1].replace(/\n[ \t]+/g, '\n').trim() : '';
+};
 // 隐藏答案：这些字段学生看不到
 const HIDDEN = /^\s*(answer|answers|check|explain|show|expected|hint|why|wrong|variants|alts|accept|solution)\s*[:：]/i;
 

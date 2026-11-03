@@ -1,18 +1,13 @@
-# 第 5 块板「逗号后面不用 that」
+# 第 6 块板「一句里两个空」
 
-老师写在板顶的话：「that 万能」只在**没有逗号**的限制性从句里成立。逗号后面的非限制性从句有一条硬规定：**不用 that**，指物用 which，指人用 who。所以北京那句只能是 which。看板上，再填一组。
+老师写在板顶的话：那题是我写的问题，只显示了一个空，你填的 who 是对的。至于「为什么逗号后面不行」：that 引导从句时只有「挑出是哪一个」这一种用法；逗号的意思恰好是「不挑，只补充」，两者冲突，所以英语里规定逗号后面换成 which / who。看板上这一句，两个空一个挑、一个补充。
 
-填完一句话告诉我：第 3 空为什么 that 可以？
+填完用一句话说：第 1 空为什么 that 可以？
 
-## 逗号后面不用 that
-| | 没逗号（限制性） | 有逗号（非限制性） |
-|---|---|---|
-| 指物 | that / which | **which**（不用 that） |
-| 指人 | who / that | **who**（不用 that） |
-
-【填空 cz-b5】再填一组
-  每个空填一个关系词（who / which / that）。
-  1. My father, （1）____ works in a hospital, often comes home late.
+## 一句里两个空
+【填空 cz-b6】一个挑，一个补充
+  每个空填一个关系词（who / which / that），能填 that 的地方就填 that。
+  The phone （1）____ I bought last week has broken, but my old phone, （2）____ I have used for five years, still works.
   （按顺序写每个空，用 | 隔开，比如 "who | has lived"）
 
 # 常驻栏
