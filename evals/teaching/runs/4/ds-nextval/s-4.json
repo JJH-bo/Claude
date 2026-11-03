@@ -1,0 +1,1 @@
+{"say": "j=1 的 next 是 0，所以 j 变成 0。绕这一圈最后落到 0，有没有一步到的办法我还没想出来。", "acts": [{"comp": "q-waste2", "value": "0"}], "sure": {"q-waste2": true}}
