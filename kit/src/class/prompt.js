@@ -59,7 +59,7 @@ const TEACH_CS = doc`
 // 英语（考研英语一的语法）：先看例句、自己归纳，再用组件练；长难句靠拆成分
 const TEACH_EN = doc`
 - 先给例句、后给规则：挑两三个对比鲜明的例句，让学生自己说出规律（ˋquizˋ 选、ˋclozeˋ 填、一句话说），再把规则写上黑板。
-- 长难句：先让学生自己用 ˋparseˋ 拆主干（主谓宾），再一层层拆从句、非谓语；拆对了再讲意思，不先翻译。一个句子拆不动时，先问谓语动词是哪个。
+- 长难句：先让学生自己用 ˋparseˋ 拆主干（主谓宾），再一层层拆从句、非谓语（ˋsteps: V | S O | RCˋ 一步一层）；拆对了再讲意思，不先翻译。一个句子拆不动时，先问谓语动词是哪个。要练读、练翻译时用 ˋchunkˋ 让学生自己切意群（ˋtranslate: onˋ 再按意群写译文）。
 - 一个语法点的练习按「填空 ˋclozeˋ → 改错 ˋerrfindˋ → 句型操练 ˋdrillˋ」由浅到深，题量少而准；每题都是真句子（优先用资料包里的例句和真题句子）。
 - 出题时把最典型的一两种错答写进去（ˋ{{had started|!has started=…}}ˋ、ˋfix: is | !were=…ˋ、ˋdecoys:ˋ）：学生写错时页面给针对的提示，你在记录里看到「页面看出来」，就知道是哪条规则没想到。完形、语法选择用选择式的空 ˋ{{[that=…|*who]}}ˋ。
 - 学生答错时，先弄清是哪条规则没想到（看作答记录：页面写着第几个词开始不对、哪一处成分标错了），针对那一条说，不整句重讲。
@@ -476,7 +476,7 @@ export function packText(pack, budget = PACK_BUDGET) {
 // —— 4. 黑板现状 ——
 
 // 会产生作答的组件：还没作答时要写出来（图之类的不用）
-const ANSWERING = new Set(['answer', 'conjecture', 'quiz', 'predict', 'practice', 'steps', 'recognize', 'findbug', 'sortpass', 'code']);
+const ANSWERING = new Set(['answer', 'conjecture', 'quiz', 'predict', 'practice', 'steps', 'recognize', 'findbug', 'sortpass', 'code', 'derive', 'cloze', 'errfind', 'parse', 'drill', 'chunk']);
 const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const oneLine = (s, n = 200) => clip(String(s ?? '').replace(/\s*\n\s*/g, ' / ').replace(/\s+/g, ' ').trim(), n);
 const clip = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
@@ -882,12 +882,15 @@ function recordText(a, type) {
     case 'cloze':
     case 'errfind':
     case 'parse':
-    case 'drill': {
-      const kind = { cloze: '填空', errfind: '改错', parse: '句子成分', drill: '操练' }[type];
+    case 'drill':
+    case 'chunk': {
+      const kind = { cloze: '填空', errfind: '改错', parse: '句子成分', drill: '操练', chunk: '意群断句' }[type];
+      // 断句后写的译文（判不了分）：原样给老师
+      if (type === 'chunk' && a.detail === '译文') return `[作答] ${where(a, kind)}：按意群写的译文：\n${short(a.text, 1200)}`;
       const q = a.q ? `「${short(a.q, 120)}」` : '';
       if (a.final) return `[作答] ${where(a, kind)}：${q}${a.revealed ? `试了 ${a.attempts || 0} 次没做对，看了答案${a.expected ? `（${short(a.expected, 160)}）` : ''}` : a.ok ? `做对了（共 ${a.attempts} 次）` : '没做对'}`;
       // misread：页面认出来的常见错答（只给老师：用它来追问，别直接告诉学生）
-      return `[作答] ${where(a, kind)}：${q}写了 ${short(a.value, 300) || '（空）'}${mark(a.ok, a.attempts)}${a.detail ? `（${short(a.detail, 160)}）` : ''}${a.misread ? `；页面看出来：${short(a.misread, 160)}` : ''}`;
+      return `[作答] ${where(a, kind)}：${q}写了 ${short(a.value, 300) || '（空）'}${mark(a.ok, a.attempts)}${a.detail ? `（${short(a.detail, 160)}${a.check ? `：${short(a.check, 160)}` : ''}）` : ''}${a.misread ? `；页面看出来：${short(a.misread, 160)}` : ''}`;
     }
     case 'predict': {
       const guess = a.guess ?? a.value;

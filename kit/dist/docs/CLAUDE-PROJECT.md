@@ -250,6 +250,7 @@ b = [1, 1, -2]
 - `cloze`（英语）：英语填空（一句或一段里几个空） → `components/cloze.md`
 - `errfind`（英语）：英语改错（点出用错的词，再写改成什么） → `components/errfind.md`
 - `parse`（英语）：句子成分标注（长难句，能套从句） → `components/parse.md`
+- `chunk`（英语）：意群断句（长难句、翻译） → `components/chunk.md`
 - `drill`（英语）：句型操练（一题一题做，页面判分） → `components/drill.md`
 
 ## 四、读学习记录

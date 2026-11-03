@@ -7,7 +7,7 @@ import { itemKey } from './memory/report.js';
 import { FEATURES } from './features.js';
 
 // 页面能判对错的组件（作答记录里的 type）；猜想、代码、拖图、预测这些不问
-const KINDS = new Set(['answer', 'practice', 'quiz', 'stepper', 'steps', 'cloze', 'errfind', 'parse', 'drill', 'recognize', 'findbug']);
+const KINDS = new Set(['answer', 'practice', 'quiz', 'stepper', 'steps', 'cloze', 'errfind', 'parse', 'drill', 'chunk', 'recognize', 'findbug']);
 
 /** 这条作答在报告里是哪道题（和 report.js 的 itemKey 对得上） */
 export function sureKey(entry) {

@@ -2429,3 +2429,21 @@ g.sv-new.sv-flash > rect, g.sv-new.sv-flash > circle, g.sv-new.sv-flash > path {
 .derive-do .dd-fb.is-bad { color: var(--bad); }
 .derive-do .dd-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; font-family: var(--sans); font-size: 15px; }
 .derive-do .dv-line.is-new .dv-note { color: var(--ok); }
+
+/* parse 的 steps:（一层层拆）：前面几步固定的成分淡一点、不能点掉 */
+.pz-step { margin: 4px 0 6px; font: 15px/1.5 var(--sans); }
+.pz-open.is-fixed, .pz-close.is-fixed { opacity: 0.6; cursor: default; }
+/* chunk：意群断句。词和词之间的切口：点一下切开（一道竖线），再点合上 */
+.ck-sent { gap: 2px 0; align-items: center; }
+.ck-w { padding: 0 2px; }
+.ck-gap { display: inline-flex; align-items: center; justify-content: center; width: 22px; min-height: 44px; margin: 0 -2px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.ck-gap::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: rgb(var(--chalk-rgb) / 0.25); }
+.ck-gap.is-cut::before { width: 3px; height: 26px; border-radius: 2px; background: var(--yellow); }
+.ck-gap.is-cut.is-wrong::before { background: var(--coral); }
+.ck-gap.is-may.is-cut::before, .ck-gap.is-may::before { width: 0; height: 26px; border-left: 2px dashed rgb(var(--chalk-rgb) / 0.5); background: transparent; border-radius: 0; }
+.ck-gap:disabled { cursor: default; }
+.ck-tr { margin-top: 12px; }
+.ck-tr-head { font: 14px/1.5 var(--sans); color: var(--muted); margin-bottom: 6px; }
+.ck-tr-row { display: block; margin: 0 0 10px; }
+.ck-tr-row span { display: block; font: 16px/1.5 var(--sans); color: rgb(var(--chalk-rgb) / 0.85); margin-bottom: 4px; }
+.ck-tr-row textarea { width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgb(var(--chalk-rgb) / 0.25); background: rgb(var(--glow-rgb) / 0.04); color: var(--chalk); font: 16px/1.4 var(--sans); }

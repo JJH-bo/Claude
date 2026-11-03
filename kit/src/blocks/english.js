@@ -7,7 +7,7 @@ import { parseFields } from '../parse.js';
 import { widget, mdToHtml, escapeHtml } from './common.js';
 import {
   ROLES, matchText, textHint, parseCloze, tokenizeSentence, findWrong, parseAlts, parseBrackets, judgeSpans, spanText, spansHint, parseRoles, parseDrill, joinWords,
-  parseAnswer, diagnose, parseDecoys,
+  parseAnswer, diagnose, parseDecoys, parseSteps, parseChunk, judgeChunks, chunkHint, chunksOf,
 } from '../entext.js';
 
 const inline = (s) => mdToHtml(String(s ?? ''), { inline: true });
@@ -170,6 +170,9 @@ export function parse(el, src) {
     b.innerHTML = `${fields.q ? `<div class="w-q">${mdToHtml(fields.q)}</div>` : ''}<div class="en-words pz-ans">${bracketHtml(ans.tokens, ans.spans, roles)}</div>${fields.explain ? mdToHtml(fields.explain) : ''}`;
     return;
   }
+  // steps: V | S O | RC：一层层拆（第 4 批）。每一步只标这几种成分，对了固定下来再下一步
+  const groups = fields.steps ? parseSteps(fields.steps, ans.spans) : null;
+  if (groups) return parseByStep(el, fields, ans, roles, groups);
   const title = fields.title || '句子成分';
   const body = widget(el, { title, cls: 'en-parse' });
   body.innerHTML = `
@@ -262,6 +265,194 @@ export function parse(el, src) {
     finish(false, true);
   });
   draw();
+}
+
+// 分步拆句：第 k 步只标 groups[k] 里的成分；前面几步的答案固定在句子上（不能删）。哪一步错了停在哪一步
+function parseByStep(el, fields, ans, roles, groups) {
+  const title = fields.title || '一层层拆';
+  const nameOf = (k) => roles.find((r) => r.key === k)?.name || ROLES[k] || k;
+  const body = widget(el, { title, cls: 'en-parse en-parse-steps' });
+  body.innerHTML = `
+    ${fields.q ? `<div class="w-q">${mdToHtml(fields.q)}</div>` : ''}
+    <div class="pz-step"></div>
+    <div class="pz-help muted">点一个词定起点，再点一个词定终点，然后点成分；点板上的「[成分」能去掉你标的那一段。</div>
+    <div class="pz-sent en-words"></div>
+    <div class="pz-roles"></div>
+    <div class="ans-actions"><button type="button" class="btn btn-primary en-check" disabled>检查这一步</button><button type="button" class="btn pz-clear">清空这一步</button><button type="button" class="btn en-show" hidden>看这一步的答案</button></div>
+    <div class="q-feedback" hidden></div>`;
+  const sent = body.querySelector('.pz-sent');
+  const fb = body.querySelector('.q-feedback');
+  const done = session.gate(el, title);
+  let k = 0, mine = [], fixed = [], sel = null, attempts = 0, last = null, closed = false, tried = '';
+  const target = () => ans.spans.filter((sp) => groups[k].includes(sp.role));
+  const stepName = (i) => groups[i].map(nameOf).join('、');
+  const markup = (spans) => {
+    const words = ans.tokens.map((t) => t.w);
+    const open = words.map(() => []), close = words.map(() => 0);
+    for (const sp of [...spans].sort((a, b) => a.from - b.from || b.to - a.to)) { open[sp.from].push(sp.role); close[sp.to]++; }
+    return joinWords(words.map((w, i) => `${open[i].map((r) => `[${r} `).join('')}${w}${']'.repeat(close[i])}`));
+  };
+  markDraft(body, () => (!closed && mine.length && markup(mine) !== tried ? `第 ${k + 1} 步标了 ${markup(mine)}，还没检查` : ''));
+  function paintStep() {
+    body.querySelector('.pz-step').innerHTML = `<b>第 ${k + 1} / ${groups.length} 步</b>：标出${escapeHtml(stepName(k))}${k ? '<span class="muted">（前面几步已经固定在句子上）</span>' : ''}`;
+    body.querySelector('.pz-roles').innerHTML = groups[k].map((r) => `<button type="button" class="btn btn-sm pz-role pz-c${Math.max(0, roles.findIndex((x) => x.key === r)) % 6}" data-role="${escapeHtml(r)}" disabled>${escapeHtml(nameOf(r))}</button>`).join('');
+  }
+  function draw() {
+    const all = [...fixed.map((sp) => ({ ...sp, fixed: true })), ...mine];
+    const cls = (sp) => (sp.fixed ? 'is-fixed' : last ? (last.right.includes(sp) ? 'is-right' : 'is-wrong') : '');
+    sent.innerHTML = closed ? bracketHtml(ans.tokens, ans.spans, roles) : bracketHtml(ans.tokens, all, roles, { cls });
+    sent.querySelectorAll('.pz-w').forEach((b) => { const i = +b.dataset.i; b.classList.toggle('is-sel', !!sel && i >= sel.from && i <= (sel.to ?? sel.from)); });
+    body.querySelectorAll('.pz-role').forEach((b) => { b.disabled = closed || !sel || sel.to === undefined; });
+    body.querySelector('.en-check').disabled = closed || !mine.length;
+  }
+  sent.addEventListener('click', (e) => {
+    if (closed) return;
+    const open = e.target.closest('.pz-open');
+    if (open) {
+      if (open.classList.contains('is-fixed')) return;
+      const all = [...fixed.map((sp) => ({ ...sp, fixed: true })), ...mine].sort((a, b) => a.from - b.from || b.to - a.to);
+      const hit = all[[...sent.querySelectorAll('.pz-open')].indexOf(open)];
+      mine = mine.filter((sp) => !(sp.from === hit?.from && sp.to === hit?.to && sp.role === hit?.role));
+      last = null; draw(); return;
+    }
+    const w = e.target.closest('.pz-w');
+    if (!w) return;
+    const i = +w.dataset.i;
+    sel = !sel || sel.to !== undefined ? { from: i } : { from: Math.min(sel.from, i), to: Math.max(sel.from, i) };
+    draw();
+  });
+  body.querySelector('.pz-roles').addEventListener('click', (e) => {
+    const b = e.target.closest('.pz-role');
+    if (!b || closed || !sel || sel.to === undefined) return;
+    let { from, to } = sel;
+    while (from < to && !ans.tokens[from].word) from++;
+    while (to > from && !ans.tokens[to].word) to--;
+    mine = [...mine.filter((sp) => !(sp.from === from && sp.to === to)), { role: b.dataset.role, from, to }];
+    sel = null; last = null; draw();
+  });
+  body.querySelector('.pz-clear').addEventListener('click', () => { if (closed) return; mine = []; sel = null; last = null; draw(); });
+  // 这一步结束（对了，或者看了答案）：答案固定在句子上，进下一步；最后一步完了整道题结束
+  function nextStep(ok, revealed = false) {
+    session.record({ type: 'parse', final: true, title, q: short(ans.text, 200), detail: `第 ${k + 1} 步（${stepName(k)}）`, ok, attempts, revealed: revealed || undefined, value: markup(mine), expected: markup(target()), el });
+    fixed = [...fixed, ...target()];
+    mine = []; sel = null; last = null; attempts = 0; tried = '';
+    body.querySelector('.en-show').hidden = true;
+    if (k < groups.length - 1) { k++; paintStep(); draw(); return; }
+    closed = true;
+    done();
+    body.querySelector('.pz-step').innerHTML = '<b>拆完了</b>';
+    body.querySelector('.pz-roles').innerHTML = '';
+    draw();
+    if (fields.explain) { fb.hidden = false; fb.className = 'q-feedback is-ok'; fb.innerHTML = mdToHtml(fields.explain); }
+  }
+  body.querySelector('.en-check').addEventListener('click', () => {
+    if (closed || !mine.length) return;
+    attempts++;
+    tried = markup(mine);
+    last = judgeSpans(mine, target());
+    const hint = spansHint(last, roles);
+    session.record({ type: 'parse', liveOnly: true, title, q: short(ans.text, 200), detail: `第 ${k + 1} 步（${stepName(k)}）`, value: tried, ok: last.ok, attempts, check: last.ok ? undefined : hint, el });
+    fb.hidden = false;
+    fb.className = `q-feedback ${last.ok ? 'is-ok' : 'is-bad'}`;
+    fb.innerHTML = verdict(last.ok, last.ok ? '' : hint);
+    draw();
+    if (last.ok) nextStep(true);
+    else if (attempts >= 2) body.querySelector('.en-show').hidden = false;
+  });
+  body.querySelector('.en-show').addEventListener('click', () => {
+    fb.hidden = false;
+    fb.className = 'q-feedback is-reveal';
+    fb.innerHTML = `<div class="muted">第 ${k + 1} 步的答案已经标在句子上了</div>`;
+    nextStep(false, true);
+  });
+  paintStep();
+  draw();
+}
+
+/* ---------------- chunk：意群断句（长难句、翻译最常练的一步） ---------------- */
+
+export function chunk(el, src) {
+  const { fields } = parseFields(src);
+  const spec = parseChunk(fields.text || '');
+  const title = fields.title || '意群断句';
+  const translate = on(fields.translate);
+  const body = widget(el, { title, cls: 'en-chunk' });
+  const gapSet = new Set(spec.gaps);
+  body.innerHTML = `
+    ${fields.q ? `<div class="w-q">${mdToHtml(fields.q)}</div>` : '<div class="w-q">在该停顿的地方点一下，把句子切成意群。</div>'}
+    <div class="ck-sent en-words">${spec.tokens.map((t, i) => `${gapSet.has(i) ? `<button type="button" class="ck-gap" data-g="${i}" aria-label="在 ${escapeHtml(spec.tokens[i - 1]?.w || '')} 和 ${escapeHtml(t.w)} 之间切开" aria-pressed="false"></button>` : ''}<span class="${t.word ? 'ck-w' : 'en-punct'}">${escapeHtml(t.w)}</span>`).join('')}</div>
+    <div class="ans-actions"><button type="button" class="btn btn-primary en-check">检查</button><button type="button" class="btn en-show" hidden>看答案</button></div>
+    <div class="q-feedback" hidden></div>
+    <div class="ck-tr" hidden></div>`;
+  const sentEl = body.querySelector('.ck-sent');
+  const fb = body.querySelector('.q-feedback');
+  const done = session.gate(el, title);
+  const cuts = new Set();
+  let attempts = 0, closed = false, tried = '';
+  const now = () => chunksOf(spec.tokens, [...cuts]).join(' / ');
+  markDraft(body, () => (!closed && cuts.size && now() !== tried ? `切成：${short(now(), 300)}，还没检查` : ''));
+  const paint = (marks = null) => sentEl.querySelectorAll('.ck-gap').forEach((b) => {
+    const g = +b.dataset.g;
+    b.classList.toggle('is-cut', cuts.has(g));
+    b.setAttribute('aria-pressed', String(cuts.has(g)));
+    b.classList.toggle('is-wrong', !!marks && marks.extra.includes(g));
+    b.classList.toggle('is-miss', !!marks && marks.missing.includes(g));
+  });
+  sentEl.addEventListener('click', (e) => {
+    const b = e.target.closest('.ck-gap');
+    if (!b || closed) return;
+    const g = +b.dataset.g;
+    if (cuts.has(g)) cuts.delete(g); else cuts.add(g);
+    paint();
+  });
+  function finish(ok, revealed = false) {
+    if (closed) return;
+    closed = true;
+    sentEl.querySelectorAll('.ck-gap').forEach((b) => { b.disabled = true; });
+    session.record({ type: 'chunk', final: true, title, q: short(spec.text, 200), ok, attempts, revealed: revealed || undefined, value: now(), expected: chunksOf(spec.tokens, spec.must).join(' / '), el });
+    if (!translate) { done(); return; }
+    // 译文：每个意群下面写一句（判不了分，交给老师看）
+    const tr = body.querySelector('.ck-tr');
+    const parts = chunksOf(spec.tokens, [...cuts]);
+    tr.hidden = false;
+    tr.innerHTML = `<div class="ck-tr-head">按意群写译文（交给老师看，页面不判）</div>${parts.map((p, i) => `<label class="ck-tr-row"><span>${escapeHtml(p)}</span><textarea rows="1" data-i="${i}" aria-label="第 ${i + 1} 个意群的译文"></textarea></label>`).join('')}<div class="ans-actions"><button type="button" class="btn btn-primary ck-tr-ok">交译文</button></div>`;
+    const tas = [...tr.querySelectorAll('textarea')];
+    let sent = false;
+    markDraft(tr, () => (!sent && tas.some((t) => t.value.trim()) ? `译文写着：${short(tas.map((t) => t.value.trim()).join(' / '), 300)}` : ''));
+    tr.querySelector('.ck-tr-ok').addEventListener('click', () => {
+      if (!tas.some((t) => t.value.trim())) return;
+      sent = true;
+      session.record({ type: 'chunk', title, q: short(spec.text, 200), detail: '译文', text: parts.map((p, i) => `${p} → ${tas[i].value.trim() || '（空）'}`).join('\n'), ok: null, el });
+      tr.querySelector('.ck-tr-ok').disabled = true;
+      tr.querySelector('.ck-tr-ok').textContent = '交了';
+      done();
+    });
+  }
+  body.querySelector('.en-check').addEventListener('click', () => {
+    if (closed) return;
+    attempts++;
+    tried = now();
+    const r = judgeChunks([...cuts], spec);
+    const hint = chunkHint(r, spec.tokens);
+    session.record({ type: 'chunk', liveOnly: true, title, q: short(spec.text, 200), value: tried, ok: r.ok, attempts, detail: r.ok ? '' : hint, el });
+    paint(r.ok ? null : { missing: [], extra: r.extra });
+    fb.hidden = false;
+    fb.className = `q-feedback ${r.ok ? 'is-ok' : 'is-bad'}`;
+    fb.innerHTML = verdict(r.ok, r.ok ? '' : hint) + (r.ok && fields.explain ? mdToHtml(fields.explain) : '');
+    if (r.ok) finish(true);
+    else if (attempts >= 2) body.querySelector('.en-show').hidden = false;
+  });
+  body.querySelector('.en-show').addEventListener('click', () => {
+    cuts.clear();
+    spec.must.forEach((g) => cuts.add(g));
+    paint();
+    sentEl.querySelectorAll('.ck-gap').forEach((b) => b.classList.toggle('is-may', spec.may.includes(+b.dataset.g)));
+    fb.hidden = false;
+    fb.className = 'q-feedback is-reveal';
+    fb.innerHTML = `<div>${escapeHtml(chunksOf(spec.tokens, spec.must).join(' / '))}</div>${spec.may.length ? '<div class="muted">虚线的地方切不切都行</div>' : ''}${fields.explain ? mdToHtml(fields.explain) : ''}`;
+    body.querySelector('.en-show').hidden = true;
+    finish(false, true);
+  });
 }
 
 /* ---------------- drill：句型操练，一题一题做 ---------------- */

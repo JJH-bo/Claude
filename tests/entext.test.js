@@ -106,3 +106,24 @@ test('常见错答 !x=说明、选择式的空、errfind 的 decoys（docs/engli
   const t = actionText({ source: 'record', type: 'cloze', block: 'c1', step: 'b2', value: 'that | lives', ok: false, attempts: 1, detail: '第 1 空：不用 that', misread: '第 1 空写成「that」：不用 that' });
   assert.match(t, /页面看出来：第 1 空写成「that」/);
 });
+
+test('分步拆句 steps:、意群断句 chunk（docs/english-plan.md 第 4 批）', async () => {
+  const { parseSteps, parseBrackets, parseChunk, judgeChunks, chunkHint, chunksOf } = await import('../kit/src/entext.js');
+  const { actionText } = await import('../kit/src/class/prompt.js');
+  const ans = parseBrackets('[S The man [RC who lives next door]] [V gave] [IO me] [DO a book].');
+  assert.deepEqual(parseSteps('V | S IO DO | RC', ans.spans), [['V'], ['S', 'IO', 'DO'], ['RC']]);
+  assert.throws(() => parseSteps('V | AdvC', ans.spans), /第 2 步的 AdvC 在 answer 里没有标/);
+  assert.throws(() => parseSteps('V | V S', ans.spans), /V 在 steps 里写了两次/);
+  const c = parseChunk('The man who lives next door, / gave me a book / that I had wanted | for years.');
+  assert.deepEqual([c.must, c.may], [[7, 11], [15]]);
+  assert.equal(c.text, 'The man who lives next door, gave me a book that I had wanted for years.');
+  assert.ok(judgeChunks([7, 11], c).ok);
+  assert.ok(judgeChunks([7, 11, 15], c).ok, '| 的地方切不切都行');
+  const r = judgeChunks([7, 9], c);
+  assert.deepEqual([r.missing, r.extra], [[11], [9]]);
+  assert.equal(chunkHint(r, c.tokens), '「book」后面还要切一刀；「me a」是一个意群，中间不用切');
+  assert.deepEqual(chunksOf(c.tokens, [7, 11]), ['The man who lives next door,', 'gave me a book', 'that I had wanted for years.']);
+  assert.throws(() => parseChunk('No cuts here.'), /用 \/ 标出要切的地方/);
+  assert.match(actionText({ source: 'record', type: 'chunk', block: 'k1', detail: '译文', text: 'gave me a book → 给了我一本书' }), /按意群写的译文：\n.*给了我一本书/);
+  assert.match(actionText({ source: 'record', type: 'parse', block: 'p2', value: '[S The man]', ok: false, attempts: 1, detail: '第 2 步（主语）', check: '1 处范围不对' }), /第 2 步（主语）：1 处范围不对/);
+});

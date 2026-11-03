@@ -324,3 +324,72 @@ export function parseDrill(lines) {
   if (!items.length) throw new Error('drill 要一行一题：- 原句 => 答案（几种都对时 a | b）');
   return items;
 }
+
+// —— 分步拆句 parse 的 steps:（docs/english-plan.md 第 4 批）：「V | S O | RC」——
+
+/**
+ * 「V | S O | RC」→ [[V], [S, O], [RC]]：一步标哪几种成分。每一步的成分在答案里都要有；
+ * 答案里有、哪一步都没问到的成分最后照样画出来（不判）
+ */
+export function parseSteps(src, spans = []) {
+  const groups = String(src ?? '').split('|').map((g) => g.trim().split(/[\s,，、]+/).filter(Boolean)).filter((g) => g.length);
+  if (!groups.length) throw new Error('steps: 写每一步标哪几种成分，用 | 隔开，比如 steps: V | S O | RC');
+  const have = new Set(spans.map((s) => s.role));
+  groups.forEach((g, i) => {
+    const miss = g.filter((r) => !have.has(r));
+    if (miss.length) throw new Error(`steps 第 ${i + 1} 步的 ${miss.join('、')} 在 answer 里没有标`);
+  });
+  const all = groups.flat();
+  const dup = all.find((r, i) => all.indexOf(r) !== i);
+  if (dup) throw new Error(`${dup} 在 steps 里写了两次：一种成分只在一步里标`);
+  return groups;
+}
+
+// —— 意群断句 chunk：「The man who lives next door / gave me a book / that I had wanted | for years.」——
+// / 是一定要切的地方，| 是切不切都行的地方。切口在两个词之间：用切口后面那个词的下标表示
+
+/** → { tokens（去掉 / 和 | 的句子，tokenizeSentence 的样子）, must: [切口], may: [切口], gaps: [能切的地方] } */
+export function parseChunk(text) {
+  const raw = tokenizeSentence(text);
+  const tokens = [];
+  const must = [], may = [];
+  let mark = null;
+  for (const t of raw) {
+    if (t.w === '/' || t.w === '|') { mark = mark === '/' ? '/' : t.w; continue; }
+    if (mark && tokens.length) (mark === '/' ? must : may).push(tokens.length);
+    mark = null;
+    tokens.push({ ...t, i: tokens.length });
+  }
+  // 能切的地方：每个词前面（第一个词除外）
+  const gaps = tokens.filter((t, i) => i > 0 && t.word).map((t) => t.i);
+  const fix = (g) => (gaps.includes(g) ? g : gaps.find((x) => x > g) ?? g); // 切在标点前面的，挪到标点后面的那个词前
+  const M = [...new Set(must.map(fix))], Y = [...new Set(may.map(fix))].filter((g) => !M.includes(g));
+  if (!M.length) throw new Error('text 里用 / 标出要切的地方（切不切都行的地方用 |），比如 The man who lives next door / gave me a book.');
+  return { tokens, must: M, may: Y, gaps, text: joinWords(tokens.map((t) => t.w)) };
+}
+
+/** 学生切的 vs 答案：{ ok, missing（还要切的）, extra（不该切的）} */
+export function judgeChunks(cuts, { must, may }) {
+  const S = new Set(cuts);
+  const missing = must.filter((g) => !S.has(g));
+  const extra = [...S].filter((g) => !must.includes(g) && !may.includes(g)).sort((a, b) => a - b);
+  return { ok: !missing.length && !extra.length, missing, extra };
+}
+
+/** 不对时的一句话：「door 后面还要切一刀；me 和 a 之间不用切」（不说切几刀、不给答案） */
+export function chunkHint(r, tokens) {
+  if (r.ok) return '';
+  const before = (g) => { let k = g - 1; while (k > 0 && !tokens[k].word) k--; return tokens[k]?.w || ''; };
+  const bits = [];
+  if (r.missing.length) bits.push(`「${before(r.missing[0])}」后面还要切一刀${r.missing.length > 1 ? `（一共还少 ${r.missing.length} 刀）` : ''}`);
+  if (r.extra.length) bits.push(`「${before(r.extra[0])} ${tokens[r.extra[0]]?.w || ''}」是一个意群，中间不用切${r.extra.length > 1 ? `（多切了 ${r.extra.length} 刀）` : ''}`);
+  return bits.join('；');
+}
+
+/** 切好的意群：[[词…]]（给译文框、记录用） */
+export function chunksOf(tokens, cuts) {
+  const set = new Set(cuts);
+  const out = [[]];
+  tokens.forEach((t, i) => { if (set.has(i) && out.at(-1).length) out.push([]); out.at(-1).push(t.w); });
+  return out.map((ws) => joinWords(ws));
+}
