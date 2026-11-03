@@ -21,6 +21,8 @@
 import { COLLECTIONS, UNDO_DAYS, assertWrite, applyChange, nextTier, toDate, daysBetween, same } from './schema.js';
 import { tokenize } from '../tokens.js';
 import { courseOf, prefixOf, positionId, spaceOfId, spaceOfDoc, sharedFor } from './space.js';
+// 提到学生不用「他」「她」（和 digest.js 的 neutral 一样；不 import digest.js，免得互相引用）
+const neutralText = (t) => String(t ?? '').replace(/(?<![其吉利])[他她](?![们人])/g, '学生');
 import { recallSpace, nextRecallId, RECALL_CAP } from './recall.js';
 
 export const MEMO_KINDS = {
@@ -70,7 +72,7 @@ export function liveDocs(mem = {}, coll, space = '') {
   const docs = (Array.isArray(mem[coll]) ? mem[coll] : []).filter((d) => d && (LIVE[coll] || ['active']).includes(d.status || 'active'));
   if (!space) return docs;
   if (coll === 'weaknesses' || coll === 'reviews') return docs.filter((d) => spaceOfDoc(coll, d, mem) === space);
-  return sharedFor(docs, space);
+  return sharedFor(docs, space, mem);
 }
 /** 到了上限的几类：[{ coll, n, max }]（下课整理时要先合并） */
 export function overCaps(mem = {}, space = '') {
@@ -161,11 +163,11 @@ export function resolveBasis(tokens, { evidence = [], mem = {} } = {}) {
 export function slipsToFold(mem = {}, space = '', { max = 40 } = {}) {
   const gone = voidedIds(mem);
   const absorbed = absorbedSlips(mem.lessons);
-  const left = sharedFor(mem.slips, space).filter((x) => x && x.id && !x.corrects && !gone.has(`slips/${x.id}`) && !absorbed.has(String(x.id)))
+  const left = sharedFor(mem.slips, space, mem).filter((x) => x && x.id && !x.corrects && !gone.has(`slips/${x.id}`) && !absorbed.has(String(x.id)))
     .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
   if (!left.length) return '';
   const rows = left.slice(-max).map((x) => `- ${x.id}（${x.date || ''}）${cut(x.text, 220)}${x.lesson ? ` → ${cut(x.lesson, 120)}` : ''}`);
-  return `【还没归纳进守则的教学失误（${left.length} 条${left.length > max ? `，这里列最近的 ${max} 条` : ''}）】\n${rows.join('\n')}`;
+  return neutralText(`【还没归纳进守则的教学失误（${left.length} 条${left.length > max ? `，这里列最近的 ${max} 条` : ''}）】\n${rows.join('\n')}`);
 }
 
 // 每一科每上几节课，下课整理时顺带合并一次重复的记忆（不另外调用 Claude，docs/autonomy-plan.md 第 4 节）
@@ -372,7 +374,7 @@ export function planEntry(entry, ctx = {}) {
         if (l) return { error: `这是守则 ${l.id}（${cut(l.text, 30)}）说的事：写 lesson id=${l.id} again="这次怎么犯的"，不另记失误` };
         const gone = voidedIds(mem);
         const absorbed = absorbedSlips(get('lessons'));
-        const s = alike(a.text, sharedFor(get('slips'), space).filter((x) => !x.corrects && !gone.has(`slips/${x.id}`) && !absorbed.has(String(x.id))));
+        const s = alike(a.text, sharedFor(get('slips'), space, mem).filter((x) => !x.corrects && !gone.has(`slips/${x.id}`) && !absorbed.has(String(x.id))));
         if (s) return { error: `和 ${s.id}（${cut(s.text, 30)}）是同一件事，已经记过了：下课时归纳进守则` };
       }
       return { ...base, op: 'add', target: nextSlipId(get('slips'), sid, date), data: { by: 'class', date, text: cut(a.text, 1000), ...(a.lesson ? { lesson: cut(a.lesson, 500) } : {}), session: sid, ...(basis.length ? { basis } : {}) } };

@@ -133,6 +133,17 @@ export function itemsOf(evs, segs = new Map(), { bySession = false } = {}) {
   return items;
 }
 
+/**
+ * 这节课最后一次有动静是什么时候（首页判断「挂着没下课、好几个小时没动静」用）：作答、说话、揭开这些算；
+ * 只是点进去看一眼（open）、下课（end）不算——不然翻看一下挂着的课，它就又要等 3 小时才算报告
+ */
+export function lastActivity(session = {}, evidence = []) {
+  const sid = String(session.id || '');
+  return Math.max(Number(session.startedAt) || 0, ...(evidence || [])
+    .filter((e) => e && String(e.session || '') === sid && !(e.src === 'event' && ['open', 'end'].includes(e.kind)))
+    .map((e) => Number(e.at) || 0));
+}
+
 /** 这节课的时长：开课到下课（没下课就到最后一个动静），去掉两次动静之间超过 IDLE_GAP 的空档 */
 export function activeTime(points, { start, end, idle = IDLE_GAP } = {}) {
   const pts = [start, ...(points || []), end].map(num).filter((x) => x !== null && x > 0).sort((a, b) => a - b);

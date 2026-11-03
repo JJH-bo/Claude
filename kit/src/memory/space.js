@@ -78,13 +78,21 @@ const SHARED = new Set(['rules', 'profile', 'slips', 'lessons']);
 // 共用的几类（规则、关于我、失误）里也有只管一科的：写了 space，或者编号里带着科目
 // （p-cs-…、p-en-…、rule-cs-…、S-0922-ds1、S-0828-en1）。课堂里的 Claude 只带这一科和不分科的，首页照旧全列
 const SHARED_TAG = [['cs', /(^|-)(cs|ds|os|co|cn)(-|\d|$)/i], ['en', /(^|-)en(-|\d|$)/i], ['math', /(^|-)(math|la)(-|\d|$)/i]];
-export function spaceOfShared(d) {
+// mem：有的话，没写科目、编号也看不出的失误按它那节课（session）是哪一科算（课堂记的失误编号是 S-日期-课-第几条，
+// 看不出科目；2026-11-03 一节英语课的失误跟着数学、408 的下课整理一起带了）
+export function spaceOfShared(d, mem = null) {
   if (SPACES[d?.space]) return d.space;
   const rest = String(d?.id ?? '').replace(/^(p|rule|S|T)-/, '');
-  return SHARED_TAG.find(([, re]) => re.test(rest))?.[0] || null;
+  const tag = SHARED_TAG.find(([, re]) => re.test(rest))?.[0];
+  if (tag) return tag;
+  if (mem && d?.session) {
+    const s = (mem.sessions || []).find((x) => x && String(x.id) === String(d.session));
+    return s ? spaceOfDoc('sessions', s, mem) : null;
+  }
+  return null;
 }
-/** 规则、关于我、失误里属于这一科或不分科的 */
-export const sharedFor = (docs, space) => (Array.isArray(docs) ? docs : []).filter((d) => { const k = spaceOfShared(d); return !k || k === space; });
+/** 规则、关于我、失误里属于这一科或不分科的（mem 见 spaceOfShared） */
+export const sharedFor = (docs, space, mem = null) => (Array.isArray(docs) ? docs : []).filter((d) => { const k = spaceOfShared(d, mem); return !k || k === space; });
 
 /** 只要这个空间的记忆（共用的几类照旧全给；分不出科的历史条目也留着） */
 export function filterSpace(mem = {}, space = DEFAULT_SPACE) {

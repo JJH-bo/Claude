@@ -22,15 +22,30 @@ const cmpId = (a, b) => String(a).localeCompare(String(b), undefined, { numeric:
 // 块的编号：L2.2.1；知识点：L2.2.1#tr → 所在的块 L2.2.1
 const blockOf = (id) => String(id || '').split('#')[0];
 const sectionOf = (id) => blockOf(id).split('.').slice(0, 2).join('.');
-export const RULES_SHARE = 0.6;
+// 规则最多占全文预算的多少：原来 0.6，2026-11-03 真数据里 55 条通用规则占满了它，这节课的错题、掌握、关于我都被挤进目录
+export const RULES_SHARE = 0.42;
 export const LESSONS_SHARE = 0.35; // 一科最多 20 条守则，一条四五百字节：要全文放得下
 export const CATALOG_MAX = 7 * 1024;
+// 先给目录留多少（目录是一条一行，真数据里 3～4 KB；全文装完剩下的也都给目录）
+export const CATALOG_RESERVE = 5 * 1024;
+// 装的先后：这节课这一块的在前（CORE，合起来最多占全文预算的 CORE_SHARE），再是关于我（短、每轮都要）、规则、守则
+export const PACK_ORDER = ['position', 'curriculum', 'weaknesses', 'mastery', 'recall', 'sessions', 'errors', 'profile', 'rules', 'lessons', 'slips', 'pending', 'source'];
+const CORE = new Set(['position', 'curriculum', 'errors', 'weaknesses', 'mastery', 'recall', 'sessions']);
+export const CORE_SHARE = 0.45;
+
+/**
+ * 发给 Claude 的提示词里提到学生不用「他」「她」（我明确要求过）。以前对话里的 Claude 写进记忆的原文里有「他」
+ * （「他对 log 没有直觉」），摘要里换成「学生」；「其他」「他们」「他人」「她们」「吉他」不动
+ */
+export const neutral = (t) => String(t ?? '').replace(/(?<![其吉利])[他她](?![们人])/g, '学生');
 const ERRORS_FULL = 8; // 相关的错题最多带几条原文（这一块的、最新的在前），其余进目录
 const RECALL_FULL = 12; // 要记的最多带几条（老想不起的在前）
 const SLIPS_FULL = 6;
 // 规则的类别：课堂里最要紧的在前（放不下时后面的进目录）
-const RULE_ORDER = ['红线', '掌握', '检验', '讲解', '教法', '黑板', '细则', '来源'];
-const ruleRank = (r) => { const i = RULE_ORDER.indexOf(String(r.cat || '')); return i < 0 ? RULE_ORDER.length : i; };
+// 规则的先后（放不下时后面的进目录）：每一轮都要照着做的在前（红线、怎么讲、怎么排板），出题、记录这类用到时再看的在后。
+// 正文写着【红线…】的（比如 cat 是「检验」的红线 7）按红线排
+const RULE_ORDER = ['红线', '讲解', '教法', '黑板', '掌握', '检验', '细则', '来源'];
+const ruleRank = (r) => { if (/^\s*【红线/.test(String(r.text || ''))) return 0; const i = RULE_ORDER.indexOf(String(r.cat || '')); return i < 0 ? RULE_ORDER.length : i; };
 
 /** 这节课有关的块：当前块、它依赖的块、依赖它的块、同一节里紧挨着的前后两块 */
 export function nearBlocks(curriculum, block) {
@@ -55,7 +70,7 @@ export function nearBlocks(curriculum, block) {
 export function classView(mem0 = {}, { block = '', forClass = true, space: sp = '' } = {}) {
   const space = sp || spaceOfId(block || (mem0.position || []).find((d) => d?.id === 'now')?.block);
   const mem = filterSpace(mem0, space);
-  for (const c of ['rules', 'profile', 'slips', 'lessons']) mem[c] = sharedFor(mem[c], space);
+  for (const c of ['rules', 'profile', 'slips', 'lessons']) mem[c] = sharedFor(mem[c], space, mem0);
   if (forClass) mem.rules = (mem.rules || []).filter((r) => r?.for !== 'chat');
   const gone = voidedIds(mem);
   const solved = resolvedErrors(mem);
@@ -141,10 +156,17 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   });
 
   // 相关的错题：块挨着这节课的，或者挂在相关弱点上的。相关的弱点：管着这几块的、挂着这些错题的、影响面是「通用」的
+  // 这一科最近两节课（不算练习）记的错题、挂上的弱点也算相关：块常常记成了开课时的块（课上改讲了别的），
+  // 按块找会漏掉刚犯的错（2026-11-03 真数据：11-02 那节的 6 道错题记在第三章，课讲的是第一章）
+  // （只算做过题、记过错题的课：只说了几句话就停的课不算）
   const errors = get('errors');
+  const withErr = new Set(errors.map((e) => String(e.session || '')));
+  const recent = new Set(get('sessions').filter((x) => x.id !== session && x.kind !== 'drill' && ((Number(x.report?.items) || 0) > 0 || withErr.has(String(x.id))))
+    .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0)).slice(0, 2).map((x) => String(x.id)));
+  const recentWeak = new Set(get('sessions').filter((x) => recent.has(String(x.id))).flatMap((x) => (Array.isArray(x.skills?.items) ? x.skills.items : []).map((it) => it?.w).filter(Boolean).map(String)));
   const weak = get('weaknesses').filter((w) => w.status !== 'closed' && w.status !== 'void');
-  const nearErr = new Set(errors.filter((e) => nearIds.has(blockOf(e.block))).map((e) => String(e.id)));
-  const relW = weak.filter((w) => list(w.blocks).some((b) => nearIds.has(blockOf(b))) || list(w.errors).some((e) => nearErr.has(e)) || w.scope === '通用');
+  const nearErr = new Set(errors.filter((e) => nearIds.has(blockOf(e.block)) || recent.has(String(e.session || ''))).map((e) => String(e.id)));
+  const relW = weak.filter((w) => list(w.blocks).some((b) => nearIds.has(blockOf(b))) || list(w.errors).some((e) => nearErr.has(e)) || w.scope === '通用' || recentWeak.has(String(w.id)) || recent.has(String(w.session || '')));
   const touch = (w) => (list(w.blocks).includes(here) || list(w.errors).some((e) => errors.find((x) => x.id === e)?.block === here) ? 0 : 1);
   relW.sort((a, b) => touch(a) - touch(b) || byDate('last')(a, b));
   const relWIds = new Set(relW.map((w) => String(w.id)));
@@ -155,7 +177,7 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   });
   // 这一块的在前，同一块里最新的在前；最多 ERRORS_FULL 条原文，其余在目录里（一条一行：编号、块、根因）
   const relE = errors.filter((e) => nearErr.has(String(e.id)) || relWIds.has(String(e.weakness)))
-    .sort((a, b) => (blockOf(a.block) === here ? 0 : 1) - (blockOf(b.block) === here ? 0 : 1) || byDate('date')(a, b) || cmpId(b.id, a.id));
+    .sort((a, b) => (blockOf(a.block) === here || recent.has(String(a.session || '')) ? 0 : 1) - (blockOf(b.block) === here || recent.has(String(b.session || '')) ? 0 : 1) || byDate('date')(a, b) || cmpId(b.id, a.id));
   sections.push({ coll: 'errors', head: '## 相关的错题（errors，原文，这一块的、最近的在前）', limit: ERRORS_FULL, items: relE.map((e) => ({ key: `errors/${e.id}`, text: errorFull(e, solved) })) });
   const relM = get('mastery').filter((m) => nearIds.has(blockOf(m.block || m.id)))
     .sort((a, b) => (blockOf(a.id) === here ? 0 : 1) - (blockOf(b.id) === here ? 0 : 1) || cmpId(a.id, b.id));
@@ -179,38 +201,50 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   }
   sections.push({ coll: 'source', head: '## 这一块的原文（curriculum）', items: src });
 
-  // —— 先给目录留出位置，全文按优先级往剩下的预算里装：一条放不下，它和后面的全都不放（从后往前截）——
+  // —— 先给目录留出位置，全文往剩下的预算里装。装的先后（PACK_ORDER）和写出来的先后不一样：
+  // 先装这节课这一块的（上一节停在哪、这一块、错题、弱点、掌握、要记的、以前的课，合起来最多 CORE_SHARE），
+  // 再装通用的规则、守则、关于我。2026-11-03 用真数据量出来：英语课里 55 条通用规则占了 13.7 KB，
+  // 这一块的 10 道错题里 9 道、掌握整段被挤进目录，课堂 Claude 只看得到编号。一节里一条放不下，只停这一节，别的节照样装 ——
   const intro = `这节课在学习台里上${session ? `（${session}）` : ''}。下面是学习台记忆库里和你有关的部分。**记忆由你管**：错题、弱点、复现组、下一节从哪接、规则你都直接写（memo 块），不用等学生确认；掌握由页面按证据算。前面是和这节课直接有关的**全文**，最后是记忆库里其余东西的**目录**（一条一行）。`;
-  const reserve = Math.min(CATALOG_MAX, Math.floor(budget * 0.3));
+  const reserve = Math.min(CATALOG_RESERVE, Math.floor(budget * 0.3));
   const room = budget - reserve;
   let used = utf8(intro);
   let rulesText = '';
   const body = [intro];
-  let full = false;
   let srcCut = 0;
-  for (const s of sections) {
-    if (!s.items.length) continue;
+  const coreCap = Math.floor(room * CORE_SHARE);
+  let coreUsed = 0;
+  const keptOf = new Map();
+  const rank = (c) => { const i = PACK_ORDER.indexOf(c); return i < 0 ? PACK_ORDER.length : i; };
+  for (const s of [...sections].sort((a, b) => rank(a.coll) - rank(b.coll))) {
     const kept = [];
+    keptOf.set(s, kept);
+    if (!s.items.length) continue;
+    const core = CORE.has(s.coll);
     let own = 0;
     const cap = s.share ? Math.floor(room * s.share) : Infinity;
     for (const it of s.items) {
-      if (full || (s.limit && kept.length >= s.limit)) break;
+      if (s.limit && kept.length >= s.limit) break;
       // 规则单独放；别的节：第一条带上小标题，节和节之间空一行
       const add = utf8(it.text) + 1 + (kept.length || !s.head ? 0 : utf8(s.head) + 4);
-      if (own + add > cap) break;
-      if (used + add > room) { full = true; break; }
+      if (own + add > cap || used + add > room || (core && coreUsed + add > coreCap)) break;
       used += add;
       own += add;
+      if (core) coreUsed += add;
       kept.push(it.text);
       if (it.key) shown.add(it.key);
     }
+  }
+  for (const s of sections) {
+    const kept = keptOf.get(s) || [];
     if (s.coll === 'source') srcCut = s.items.length - kept.length;
     if (s.coll === 'rules') { rulesText = kept.join('\n'); continue; }
     if (kept.length) body.push(`${s.head}\n\n${kept.join('\n')}`);
   }
   const cat = memoryCatalog(view, { shown, here, nearIds, session, today, tools, srcCut, max: Math.max(1024, budget - used - 200) });
   if (cat.text) body.push(cat.text);
-  const text = body.join('\n\n');
+  const text = neutral(body.join('\n\n'));
+  rulesText = neutral(rulesText);
   return { rules: rulesText, text, cut: cat.cut, bytes: utf8(text) + utf8(rulesText) };
 }
 

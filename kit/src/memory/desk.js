@@ -16,7 +16,7 @@ import { getStore, getDownloads } from '../live/store.js';
 import { VERSION, KIT_URL } from '../version.js';
 import { COLLECTIONS, MEMORY_COLLECTIONS, ROLE_TEXT, UNDO_DAYS, assertWrite, toDate } from './schema.js';
 import { sessionId, isSessionId, scopeDb, manualEvidence, SESSION_SCOPED, SESSION_KINDS, kindOf } from './session.js';
-import { buildReport, reportLine, REPORT_VERSION } from './report.js';
+import { buildReport, reportLine, REPORT_VERSION, lastActivity } from './report.js';
 import { backupFile, backupName, restorePlan, BOARD_COLLECTIONS, SESSION_EXTRA } from './backup.js';
 import { createManualForm } from './manual.js';
 import { createMemOps } from './memops.js';
@@ -527,7 +527,7 @@ export async function renderDesk(root, meta) {
   const fixing = new Set();
   function fixReports() {
     const now = Date.now();
-    const lastAct = (x) => Math.max(Number(x.startedAt) || 0, ...data.evidence.filter((e) => e.session === x.id).map((e) => Number(e.at) || 0));
+    const lastAct = (x) => lastActivity(x, data.evidence);
     const stale = (x) => x.status === 'open' && kindOf(x) !== 'drill' && now - lastAct(x) > STALE_MS && (!x.report || lastAct(x) > (Number(x.report.at) || 0));
     const todo = data.sessions.filter((x) => !fixing.has(x.id) && ((x.status === 'closed' && (!x.report || (Number(x.report.v) || 1) < REPORT_VERSION)) || (loaded.has('evidence') && stale(x)))).slice(0, 3);
     for (const x of todo) {

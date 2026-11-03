@@ -163,6 +163,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - 删课 `purge.js`（纯函数 `purgePlan`：删哪些、留哪些、要去掉课号的失误、自检指纹里去掉哪几条；`desk.js` 的 `purgeClass` 执行）：「以前的课」点进去「删掉这节课」、首页没下课那行「删掉」。
   - `desk.js` 的 `fixReports`：下了课没报告的、`report.v` 比 `REPORT_VERSION` 旧的重算；挂着没下课、`STALE_MS`（3 小时）没动静的先算暂时的报告（`report.provisional`）。`report.js` 的 `guessed`：单选题把选项试遍了才对（`items[].guess`，`quiz` 记 `options`）。
   - 知识点归类 `skills.js`（纯函数）：`skillsPrompt` / `parseSkills`（每道题 `item 题号 块#短名 [弱点]`，新的先 `point`）/ `skillSummary` 存进 `sessions/{编号}.skills`；`desk.js` 的 `fixSkills` 一节一节调用（Opus 5.5 medium，一次打开最多 4 节，`?dev` 用 `books/devmock.js`）。`retagEvidence`（掌握按真正的块 + 知识点数）、`pointCatalog`（用过的知识点和标题）、`weaknessHits` / `hitText`（弱点出现几次，弱点表和记忆摘要用，不写回）、`lessonLines`（会了 / 还不稳 / 下次先测：「以前的课」、首页「上一节」、记忆摘要里上一节那行）。
+  - 记忆摘要装得下这节课要用的（`digest.js`，`docs/data-plan.md` 第 5 节）：`PACK_ORDER` 先装这一块的（`CORE_SHARE` 0.45），再关于我、规则（`RULES_SHARE` 0.42）、守则，一节放不下只停这一节；`RULE_ORDER` 红线（含正文写【红线】的）在前；最近两节做过题的课的错题、挂上的弱点也算相关；`neutral` 把记忆原文里称呼学生的「他」「她」换成「学生」；`spaceOfShared(d, mem)` 失误按那节课分科。`tests/memory-digest-fit.test.js` 守着：通用规则再多，这一块的错题、弱点、掌握、关于我也一定在全文里。
   - `mastery.js`：`walk` 按课分组（还没过只算最后一次失手以后的，过了只看一上来那道）；`startOf` 退回页面自己算之前的状态重算（`by: page`），我和对话里定的不动。
 - 给我看的页面和第 4 批（desk-plan 第 3、4 批）：
   - 开场简报：首页打开时写 `meta/brief`、`brief-cs`、`brief-en`（`views.js` 的 `deskBrief`：接手要知道的 + 这一科记忆库的目录），对话里的 Claude 开场 get 一份。
