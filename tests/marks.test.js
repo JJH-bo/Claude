@@ -166,3 +166,26 @@ test('splitAlts：公式里的 | 不算选项分隔', () => {
   assert.deepEqual(splitAlts('$2(r_i+|y|)-|y|$ | $2r_i-|y|$ | 不用管'), ['$2(r_i+|y|)-|y|$', '$2r_i-|y|$', '不用管']);
   assert.deepEqual(splitAlts('a|b| c '), ['a', 'b', 'c']);
 });
+
+test('英语句子里的词：word= / words= / phrase= / blank=（docs/english-plan.md 第 1 批）', async () => {
+  const { parseMarkSpec, markWhere } = await import('../kit/src/markspec.js');
+  const { wordSpan, wordsIn } = await import('../kit/src/entext.js');
+  const p = (l) => parseMarkSpec(l);
+  assert.deepEqual(p('target=b3 word=3').spec.sel, { kind: 'word', k: 3 });
+  assert.equal(p('target=b3 word=3').spec.style, 'circle');
+  assert.deepEqual(p('target=b3 words=4-7').spec.sel, { kind: 'words', a: 4, b: 7 });
+  assert.equal(p('target=b3 words=4-7').spec.style, 'underline');
+  assert.deepEqual(p('target=b3 phrase="who lives#2"').spec.sel, { kind: 'phrase', text: 'who lives', n: 2 });
+  assert.equal(p('target=c1 blank=2').spec.style, 'box');
+  assert.deepEqual(p('target=b3 word3').spec.sel, { kind: 'word', k: 3 });
+  assert.match(p('target=b3 words=7-4').error, /words=4-7/);
+  assert.match(p('target=b3 phrase=""').error, /phrase/);
+  assert.match(markWhere(p('target=b3 phrase="who lives"').spec), /who lives/);
+  const w = wordsIn("My brother, who lives in Beijing, isn't a doctor who lives well.").map((x) => x.w);
+  assert.ok(w.includes("isn't"), '缩写算一个词');
+  assert.deepEqual(wordSpan({ kind: 'word', k: 3 }, w), { from: 2, to: 2 });
+  assert.deepEqual(wordSpan({ kind: 'phrase', text: 'Who Lives', n: 2 }, w), { from: 9, to: 10 });
+  assert.match(wordSpan({ kind: 'phrase', text: 'who lives' }, w).error, /出现了 2 次.*#2/);
+  assert.match(wordSpan({ kind: 'phrase', text: 'that' }, w).error, /没有「that」/);
+  assert.match(wordSpan({ kind: 'word', k: 99 }, w).error, /一共 12 个词/);
+});

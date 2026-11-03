@@ -4,6 +4,7 @@
 import { mdToHtml } from './render.js';
 import { compile, isVec } from './expr.js';
 import { shapeFor, arrowPath, leaderPath, placeNote, union, strokeObstacles } from './markdraw.js';
+import { wordsIn, wordSpan } from './entext.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 // 颜色都从主题变量取（不同风格的黑板颜色不一样）
@@ -173,6 +174,14 @@ export function locate(root, spec, { scene, name = '这里' } = {}) {
     const vis = els.filter((e) => e.getClientRects().length);
     return vis.length ? { geoms: [{ box: union(vis.map((e) => rect(e.getBoundingClientRect()))) }] } : { hidden: true };
   }
+  if (s.kind === 'word' || s.kind === 'words' || s.kind === 'phrase') return wordGeom(root, s, name);
+  if (s.kind === 'blank') {
+    const blanks = [...root.querySelectorAll('.en-blank')];
+    if (!blanks.length) return { error: `${name} 里没有填空（blank= 用在 cloze 上）` };
+    if (s.k > blanks.length) return { error: `${name} 一共 ${blanks.length} 个空，没有第 ${s.k} 个` };
+    const b = blanks[s.k - 1];
+    return shown(b) ? { geoms: [{ box: rect(b.getBoundingClientRect()) }] } : { hidden: true };
+  }
   if (s.kind === 'at') {
     if (!scene?.toClient) return { error: `${name} 不是 scene 图，不能用 at=[x, y] 指点` };
     let p;
@@ -184,6 +193,44 @@ export function locate(root, spec, { scene, name = '这里' } = {}) {
     return c ? { geoms: [{ point: c }] } : { hidden: true };
   }
   return { error: `不认识的标注位置「${s.kind}」` };
+}
+
+// —— 英语句子里的词（docs/english-plan.md 第 1 批）：在画好的文字里找词，组件不用另外标记，普通段里的英文也能圈 ——
+// 数词的范围：target 是英语组件时，是那句英文（cloze 的文字、errfind / parse 的句子、drill 的题、chunk 的句子）；target 是一段时，是整段的英文（去掉标题）
+const SENTENCE = '.en-text, .en-words:not(.pz-ans), .pz-sent, .dr-q, .ck-sent';
+// 不算词的地方：公式、成分标注的括号和名字、反馈（揭晓的答案）、标注层自己、输入框
+const NOT_WORDS = '.katex, .pz-open, .pz-close, .q-feedback, .mk-layer, .w-title, h1, h2, h3, h4, script, style, textarea, input, select, [hidden]';
+function textWords(root) {
+  // 标的是一个组件：数它那句英文；标的是一整段：段里所有的英文（说明、例句、组件里的句子，按出现的顺序）
+  const areas = root.matches?.('[data-bid]') ? [...root.querySelectorAll(SENTENCE)].filter(shown) : [];
+  const scopes = areas.length ? areas : [root];
+  const out = [];
+  for (const scope of scopes) {
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.parentElement?.closest(NOT_WORDS) && !scope.matches(NOT_WORDS) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) for (const w of wordsIn(n.nodeValue)) out.push({ ...w, node: n });
+  }
+  return out;
+}
+function wordGeom(root, s, name) {
+  if (!shown(root)) return { hidden: true };
+  const ws = textWords(root);
+  const span = wordSpan(s, ws.map((w) => w.w));
+  if (span.error) return { error: `${name}：${span.error}` };
+  const a = ws[span.from], b = ws[span.to];
+  const r = document.createRange();
+  r.setStart(a.node, a.start);
+  r.setEnd(b.node, b.end);
+  // 跨行的一段词：每一行一个框（同一行的几块并起来）
+  const lines = [];
+  for (const c of r.getClientRects()) {
+    if (c.width < 1 || c.height < 1) continue;
+    const line = lines.find((l) => Math.abs(l.y + l.h / 2 - (c.top + c.height / 2)) < c.height / 2);
+    if (line) Object.assign(line, union([line, rect(c)]));
+    else lines.push(rect(c));
+  }
+  return lines.length ? { geoms: lines.map((box) => ({ box })) } : { hidden: true };
 }
 
 /**

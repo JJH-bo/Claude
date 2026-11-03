@@ -11,19 +11,21 @@ const STYLE_ALIAS = { 圈: 'circle', 框: 'box', 下划线: 'underline', 涂: 'h
 const COLOR_ALIAS = { gold: 'yellow', lav: 'purple', violet: 'purple', coral: 'red', 黄: 'yellow', 粉: 'pink', 蓝: 'blue', 绿: 'green', 橙: 'orange', 紫: 'purple', 红: 'red', 白: 'white' };
 const SIDES = { right: 'right', left: 'left', above: 'above', below: 'below', top: 'above', bottom: 'below', 右: 'right', 左: 'left', 上: 'above', 下: 'below' };
 // 要跟数字的选择：row 2、entry 2,3
-const NUM_SEL = { row: 'row', col: 'col', column: 'col', entry: 'entry', cell: 'entry', block: 'block', step: 'step', item: 'item' };
+// word、blank：英语句子里的第几个词、cloze 的第几个空（docs/english-plan.md 第 1 批）
+const NUM_SEL = { row: 'row', col: 'col', column: 'col', entry: 'entry', cell: 'entry', block: 'block', step: 'step', item: 'item', word: 'word', blank: 'blank' };
 const DIAG = new Set(['diag', 'diagonal', '对角线', '主对角线']);
 const NAME_RE = /^[A-Za-z0-9_-]{1,40}$/;
 const ID_RE = /^[A-Za-z0-9_\-.~:@+]{1,64}$/;
 const validId = (id) => ID_RE.test(id) && id !== '.' && id !== '..';
-const SEL_LIST = 'term=名字、row=2、col=3、diag、entry=2,3、block=1,2、step=2、label=Ax、item=4、at=[1, 2]';
+const SEL_LIST = 'term=名字、row=2、col=3、diag、entry=2,3、block=1,2、step=2、label=Ax、item=4、at=[1, 2]、word=3、words=4-7、phrase="who lives"、blank=2';
 // 矩阵的部位（matrix 组件里只能标这些）
 export const MATRIX_SELS = ['row', 'col', 'diag', 'entry', 'block', 'all'];
 export const MAX_NOTE = 80;
 
 // 每种「标哪里」不写 style 时的画法
 export function defaultStyle(kind) {
-  return ['term', 'entry', 'at', 'label', 'item'].includes(kind) ? 'circle' : 'box';
+  if (kind === 'words' || kind === 'phrase') return 'underline';
+  return ['term', 'entry', 'at', 'label', 'item', 'word'].includes(kind) ? 'circle' : 'box';
 }
 
 function nums(s) {
@@ -65,6 +67,16 @@ function readMark(src, inherit = {}, component = false) {
       else if (k === 'of') { if (!NAME_RE.test(v)) throw new Error(`of 后面写矩阵的名字（只能用字母、数字、- 和 _），比如 of=A`); spec.of = v; }
       else if (k === 'term') { if (!NAME_RE.test(v)) throw new Error(`term 的名字「${v}」只能用字母、数字、- 和 _`); setSel('term', { name: v }); }
       else if (k === 'label') { if (!v) throw new Error('label 后面写图里那个东西的标签，比如 label=Ax'); setSel('label', { text: v }); }
+      else if (k === 'words') {
+        const m = /^(\d+)\s*[-–~～到]\s*(\d+)$/.exec(v);
+        if (!m || !(+m[1] >= 1) || +m[2] < +m[1]) throw new Error('words 后面写从第几个词到第几个词，比如 words=4-7');
+        setSel('words', { a: +m[1], b: +m[2] });
+      }
+      else if (k === 'phrase') {
+        const m = /^(.*?)(?:#(\d+))?$/.exec(v);
+        if (!m[1].trim()) throw new Error('phrase 后面写句子里的那几个词，比如 phrase="who lives next door"（出现几次时 phrase="that#2"）');
+        setSel('phrase', { text: m[1].trim(), n: Number(m[2] || 0) });
+      }
       else if (k === 'at') { if (!/^\[.*\]$/.test(v)) throw new Error('at 后面写图里的坐标，比如 at=[1, 2]'); setSel('at', { expr: v }); }
       else if (NUM_SEL[k]) fillNum(NUM_SEL[k], v);
       else if (k === 'diag') setSel('diag', {});
@@ -83,7 +95,7 @@ function readMark(src, inherit = {}, component = false) {
     else if (MARK_COLORS.includes(low) || COLOR_ALIAS[w] || COLOR_ALIAS[low]) spec.color = COLOR_ALIAS[w] || COLOR_ALIAS[low] || low;
     else if (DIAG.has(low)) setSel('diag', {});
     else if (NUM_SEL[low]) pending = NUM_SEL[low];
-    else if (/^(row|col|column|entry|cell|block|step|item)\d/.test(low)) fillNum(NUM_SEL[low.match(/^[a-z]+/)[0]], low.replace(/^[a-z]+/, ''));
+    else if (/^(row|col|column|entry|cell|block|step|item|word|blank)\d/.test(low)) fillNum(NUM_SEL[low.match(/^[a-z]+/)[0]], low.replace(/^[a-z]+/, ''));
     else throw new Error(`看不懂「${w.slice(0, 30)}」：标哪里用 ${SEL_LIST}`);
   }
   if (pending) throw new Error(`${pending} 后面要写序号，比如 ${pending}=2`);
@@ -196,6 +208,10 @@ const SEL_TEXT = {
   label: (s) => `标签 ${s.text}`,
   item: (s) => `第 ${s.k} 条命令`,
   at: (s) => `点 ${s.expr}`,
+  word: (s) => `第 ${s.k} 个词`,
+  words: (s) => `第 ${s.a}–${s.b} 个词`,
+  phrase: (s) => `「${s.text}」${s.n ? `（第 ${s.n} 次）` : ''}`,
+  blank: (s) => `第 ${s.k} 个空`,
 };
 const STYLE_TEXT = { circle: '圈', box: '框', underline: '下划线', highlight: '涂色', strike: '划掉', arrow: '箭头' };
 

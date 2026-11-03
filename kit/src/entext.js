@@ -101,6 +101,38 @@ export function tokenizeSentence(text) {
   return out;
 }
 
+/** 英文里的词（和 tokenizeSentence 的「词」一样：缩写、连字符、所有格算一个），带在原文里的位置：[{ w, start, end }] */
+export function wordsIn(text) {
+  const out = [];
+  const re = /[A-Za-z0-9]+(?:['’][A-Za-z]+)*(?:-[A-Za-z0-9]+(?:['’][A-Za-z]+)*)*/g;
+  let m;
+  while ((m = re.exec(String(text ?? '')))) out.push({ w: m[0], start: m.index, end: m.index + m[0].length });
+  return out;
+}
+
+const wkey = (w) => String(w).toLowerCase().replace(/’/g, "'");
+
+/**
+ * board mark 标英语句子里的词（docs/english-plan.md 第 1 批）：sel 是 { kind: word, k } / { kind: words, a, b } / { kind: phrase, text, n }，
+ * words 是那句英文按顺序的词（字符串）。返回 { from, to }（从 0 数，含两头）或 { error }
+ */
+export function wordSpan(sel, words) {
+  const n = words.length;
+  if (!n) return { error: '这里没有英文词' };
+  if (sel.kind === 'word') return sel.k > n ? { error: `这里一共 ${n} 个词，没有第 ${sel.k} 个` } : { from: sel.k - 1, to: sel.k - 1 };
+  if (sel.kind === 'words') return sel.b > n ? { error: `这里一共 ${n} 个词，没有第 ${sel.b} 个` } : { from: sel.a - 1, to: sel.b - 1 };
+  const want = wordsIn(sel.text).map((x) => wkey(x.w));
+  if (!want.length) return { error: `phrase「${sel.text}」里没有英文词` };
+  const keys = words.map(wkey);
+  const hits = [];
+  for (let i = 0; i + want.length <= n; i++) if (want.every((w, j) => keys[i + j] === w)) hits.push(i);
+  if (!hits.length) return { error: `这里没有「${sel.text}」${n <= 40 ? `（句子是：${words.join(' ')}）` : ''}` };
+  if (sel.n && !hits[sel.n - 1]) return { error: `「${sel.text}」只出现了 ${hits.length} 次，没有第 ${sel.n} 次` };
+  if (hits.length > 1 && !sel.n) return { error: `「${sel.text}」出现了 ${hits.length} 次：写 phrase="${sel.text}#2" 指第几次` };
+  const i = hits[(sel.n || 1) - 1];
+  return { from: i, to: i + want.length - 1 };
+}
+
 // —— 找错 errfind：wrong: are（第二次出现的写 are#2）——
 
 /** 句子里用错的那个词是第几个（tokenizeSentence 的下标）。找不到、有歧义都报错 */

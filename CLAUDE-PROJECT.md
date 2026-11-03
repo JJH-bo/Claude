@@ -2240,6 +2240,7 @@ count: 3
   - `row=2`、`col=3`、`diag`（主对角线）、`entry=2,3`、`block=1,2`（子块，要先在 `matrix` 组件里 `split`）：矩阵的部位。`matrix` 组件和公式里的 `bmatrix` 都能标；一处有好几个矩阵时加 `of=名字`（`matrix` 的 `name=`，或者公式里用 `\hl{名字}{…}` 包起来的矩阵）。
   - `step=2`：`steps` 的第 2 步（学生已经走到的）。
   - `label=Ax`、`item=4`：图里标签是 Ax 的东西、第 4 条命令画的东西（演示组件里是第 4 个格子 / 结点）；`at=[1, 2]`：`scene` 里坐标 (1, 2) 那个点。图被拖动、`figure set` 之后，标注跟着挪。
+  - `word=3`（第 3 个英文词）、`words=4-7`（第 4 到 7 个词）、`phrase="who lives next door"`（这几个词；出现几次时 `phrase="that#2"`）、`blank=2`（`cloze` 的第 2 个空）：英语句子里的词。target 是英语组件时数的是那句英文，target 是一段时数的是整段的英文。一个词默认圈，一段词默认划线。
 - `style=`：`circle` 圈、`box` 框、`underline` 下划线、`highlight` 涂底色、`strike` 划掉（约去的项）、`arrow` 箭头（从旁注指过去）。不写时：项、元素、点用圈，行、列、子块、整段用框，对角线用斜着的长圈。
 - `color=`：`yellow`（默认）`pink` `blue` `green` `orange` `purple` `red` `white`。`note="…"`：旁边写一句（要短，最多 80 个字，可以有 `$公式$`）；`side=right|left|above|below` 指定写在哪边。`id=` 不写时页面自动编 m1、m2……
 - 写公式时就要圈、要划的，直接写进公式（`\boxed{…}`、`\cancel{…}`、彩色粉笔 `\chalk{pink}{…}`）；讲着讲着才要指的，用 mark。
