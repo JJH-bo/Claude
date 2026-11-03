@@ -1,0 +1,20 @@
+next 全对。还是这个串，规则我先不讲：nextval 你按自己现在的理解写一遍，写错了没关系，我要看你是怎么想的。
+
+````board new id=b2 title="nextval 先按你的理解写"
+模式串 $T=$ `ababaa`，你刚求出的 next（页面判过对）：
+
+| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| $T[j]$ | a | b | a | b | a | a |
+| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |
+
+```kmp
+id: q-nv1
+title: 写出 nextval 数组
+pattern: ababaa
+show: nextval
+mode: quiz
+```
+````
+
+六个数空格隔开。交上来以后，再用一句话告诉我：你是怎么从 next 得到 nextval 的？

@@ -16,6 +16,12 @@
    "page": 1,
    "title": "热身：先求 next",
    "md": "模式串 $T=$ `ababaa`，位置从 1 数。\n\n```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: ababaa\nshow: next\nmode: quiz\n```"
+  },
+  {
+   "id": "b2",
+   "page": 2,
+   "title": "nextval 先按你的理解写",
+   "md": "模式串 $T=$ `ababaa`，你刚求出的 next（页面判过对）：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n```kmp\nid: q-nv1\ntitle: 写出 nextval 数组\npattern: ababaa\nshow: nextval\nmode: quiz\n```"
   }
  ],
  "pages": [
@@ -23,12 +29,36 @@
    "n": 1,
    "title": "热身：先求 next",
    "talk": "nextval 是从 next 来的，所以先热身：这个短串的 next 你自己写一遍，口径照王道（从 1 数，$next[1]=0$）。\n\n六个数用空格隔开写，写完交上来；拿不准的格子也先按你的想法填。"
+  },
+  {
+   "n": 2,
+   "title": "nextval 先按你的理解写",
+   "talk": "next 全对。还是这个串，规则我先不讲：nextval 你按自己现在的理解写一遍，写错了没关系，我要看你是怎么想的。\n\n六个数空格隔开。交上来以后，再用一句话告诉我：你是怎么从 next 得到 nextval 的？"
   }
  ],
- "cur": 1,
+ "cur": 2,
  "progress": {},
- "tries": {},
- "results": {},
+ "tries": {
+  "q-next1": 1
+ },
+ "results": {
+  "q-next1": [
+   {
+    "source": "record",
+    "block": "q-next1",
+    "step": "b1",
+    "type": "stepper",
+    "engine": "kmp",
+    "title": "写出 next 数组",
+    "q": "写出模式串 ababaa 的 next 数组（从 j = 1 开始）。",
+    "value": "0 1 1 2 3 4",
+    "ok": true,
+    "attempts": 1,
+    "detail": "写出结果",
+    "final": true
+   }
+  ]
+ },
  "compAt": {
   "q-next1": {
    "seg": {
@@ -41,6 +71,18 @@
     "raw": "```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: ababaa\nshow: next\nmode: quiz\n```",
     "at": 28
    }
+  },
+  "q-nv1": {
+   "seg": {
+    "id": "b2"
+   },
+   "f": {
+    "lang": "kmp",
+    "body": "id: q-nv1\ntitle: 写出 nextval 数组\npattern: ababaa\nshow: nextval\nmode: quiz",
+    "id": "q-nv1",
+    "raw": "```kmp\nid: q-nv1\ntitle: 写出 nextval 数组\npattern: ababaa\nshow: nextval\nmode: quiz\n```",
+    "at": 174
+   }
   }
  },
  "ops": [],
@@ -49,6 +91,16 @@
    "role": "claude",
    "seq": 1,
    "text": "nextval 是从 next 来的，所以先热身：这个短串的 next 你自己写一遍，口径照王道（从 1 数，$next[1]=0$）。\n\n````board new id=b1 title=\"热身：先求 next\"\n模式串 $T=$ `ababaa`，位置从 1 数。\n\n```kmp\nid: q-next1\ntitle: 写出 next 数组\npattern: ababaa\nshow: next\nmode: quiz\n```\n````\n\n六个数用空格隔开写，写完交上来；拿不准的格子也先按你的想法填。\n"
+  },
+  {
+   "role": "student",
+   "seq": 2,
+   "text": "next 我算了一遍，应该是 0 1 1 2 3 4。\n[作答] b1 里的 kmp q-next1「写出 next 数组」：写出结果，「写出模式串 ababaa 的 next 数组（从 j = 1 开始）。」做对了（共 1 次）\n[动作] b1 里的组件 q-next1：学生标了「有把握」"
+  },
+  {
+   "role": "claude",
+   "seq": 3,
+   "text": "next 全对。还是这个串，规则我先不讲：nextval 你按自己现在的理解写一遍，写错了没关系，我要看你是怎么想的。\n\n````board new id=b2 title=\"nextval 先按你的理解写\"\n模式串 $T=$ `ababaa`，你刚求出的 next（页面判过对）：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n```kmp\nid: q-nv1\ntitle: 写出 nextval 数组\npattern: ababaa\nshow: nextval\nmode: quiz\n```\n````\n\n六个数空格隔开。交上来以后，再用一句话告诉我：你是怎么从 next 得到 nextval 的？\n"
   }
  ],
  "turns": [
@@ -63,8 +115,38 @@
    "notes": [],
    "plan": false,
    "view": "# 第 1 块板「热身：先求 next」\n\n老师写在板顶的话：nextval 是从 next 来的，所以先热身：这个短串的 next 你自己写一遍，口径照王道（从 1 数，$next[1]=0$）。\n\n六个数用空格隔开写，写完交上来；拿不准的格子也先按你的想法填。\n\n## 热身：先求 next\n模式串 $T=$ `ababaa`，位置从 1 数。\n\n【演示 kmp q-next1】写出 next 数组\n  输入：pattern: ababaa\n  写出模式串 ababaa 的 next 数组（从 j = 1 开始）。\n  （写出结果）\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 2,
+   "role": "student",
+   "say": "next 我算了一遍，应该是 0 1 1 2 3 4。",
+   "acts": [
+    {
+     "comp": "q-next1",
+     "ok": true,
+     "type": "stepper"
+    },
+    {
+     "comp": "q-next1",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "next 我算了一遍，应该是 0 1 1 2 3 4。\n[作答] b1 里的 kmp q-next1「写出 next 数组」：写出结果，「写出模式串 ababaa 的 next 数组（从 j = 1 开始）。」做对了（共 1 次）\n[动作] b1 里的组件 q-next1：学生标了「有把握」"
+  },
+  {
+   "seq": 3,
+   "role": "teacher",
+   "bytes": 628,
+   "talk": "next 全对。还是这个串，规则我先不讲：nextval 你按自己现在的理解写一遍，写错了没关系，我要看你是怎么想的。\n\n六个数空格隔开。交上来以后，再用一句话告诉我：你是怎么从 next 得到 nextval 的？",
+   "ops": [
+    "new"
+   ],
+   "notes": [],
+   "plan": false,
+   "view": "# 第 2 块板「nextval 先按你的理解写」\n\n老师写在板顶的话：next 全对。还是这个串，规则我先不讲：nextval 你按自己现在的理解写一遍，写错了没关系，我要看你是怎么想的。\n\n六个数空格隔开。交上来以后，再用一句话告诉我：你是怎么从 next 得到 nextval 的？\n\n## nextval 先按你的理解写\n模式串 $T=$ `ababaa`，你刚求出的 next（页面判过对）：\n\n| $j$ | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| $T[j]$ | a | b | a | b | a | a |\n| $next[j]$ | 0 | 1 | 1 | 2 | 3 | 4 |\n\n【演示 kmp q-nv1】写出 nextval 数组\n  输入：pattern: ababaa\n  写出模式串 ababaa 的 nextval 数组（从 j = 1 开始）。\n  （写出结果）\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
   }
  ],
- "seq": 1,
+ "seq": 3,
  "pendingNotes": []
 }
