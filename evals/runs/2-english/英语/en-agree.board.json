@@ -1,0 +1,55 @@
+{
+  "unit": "主谓一致：neither of、the number of、either…or",
+  "subject": "英语",
+  "steps": [
+    {
+      "id": "s1",
+      "seq": 1,
+      "page": 1,
+      "title": "先凭语感",
+      "md": "四句都选 is 或 are。先凭感觉选，选错了会有一句提示。\n\n```cloze\nid: cz-ag-0\ntitle: 选 is / are\nq: 每个空选一个。\ntext: (1) Neither of the answers {{[*is|are=主语是 neither：两个里哪一个都不]}} correct.\n  (2) The number of students in our class {{[*is|are=主语的中心词是 number：一个数目]}} increasing.\n  (3) A number of students {{[is=a number of 相当于 many，中心词是 students|*are]}} absent today.\n  (4) Either you or he {{[*is|are=either…or 连接两个主语时，看离谓语最近的那个]}} wrong.\nexplain: (1) is；(2) is；(3) are；(4) is。下面一块板讲一条。\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 2,
+      "page": 2,
+      "title": "neither of",
+      "md": "```quiz\nid: q-ag-1\nq: Neither of the answers is correct. 决定谓语单复数的是哪个词？\n- [x] Neither\n- [ ] answers\n- [ ] correct\nexplain: 主语的中心词是 neither（两个里哪一个都不），the answers 只是 of 后面的范围。neither 看作单数，谓语用 is。each of、either of 也一样。\n```\n\n```errfind\nid: ef-ag-1\ntitle: 换一句\nq: 找出句中的错误并改正。\ntext: Neither of my parents like coffee.\nwrong: like\nfix: likes | !liked=时态不用改，只看单复数\ndecoys: parents=parents 在 of 后面，不是主语的中心词; Neither=Neither 没错，看谓语\nexplain: 主语中心词是 neither，谓语用单数 likes。\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 3,
+      "page": 3,
+      "title": "the number / a number",
+      "md": "> **A.** The number of students in our class is increasing.\n>\n> **B.** A number of students are absent today.\n\n```quiz\nid: q-ag-2\nq: 两句里「在变多的」和「缺席的」分别是什么？\n- [x] A 是「人数」这个数在变多；B 是好多个学生缺席\n- [ ] A、B 都是好多个学生\n- [ ] A 是好多个学生；B 是「人数」这个数\nexplain: the number of …是「……的数目」，中心词是 number，单数；a number of 相当于 many，中心词是后面的 students，复数。\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 4,
+      "page": 4,
+      "title": "换数再填",
+      "md": "```key\ntitle: 中心词\n- **the number of** + 复数名词：中心词是 number（一个数目）→ 单数\n- **a number of** + 复数名词：= many，中心词是后面的名词 → 复数\n```\n\n```cloze\nid: cz-ag-2\ntitle: 题 (2)(3) 换句\nq: 用括号里动词的正确形式填空（注意时态）。\ntext: The number of cars in this city {{has|!have=中心词是 number：一个数目}} (have) doubled in ten years.\n  A number of cars {{were|are|!was=a number of 相当于 many，中心词是 cars|!is=a number of 相当于 many，中心词是 cars}} (be) parked outside.\n  The number of mistakes in your essay {{is|!are=中心词是 number}} (be) smaller this time.\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 5,
+      "page": 5,
+      "title": "either … or：就近",
+      "md": "```quiz\nid: q-ag-3\nq: Either you or he ___ wrong. 谓语跟着谁变？\n- [ ] you\n- [x] he（离谓语最近）\n- [ ] you 和 he 合起来，用复数\nexplain: either … or、neither … nor、not only … but also 连接两个主语时，谓语看离它最近的那个（就近原则）。\n```\n\n```cloze\nid: cz-ag-3\ntitle: 题 (4) 和反过来\nq: 用 be 的正确形式填空（一般现在时）。\ntext: Either you or he {{is|!are=看离谓语最近的 he|!am=am 只跟 I}} wrong.\n  Either he or you {{are|!is=离谓语最近的是 you}} wrong.\n  Neither the teacher nor the students {{are|!is=离谓语最近的是 students}} surprised.\n```"
+    },
+    {
+      "id": "k1",
+      "seq": 6,
+      "pin": true,
+      "title": "看中心词",
+      "md": "neither of / each of → 单数\nthe number of → 单数｜a number of → 复数\neither … or / neither … nor → 看最近的"
+    },
+    {
+      "id": "s6",
+      "seq": 7,
+      "page": 6,
+      "title": "混着改",
+      "md": "```errfind\nid: ef-ag-2\ntitle: 改错 1\nq: 找出句中的错误并改正。\ntext: The number of visitors to the museum have risen sharply this year.\nwrong: have\nfix: has\ndecoys: visitors=visitors 在 of 后面，不是中心词; risen=risen 是过去分词，没错\nexplain: the number of 的中心词是 number，用 has。\n```\n\n```errfind\nid: ef-ag-3\ntitle: 改错 2\nq: 找出句中的错误并改正。\ntext: Either the manager or his assistants is going to attend the meeting.\nwrong: is\nfix: are | !was=时态不用改，只看单复数\ndecoys: manager=manager 离谓语远，不决定单复数; assistants=assistants 没错，它决定谓语用复数\nexplain: either … or 就近，离谓语最近的是 assistants，用 are。\n```"
+    }
+  ]
+}

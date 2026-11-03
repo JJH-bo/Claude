@@ -1,0 +1,48 @@
+{
+  "unit": "长难句：同位语从句和非限制性定语从句",
+  "subject": "英语",
+  "steps": [
+    {
+      "id": "k1",
+      "seq": 1,
+      "pin": true,
+      "title": "这句话",
+      "md": "The idea that people can change their habits overnight, which many self-help books promote, is not supported by research."
+    },
+    {
+      "id": "s1",
+      "seq": 2,
+      "page": 1,
+      "title": "先找谓语",
+      "md": "这句话里有三个动词短语：can change、promote、is not supported。整句的谓语只有一个，先找它。\n\n```parse\nid: ps-lg-1\ntitle: 拆主干\nq: 第 1 步只标整句的谓语；第 2 步标主语（主语带着的修饰全算进去）。\nanswer: [S The idea that people can change their habits overnight, which many self-help books promote], [V is not supported] by research.\nroles: S V\nsteps: V | S\nexplain: can change 在 that 从句里，promote 在 which 从句里，都不是整句的谓语；整句谓语是 is not supported。主语是 The idea 连同后面两个从句。盖住两个从句，主干就是 The idea is not supported by research。\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "两个引导词",
+      "md": "````frames\nid: fr-lg-gap\ntitle: that 和 which 占没占位置\nq: 主语里有两个从句：① that people can change their habits overnight；② which many self-help books promote。\n---\narray 从句②: many self-help books promote *the *idea\n> 先把从句②还原成普通的句子：promote 的宾语是 the idea。\n---\narray 从句②: many self-help books promote !which\n> 用 which 代替 the idea。\n---\n?? 把 which 挪到从句开头，promote 后面空出来的是什么成分？ = 宾语 | 主语 | 什么也没空出来\narray 从句②: *which many self-help books promote _\n> which 在从句里作 promote 的宾语：从句②是**定语从句**（attributive clause），修饰 the idea。\n---\n?? 去掉 that，剩下的 people can change their habits overnight 缺不缺成分？ = 不缺，that 只起连接作用 | 缺主语 | 缺宾语\narray 从句①: ~that people can change their habits overnight\n> that 不作任何成分，后面是完整的句子，说的就是 idea 的内容：从句①是**同位语从句**（appositive clause）。\n````"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "同位语还是定语",
+      "md": "```recognize\nid: rec-lg-1\ntitle: 认从句\nmethods: 同位语从句 | 定语从句\nreason: true\nshuffle: true\n\nitem: The news **that our team had won** spread quickly.\nanswer: 同位语从句\nwhy: 去掉 that，our team had won 完整；从句说的就是 news 的内容。\n\nitem: The news **that he brought us** was exciting.\nanswer: 定语从句\nwhy: brought us 后面缺「带来的东西」，that 作 brought 的宾语。\n\nitem: The fact **that he lied** made her angry.\nanswer: 同位语从句\nwhy: he lied 完整，that 不作成分，从句就是 fact 的内容。\n\nitem: The fact **that we learned in class** turned out to be useful.\nanswer: 定语从句\nwhy: learned 缺宾语，that 作 learned 的宾语。\n\nitem: The suggestion **that he made** was rejected.\nanswer: 定语从句\nwhy: made 缺宾语，that 作 made 的宾语。\n\nitem: The suggestion **that we should leave early** was rejected.\nanswer: 同位语从句\nwhy: we should leave early 完整，说的是建议的内容。\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "按意群读",
+      "md": "```chunk\nid: ch-lg-1\ntitle: 切成意群\ntext: The idea / that people can change their habits overnight, / which many self-help books promote, / is not supported | by research.\ntranslate: on\nexplain: 中心词 the idea 一个意群；同位语从句一个；定语从句一个；谓语带 by research 一个。翻译时按意群往下顺：「人能一夜之间改掉习惯，这种说法很多励志书都在推，但研究并不支持。」\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 5,
+      "title": "换一句自己拆",
+      "md": "```parse\nid: ps-lg-2\ntitle: 新句子\nq: 第 1 步标谓语；第 2 步标主语；第 3 步标出主语里的两个从句。\nanswer: [S The belief [AppC that money can buy happiness], [RC which many young people hold]], [V has been challenged] by recent studies.\nroles: S V AppC RC\nsteps: V | S | AppC RC\nexplain: 谓语 has been challenged；主语 The belief 带两个从句：that money can buy happiness 完整，是 belief 的内容（同位语从句）；which 作 hold 的宾语，修饰 the belief（定语从句）。\n```"
+    }
+  ]
+}

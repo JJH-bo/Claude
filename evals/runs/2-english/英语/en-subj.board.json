@@ -1,0 +1,55 @@
+{
+  "unit": "虚拟语气：和过去相反、混合虚拟",
+  "subject": "英语",
+  "steps": [
+    {
+      "id": "s1",
+      "seq": 1,
+      "page": 1,
+      "title": "实际发生了什么",
+      "md": "> If he **had taken** my advice, he **would not have failed** the exam.\n\n```quiz\nid: q-sj-1\nq: 照这句话，**实际**发生了什么？\n- [x] 他没听我的劝，考砸了\n- [ ] 他听了劝，考过了\n- [ ] 考试还没考\nexplain: 虚拟语气（subjunctive mood）说的是和事实相反的假设：「要是听了……就不会挂」，事实是没听、挂了。\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 2,
+      "page": 2,
+      "title": "现在还是过去",
+      "md": "> **A.** If I **had** more time, I **would learn** French.\n>\n> **B.** If I **had had** more time, I **would have learned** French.\n\n```quiz\nid: q-sj-2\nq: 哪一句说的是**过去**已经错过的事？\n- [ ] A\n- [x] B\n- [ ] 两句都是\nexplain: A 是现在没时间（和现在相反），从句用过去式 had；B 是当时没时间、已经错过（和过去相反），从句往前退一步用 had had，主句 would have learned。\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 3,
+      "page": 3,
+      "title": "和过去相反",
+      "md": "| 和……相反 | if 从句 | 主句 |\n|---|---|---|\n| 现在 | 过去式（be 用 were） | would + 动词原形 |\n| 过去 | had + 过去分词 | would have + 过去分词 |\n\n```cloze\nid: cz-sj-1\ntitle: 题 (1)\nq: 用括号里动词的正确形式填空。\ntext: If he {{had taken|!took=took 是和现在相反的形式；考试已经考完了|!has taken=虚拟语气的从句里不用现在完成时|!would have taken=would have done 放在主句，if 从句用 had done}} (take) my advice, he would not have failed the exam.\nexplain: 没听劝是过去的事，和过去相反：if 从句用 had taken。\n```"
+    },
+    {
+      "id": "k1",
+      "seq": 4,
+      "pin": true,
+      "title": "虚拟的形式",
+      "md": "和现在相反：if 过去式（be 用 were）→ would do\n和过去相反：if had done → would have done"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "条件和结果不同时",
+      "md": "```steps\nid: st-sj-mix\ntitle: 题 (2) 先看时间\nq: If I had studied medicine, I ______ (be) a doctor now.\n\nstep: 条件在什么时候\nask: studied medicine（当初学医）说的是什么时候的事？\nchoices: 过去 | 现在\nanswer: 过去\nshow: 学不学医是当年的选择：条件和过去相反，从句用 had studied。\n\nstep: 结果在什么时候\nask: 看句末。「当医生」说的是什么时候的状态？\nchoices: 过去 | 现在\nanswer: 现在\nshow: 句末有 **now**：结果是现在的状态，和现在相反，主句用 would + 动词原形。\n```\n\n```cloze\nid: cz-sj-2\ntitle: 填出来\nq: 用括号里动词的正确形式填空。\ntext: If I had studied medicine, I {{would be|!would have been=看句末的 now：结果说的是现在|!will be=和事实相反，主句要用 would|!were=主句要 would + 动词原形}} (be) a doctor now.\nexplain: 条件在过去（had studied），结果在现在（now）：混合虚拟，主句用 would be。\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 5,
+      "title": "为什么不是 would have been",
+      "md": "```sketch\nid: sk-sj-1\ntitle: 条件在过去，结果在现在\nwidth: 340\nheight: 170\n<line x1=\"20\" y1=\"110\" x2=\"325\" y2=\"110\" class=\"arrow\"/>\n<line x1=\"90\" y1=\"100\" x2=\"90\" y2=\"120\"/>\n<line x1=\"250\" y1=\"100\" x2=\"250\" y2=\"120\"/>\n<text x=\"90\" y=\"142\" text-anchor=\"middle\" class=\"small\">过去</text>\n<text x=\"250\" y=\"142\" text-anchor=\"middle\" class=\"small\">现在（now）</text>\n<text x=\"90\" y=\"70\" text-anchor=\"middle\" class=\"blue small\">had studied medicine</text>\n<text x=\"250\" y=\"70\" text-anchor=\"middle\" class=\"pink small\">would be a doctor</text>\n<path d=\"M 120 80 Q 170 40 220 80\" class=\"arrow yellow\"/>\n<text x=\"170\" y=\"165\" text-anchor=\"middle\" class=\"gray small\">would have been：结果也落在过去</text>\n```\n\n```conjecture\nid: cj-sj-1\ntitle: 说出理由\nq: 一句话说：题 (2) 的主句为什么用 would be，而不是 would have been？\ngrade: off\nanswer: 条件（学医）是过去的事，用 had studied；结果（当医生）是现在的状态，句末有 now，所以主句按「和现在相反」用 would be。would have been 说的是过去的结果。\nplaceholder: 因为……\n```"
+    },
+    {
+      "id": "s6",
+      "seq": 7,
+      "page": 6,
+      "title": "混着来",
+      "md": "每句先看条件、结果各在什么时候，再填。\n\n```cloze\nid: cz-sj-3\ntitle: 四句混练\nq: 用括号里动词的正确形式填空。\ntext: If I {{were|!was=虚拟语气里 be 一律用 were（考试口径）|!am=和现在相反，从句用过去式}} (be) you, I would accept the offer.\n  If it {{had not rained|!did not rain=yesterday：和过去相反，用 had done|!would not rain=if 从句里不用 would}} (not rain) yesterday, we would have gone to the park.\n  If you had followed the doctor's advice last year, you {{would be|!would have been=句末是 now：结果在现在}} (be) healthier now.\n  If he were not so careless, he {{would not have made|!would not make=yesterday：结果在过去|!had not made=主句用 would have done}} (not make) that mistake yesterday.\nexplain: 第 1 句现在；第 2 句过去；第 3 句条件过去、结果现在；第 4 句反过来，条件是现在一直如此（粗心），结果在昨天，主句用 would have done。\n```"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "unit": "非限制性定语从句：逗号的意思",
+  "subject": "英语",
+  "steps": [
+    {
+      "id": "s1",
+      "seq": 1,
+      "page": 1,
+      "title": "只差两个逗号",
+      "md": "两句话只差两个逗号。先别管语法，读意思：\n\n> **A.** My brother who lives in Beijing is a doctor.\n>\n> **B.** My brother, who lives in Beijing, is a doctor.\n\n```quiz\nid: q-rel-1\nq: 哪一句暗示「我」**不止一个**哥哥？\n- [x] A（没逗号）\n- [ ] B（有逗号）\n- [ ] 两句意思一样\nexplain: A 里的 who lives in Beijing 用来从几个哥哥里挑出住北京的那一个，所以暗示哥哥不止一个；B 的逗号把从句隔开，只是顺带补充：我哥哥（就这一个）住在北京。\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 2,
+      "page": 2,
+      "title": "再换一对",
+      "md": "> **A.** The students who passed the exam went home.\n>\n> **B.** The students, who passed the exam, went home.\n\n```quiz\nid: q-rel-2\nq: 哪一句里，可能**有学生没回家**？\n- [x] A\n- [ ] B\n- [ ] 两句一样\nexplain: A 只说「通过了的那些」回家了，没通过的还留着；B 说的是全体学生：他们都回家了，顺便一提，他们都通过了。\n```\n\n```conjecture\nid: cj-rel-1\ntitle: 逗号的作用\nq: 用一句话说：加了逗号以后，who / which 引导的从句从「干什么用」变成了「干什么用」？\ngrade: off\nanswer: 没逗号的从句用来限定、挑出是哪一个（限制性）；有逗号的只是补充说明，不挑（非限制性）。\nplaceholder: 没逗号时……，有逗号时……\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 3,
+      "page": 3,
+      "title": "逗号后面填什么",
+      "md": "```key\ntitle: 规则\n- 没逗号（限制性定语从句 restrictive clause）：挑出是哪一个，指人 who / that，指物 which / that\n- 有逗号（非限制性定语从句 non-restrictive clause）：只是补充，指人 **who**，指物 **which**，不用 that\n```\n\n```cloze\nid: cz-rel-1\ntitle: 题 (1)\nq: 填关系词。\ntext: My brother, {{who|!that=逗号后面（非限制性）不用 that|!which=brother 是人|!whom=从句缺的是主语：谁住在北京}} lives in Beijing, is a doctor.\nexplain: 有逗号，是非限制性；先行词 brother 是人，在从句里作主语，用 who。\n```"
+    },
+    {
+      "id": "k1",
+      "seq": 4,
+      "pin": true,
+      "title": "逗号",
+      "md": "没逗号：**挑出**是哪一个（限制性）\n有逗号：顺带**补充**（非限制性）：人 who、物 which，不用 that"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "找错改错",
+      "md": "```errfind\nid: ef-rel-1\ntitle: 题 (2)\nq: 找出句中的错误并改正。\ntext: The book, that I bought yesterday, is very interesting.\nwrong: that\nfix: which | !who=book 是物，不是人 | !it=这里要的是关系词，把两句连起来\ndecoys: book=book 没错，看逗号后面的引导词; is=is 和主语 the book 一致，没错; yesterday=时间没问题\nexplain: 两个逗号把从句隔开，是非限制性定语从句，不能用 that；先行词 book 是物，改成 which。\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 5,
+      "title": "自己选",
+      "md": "有的有逗号，有的没有，先看逗号再填。\n\n```cloze\nid: cz-rel-2\ntitle: 选关系词\nq: 每个空填一个关系词。\ntext: The Great Wall, {{which|!that=逗号后面不用 that|!who=长城是物}} is over two thousand years old, attracts millions of visitors.\n  The man {{who|that|!which=man 是人}} lent me the book is my teacher.\n  My mother, {{who|!that=逗号后面不用 that|!which=mother 是人}} is a nurse, often works at night.\n  Shanghai, {{which|!that=逗号后面不用 that|!where=从句缺主语（谁是最大的城市），where 只能作地点状语}} is the largest city in China, is near the sea.\nexplain: 第 1、3、4 句有逗号，只能 who / which；第 2 句没逗号，挑出是哪个人，who 和 that 都行。第 4 句从句里缺主语，所以不能用 where。\n```"
+    },
+    {
+      "id": "s6",
+      "seq": 7,
+      "page": 6,
+      "title": "两句并一句",
+      "md": "```drill\nid: dr-rel-1\ntitle: 并成一句\nq: 把两句并成一句，第二句改成非限制性定语从句（加逗号）。\nshuffle: off\n- Paris is the capital of France. I visited it last year. => Paris, which I visited last year, is the capital of France. | !Paris, that I visited last year, is the capital of France.=逗号后面不用 that | !Paris, which I visited it last year, is the capital of France.=which 已经是 visited 的宾语，it 要删掉\n- Mr. Li is our English teacher. He comes from Shanghai. => Mr. Li, who comes from Shanghai, is our English teacher. | Mr. Li, who is our English teacher, comes from Shanghai. | !Mr. Li, that comes from Shanghai, is our English teacher.=逗号后面不用 that | !Mr. Li, which comes from Shanghai, is our English teacher.=Mr. Li 是人\n- My bike is red. I bought it last week. => My bike, which I bought last week, is red. | !My bike, which I bought it last week, is red.=which 已经是 bought 的宾语，it 要删掉 | !My bike, that I bought last week, is red.=逗号后面不用 that\n```"
+    }
+  ]
+}

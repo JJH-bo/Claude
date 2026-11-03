@@ -1,0 +1,48 @@
+{
+  "unit": "非谓语作状语：逻辑主语、主动被动、先后",
+  "subject": "英语",
+  "steps": [
+    {
+      "id": "s1",
+      "seq": 1,
+      "page": 1,
+      "title": "谁在看",
+      "md": "> *Seeing from the top of the hill, the city looks beautiful.*\n\n```quiz\nid: q-nf-1\nq: 照这句话的字面，是谁在 see（看）？\n- [x] the city\n- [ ] 说这句话的人\n- [ ] the hill\nexplain: 句首的 -ing 短语没有自己的主语，它的逻辑主语就是主句的主语 the city。城市不会去「看」，所以这句话字面上是错的。\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 2,
+      "page": 2,
+      "title": "主动还是被动",
+      "md": "```quiz\nid: q-nf-2\nq: the city 和 see 是什么关系？\n- [ ] 城市去看\n- [x] 城市被看\nexplain: 城市是被人从山顶上看的：被动，用过去分词 seen。\n```\n\n```cloze\nid: cz-nf-1\ntitle: 题 (1)\nq: 用括号里动词的正确形式填空。\ntext: {{Seen|!Seeing=城市不会自己看：城市是被看的|!Having seen=having seen 是主动，城市是被看的|!To see=这里说的是城市被看时的样子，不是目的}} (see) from the top of the hill, the city looks beautiful.\nexplain: 逻辑主语 the city，和 see 是被动关系，用过去分词 Seen。\n```"
+    },
+    {
+      "id": "k1",
+      "seq": 3,
+      "pin": true,
+      "title": "三步",
+      "md": "① 找主句主语（= 非谓语的逻辑主语）\n② 主动 -ing，被动 -ed\n③ 明显先发生、要强调先后：having done"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "一先一后",
+      "md": "> **A.** Hearing the news, she burst into tears.\n>\n> **B.** Having finished his homework, he went out to play.\n\n```quiz\nid: q-nf-3\nq: 哪一句的两个动作，必须是一个**做完了**另一个才开始？\n- [ ] A\n- [x] B\n- [ ] 两句都是\nexplain: A 一听到就哭，几乎同时，用 doing；B 作业写完了才出去玩，非谓语的动作先于谓语 went，用 having done 强调先后。\n```\n\n```cloze\nid: cz-nf-2\ntitle: 题 (2)\nq: 用括号里动词的正确形式填空。\ntext: {{Having finished|!Finishing=作业写完了才出去：动作在 went 之前，要强调先后|!Finished=他自己写作业，是主动|!Having been finished=他自己写作业，是主动}} (finish) his homework, he went out to play.\nexplain: 逻辑主语 he，主动；完成作业在出去玩之前，用 Having finished。\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "混着填",
+      "md": "每句照常驻栏的三步走一遍。\n\n```cloze\nid: cz-nf-3\ntitle: 四句混练\nq: 用括号里动词的正确形式填空。\ntext: {{Written|!Writing=信是被写的}} (write) in a hurry, the letter has many mistakes.\n  {{Having lived|!Living=在北京住了十年在先，所以熟悉；要强调先后|!Lived=他自己住，是主动}} (live) in Beijing for ten years, he knows the city well.\n  {{Not knowing|!Not known=她自己不知道，是主动|!Knowing not=not 放在非谓语前面}} (not know) what to do, she called her mother.\n  {{Given|!Giving=we 是被给时间的|!Having given=we 是被给时间的}} (give) more time, we could have done it better.\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 5,
+      "title": "主语对不上",
+      "md": "下面两句的毛病不在非谓语，在主句的主语。改主句，让主句的主语就是非谓语动作的发出者。\n\n```drill\nid: dr-nf-1\ntitle: 改主句\nq: 保留句首的非谓语，改写主句。\nshuffle: off\n- Walking in the street, a car hit him. => Walking in the street, he was hit by a car. | !Walked in the street, he was hit by a car.=他自己在走，主动用 -ing\n- Having finished his homework, the TV was turned on. => Having finished his homework, he turned on the TV. | Having finished his homework, he turned the TV on.\n```"
+    }
+  ]
+}
