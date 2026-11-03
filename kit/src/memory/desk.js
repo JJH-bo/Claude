@@ -31,7 +31,7 @@ import { masteryProposals, masteryPendingWrites } from './mastery.js';
 import { pickDrills, harvestDrills, drillLine, DRILL_N } from './drills.js';
 import { enterDrill } from './drillrun.js';
 import { recallToday, spaceCounts } from './recall.js';
-import { PICKS, MORE, applyTheme } from '../theme.js';
+import { PICKS, MORE, applyTheme, isAuto, dayNight, setDayNight } from '../theme.js';
 import { runRecall } from './recallrun.js';
 import { purgePlan, purgeText } from './purge.js';
 import { vocabRecalls } from './vocab.js';
@@ -107,7 +107,7 @@ export async function renderDesk(root, meta) {
     </div>
     </div>
     <div class="dk-manage" hidden>
-    <section class="dk-card dk-look"><h2 class="dk-h">样子</h2><p class="dk-sub muted">学习台和课堂都换成这个样子，这台设备记着。</p><div class="dk-body"></div></section>
+    <section class="dk-card dk-look"><h2 class="dk-h">样子</h2><p class="dk-sub muted">学习台和课堂一起换，这台设备记着。</p><div class="dk-body"></div></section>
     <section class="dk-card dk-recent"><h2 class="dk-h">最近记下的</h2><p class="dk-sub muted">课堂里的 Claude 和页面直接写进记忆的，不对就撤销（7 天内）。</p><div class="dk-pdone"></div></section>
     <section class="dk-card dk-mine" hidden><h2 class="dk-h">我改记忆</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-backup" hidden><h2 class="dk-h">备份</h2><div class="dk-body"></div></section>
@@ -792,19 +792,34 @@ export async function renderDesk(root, meta) {
     }
   });
 
-  // —— 样子（theme.js）：三种推荐的，加上收起来的另外三种；点了马上换，这台设备记着 ——
+  // —— 样子（theme.js）：固定一种，或者跟着 iPad 白天晚上（白天一种浅色、晚上一种深色）；点了马上换，这台设备记着 ——
   function paintLook() {
+    const auto = isAuto();
     const cur = document.documentElement.dataset.theme || 'graphite'; // 没有 data-theme 就是石墨（夜读）
+    const { day, night } = dayNight();
     const sw = (x) => `<span class="dk-sw" aria-hidden="true" style="background:${x.sw[0]}"><i style="background:${x.sw[1]}"><b style="background:${x.sw[2]}"></b><b style="background:${x.sw[3]}"></b></i></span>`;
-    const card = (x) => `<button type="button" class="dk-look-btn" data-theme-id="${escapeHtml(x.id)}" aria-pressed="${x.id === cur}">${sw(x)}<span class="dk-look-t"><b>${escapeHtml(x.name)}</b>${x.note ? `<span class="muted">${escapeHtml(x.note)}</span>` : ''}</span></button>`;
-    $('.dk-look .dk-body').innerHTML = `<div class="dk-looks">${PICKS.map(card).join('')}</div>
-      <details class="dk-soft"${MORE.some((x) => x.id === cur) ? ' open' : ''}><summary>更多</summary><div class="dk-looks is-more">${MORE.map(card).join('')}</div></details>`;
+    const card = (x, slot, on) => `<button type="button" class="dk-look-btn" data-slot="${slot}" data-theme-id="${escapeHtml(x.id)}" aria-pressed="${on}">${sw(x)}<span class="dk-look-t"><b>${escapeHtml(x.name)}</b>${x.note ? `<span class="muted">${escapeHtml(x.note)}</span>` : ''}</span></button>`;
+    const lights = PICKS.filter((x) => !x.dark), darks = PICKS.filter((x) => x.dark);
+    const row = (title, list, slot, pick) => `<p class="dk-look-k">${title}</p><div class="dk-looks">${list.map((x) => card(x, slot, x.id === pick)).join('')}</div>`;
+    const dark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+    $('.dk-look .dk-body').innerHTML = `
+      <div class="dk-spaces dk-look-mode" role="tablist" aria-label="怎么换"><button type="button" class="dk-space dk-look-m" data-mode="fixed" aria-selected="${!auto}">固定一种</button><button type="button" class="dk-space dk-look-m" data-mode="auto" aria-selected="${auto}">跟着 iPad 白天晚上</button></div>
+      ${auto
+        ? `<p class="dk-sub">iPad 是浅色时用「白天」那种，切到深色（设置 → 显示与亮度，可以设成日落后自动）就换成「晚上」那种。现在 iPad 是${dark ? '深色' : '浅色'}。</p>
+          ${row('白天', [...lights, ...MORE.filter((x) => !x.dark)], 'day', day)}${row('晚上', [...darks, ...MORE.filter((x) => x.dark)], 'night', night)}`
+        : `${row('浅色', lights, 'fixed', cur)}${row('深色', darks, 'fixed', cur)}
+          <details class="dk-soft"${MORE.some((x) => x.id === cur) ? ' open' : ''}><summary>更多</summary><div class="dk-looks is-more">${MORE.map((x) => card(x, 'fixed', x.id === cur)).join('')}</div></details>`}`;
   }
   paintLook();
+  // iPad 自己切了深浅色：那一句「现在 iPad 是……」和选中的样子跟着重画（换风格本身 theme.js 管）
+  if (typeof matchMedia === 'function') matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => paintLook());
   $('.dk-look').addEventListener('click', (e) => {
+    const m = e.target.closest('.dk-look-m');
+    if (m) { applyTheme(m.dataset.mode === 'auto' ? 'auto' : (document.documentElement.dataset.theme || 'graphite'), { save: true }); paintLook(); return; }
     const b = e.target.closest('.dk-look-btn');
     if (!b) return;
-    applyTheme(b.dataset.themeId, { save: true });
+    if (b.dataset.slot === 'fixed') applyTheme(b.dataset.themeId, { save: true });
+    else { setDayNight(b.dataset.slot, b.dataset.themeId); applyTheme('auto', { save: true }); }
     paintLook();
   });
 
