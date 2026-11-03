@@ -513,3 +513,22 @@
 :root[data-theme="inknight"] .dk-class::after { background: linear-gradient(to bottom, rgb(var(--chalk-rgb) / 0.11), rgb(var(--chalk-rgb) / 0.02) 72%); }
 :root[data-theme="inknight"] .dk-stat { background: rgb(var(--chalk-rgb) / 0.04); }
 :root[data-theme="inknight"] .dk-eyebrow { color: rgb(var(--yellow-rgb)); }
+
+/* —— 纸本、青瓷、黑板的主角卡：不要那团学科色的晕（浅底上是一块脏灰），各有一个自己的小细节 ——
+   纸本：作业本的横线和左边一道红的页边线；青瓷：釉面的开片，右上角一小片，往外淡掉；黑板：干干净净一块，粉笔灰在底上 */
+:root:is([data-theme="paper"], [data-theme="celadon"], [data-theme="chalk"]) .dk-class { background: var(--panel); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .dk-class::after { content: none; }
+:root[data-theme="paper"] .dk-class { background:
+  linear-gradient(90deg, transparent 10px, rgb(var(--coral-rgb) / 0.32) 10px 11.5px, transparent 11.5px),
+  repeating-linear-gradient(to bottom, transparent 0 33px, rgb(var(--blue-rgb) / 0.09) 33px 34px),
+  var(--panel); }
+:root[data-theme="celadon"] .dk-class::before { content: ""; position: absolute; right: 0; top: 0; width: min(60%, 440px); height: 260px; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cpath d='M0 40 38 52 70 30 110 46 150 20 190 38 240 26M70 30 84 0M38 52 52 100 30 140 46 190 20 240M52 100 100 112 130 90 170 118 210 96 240 110M130 90 150 20M100 112 110 160 80 200 96 240M110 160 160 170 200 150 240 168M170 118 160 170M200 150 214 200 190 240M214 200 240 196M0 140 30 140M0 190 46 190' fill='none' stroke='%23000' stroke-width='.8'/%3E%3C/svg%3E") 0 0 / 240px 240px; opacity: .1;
+  -webkit-mask: radial-gradient(closest-side at 85% 20%, #000, transparent); mask: radial-gradient(closest-side at 85% 20%, #000, transparent); }
+/* 浅色几种（纸本、青瓷）：复现那一块、要记的那一叠和水墨一样（灰的一层、细边） */
+:root:is([data-theme="paper"], [data-theme="celadon"]) .dk-rv { background: var(--field); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .dk-stat { background: rgb(var(--card-solid-rgb) / 0.7); box-shadow: var(--field-edge); }
+:root:is([data-theme="paper"], [data-theme="celadon"]) .dk-deck { background: linear-gradient(160deg, rgb(var(--pink-rgb) / 0.08), rgb(var(--pink-rgb) / 0.03)), var(--card-solid);
+  box-shadow: inset 0 0 0 0.5px rgb(var(--pink-rgb) / 0.3), 0 7px 0 -4px var(--card-solid), 0 7px 0 -3.5px rgb(var(--pink-rgb) / 0.22), 0 13px 0 -8px var(--card-solid), 0 13px 0 -7.5px rgb(var(--pink-rgb) / 0.14); }
+:root[data-theme="chalk"] .dk-rv { background: rgb(var(--shade-rgb) / 0.14); box-shadow: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.1); }
+:root[data-theme="chalk"] .dk-deck { background: rgb(var(--pink-rgb) / 0.08); box-shadow: inset 0 0 0 1.5px rgb(var(--pink-rgb) / 0.35); }

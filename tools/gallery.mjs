@@ -4,7 +4,7 @@
 //
 // 用法：node tools/gallery.mjs [选项] 示例页…
 //   --out 目录         截图和联系表放哪（必写）
-//   --themes all|列表  all：五种风格；或者 default,paper,white（默认 all）
+//   --themes all|picks|列表  all：全部风格；picks：学习台推荐的六种；或者 default,paper,white（默认 all）
 //   --width 820        页面宽度（默认 820，iPad 竖屏）
 //   --only id1,id2     只截这几个组件（按 id）
 //   --per 12           一张联系表放几个（默认 12）
@@ -17,7 +17,9 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { withTheme } from './check-lesson.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const THEMES = ['default', 'chalk', 'paper', 'midnight', 'white'];
+const THEMES = ['default', 'chalk', 'paper', 'midnight', 'white', 'ink', 'celadon', 'inknight', 'xuan', 'candle', 'dusk'];
+// 学习台「样子」里推荐的六种（--themes picks）
+const PICKS = ['ink', 'paper', 'celadon', 'chalk', 'inknight', 'xuan'];
 // 演示组件的名字（blocks/index.js 里用 stepperBlock 注册的，和 elimBlock() / pvBlock() 这种包了一层的）：给它们加 start: end，截最后一步
 const STEPPERS = new Set([...readFileSync(join(ROOT, 'kit/src/blocks/index.js'), 'utf8').matchAll(/(\w+):\s*(?:stepperBlock\(|\w+Block\(\))/g)].map((m) => m[1]));
 
@@ -26,7 +28,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--out') opt.out = argv[++i];
-    else if (a === '--themes') { const v = argv[++i]; opt.themes = v === 'all' ? THEMES : v.split(',').map((x) => x.trim()); }
+    else if (a === '--themes') { const v = argv[++i]; opt.themes = v === 'all' ? THEMES : v === 'picks' ? PICKS : v.split(',').map((x) => x.trim()); }
     else if (a === '--width') opt.width = Number(argv[++i]);
     else if (a === '--only') opt.only = new Set(argv[++i].split(',').map((x) => x.trim()));
     else if (a === '--per') opt.per = Number(argv[++i]);
