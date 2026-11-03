@@ -16,6 +16,8 @@ import path from 'node:path';
 import { componentDocs } from '../kit/build-docs.js';
 import { buildSystem, boardStateText, planText, latestPlan, actionsMessage, actionText } from '../kit/src/class/prompt.js';
 import { parseOutput } from '../kit/src/class/protocol.js';
+import { wordSpan } from '../kit/src/entext.js';
+import { parseCloze, matchText, diagnose, tokenizeSentence, findWrong, parseAnswer, parseDecoys, parseBrackets, judgeSpans, spansHint, parseRoles, parseChunk, judgeChunks, chunkHint, chunksOf, parseDrill, textHint } from '../kit/src/entext.js';
 import { compile, valueTeX } from '../kit/src/expr.js';
 
 const [cmd, dir, arg, ...rest] = process.argv.slice(2);
@@ -87,6 +89,26 @@ function studentComp(f, progress = 0) {
     if (f.lang === 'answer' || f.lang === 'practice') {
       return `【作答题 ${id}】${field(f.body, 'title')}\n  ${field(f.body, 'q')}\n  （写出答案）`;
     }
+    // 英语组件（docs/english-plan.md 第 5 批）：学生看到的和页面上一样，答案去掉
+    if (f.lang === 'cloze') {
+      const { parts } = parseCloze(field(f.body, 'text').replace(/\n\s+/g, ' '));
+      const sent = parts.map((p) => (p.text !== undefined ? p.text : `（${p.blank + 1}）${p.choices ? `[${p.choices.map((c) => c.text).join(' / ')}]` : '____'}`)).join('');
+      return `【填空 ${id}】${field(f.body, 'title')}\n  ${field(f.body, 'q')}\n  ${sent}\n  （按顺序写每个空，用 | 隔开，比如 "who | has lived"）`;
+    }
+    if (f.lang === 'errfind') return `【改错 ${id}】${field(f.body, 'q') || '点出用错的那个词并改正'}\n  ${field(f.body, 'text')}\n  （写成 "错的词 → 改成什么"，比如 "are → is"）`;
+    if (f.lang === 'parse') {
+      const ans = parseBrackets(field(f.body, 'answer'));
+      const roles = parseRoles(field(f.body, 'roles'), [...new Set(ans.spans.map((x) => x.role))]);
+      if (/^show$/i.test(field(f.body, 'mode'))) return `【句子结构 ${id}】${field(f.body, 'answer')}`;
+      const st = field(f.body, 'steps');
+      return `【成分标注 ${id}】${field(f.body, 'q')}\n  ${ans.text}\n  成分：${roles.map((r) => `${r.key}=${r.name}`).join('、')}${st ? `\n  分步：${st}（现在是第 ${progress + 1} 步，只标这一步的成分）` : ''}\n  （用括号写，比如 "[S The man] [V gave] …"，从句可以套一层）`;
+    }
+    if (f.lang === 'chunk') { const c = parseChunk(field(f.body, 'text')); return `【意群断句 ${id}】${field(f.body, 'q') || '把句子切成意群'}\n  ${c.text}\n  （在要切的地方写 /，比如 "The man / gave me a book"）`; }
+    if (f.lang === 'drill') {
+      const items = parseDrill(f.body.split('\n'));
+      const it = items[Math.min(progress, items.length - 1)];
+      return `【操练 ${id}】${field(f.body, 'q')}\n  第 ${Math.min(progress, items.length - 1) + 1} / ${items.length} 题：${it.q}`;
+    }
     if (['scene', 'graph', 'space', 'plot'].includes(f.lang)) return `【一张图 ${id}】${field(f.body, 'title')}（模拟课里拖不了；可以看图里的标注：${f.body.split('\n').filter((l) => /^\s*show\b|label=/.test(l)).map((l) => l.trim()).slice(0, 3).join('；') || '没有'}）`;
     if (f.lang === 'let') return '';
     // 别的组件：去掉答案类字段，原样给
@@ -154,6 +176,9 @@ export function pickOption(texts, value) {
   return texts.findIndex((t) => norm(t) && v.includes(norm(t)));
 }
 
+// wordSpan 数的是记号（含标点）：parseBrackets 的 tokens 也含标点，下标一致
+const idxOf = (tokens, i) => i;
+
 /** 学生的一个动作 → 课堂里同样的作答记录（交给 actionText） */
 function judge(st, act) {
   const where = st.compAt[act.comp];
@@ -181,6 +206,70 @@ function judge(st, act) {
     const pick = pickOption(options.map((o) => o.text), act.value);
     const ok = pick >= 0 ? options[pick].correct : false;
     return { ...base, type: 'quiz', q: fields.q || '', ok, attempts, ...(ok ? {} : { wrong: [act.value] }), final: ok };
+  }
+  if (f.lang === 'cloze') {
+    const { specs } = parseCloze(field(f.body, 'text').replace(/\n\s+/g, ' '));
+    const vals = String(act.value ?? '').split('|').map((x) => x.trim());
+    const res = specs.map((sp, i) => matchText(vals[i] || '', sp.alts));
+    const diags = specs.map((sp, i) => (res[i].ok ? null : diagnose(vals[i] || '', sp.wrongs)));
+    const ok = res.every((r) => r.ok);
+    return { ...base, type: 'cloze', title: field(f.body, 'title'), q: field(f.body, 'q'), value: vals.join(' | '), ok, attempts, detail: ok ? '' : res.map((r, i) => (r.ok ? '' : `第 ${i + 1} 空${diags[i]?.why ? `：${diags[i].why}` : textHint(r, { what: '' })}`)).filter(Boolean).join('；'), misread: diags.map((d, i) => (d ? `第 ${i + 1} 空写成「${d.text}」${d.why ? `：${d.why}` : ''}` : '')).filter(Boolean).join('；') || undefined, final: ok || undefined };
+  }
+  if (f.lang === 'errfind') {
+    const text = field(f.body, 'text');
+    const toks = tokenizeSentence(text);
+    const wrongAt = findWrong(text, field(f.body, 'wrong'));
+    const { alts, wrongs } = parseAnswer(field(f.body, 'fix'));
+    const decoys = field(f.body, 'decoys') ? parseDecoys(text, field(f.body, 'decoys')) : [];
+    const [w, fix = ''] = String(act.value ?? '').split(/→|->|=>/).map((x) => x.trim());
+    const pick = toks.findIndex((t) => t.word && t.w.toLowerCase() === String(w).toLowerCase());
+    const spot = pick === wrongAt;
+    const fixOk = !alts.length || matchText(fix, alts).ok;
+    const decoy = decoys.find((d) => d.i === pick);
+    const bad = spot && !fixOk ? diagnose(fix, wrongs) : null;
+    return { ...base, type: 'errfind', q: text, value: `点了「${w}」，改成「${fix}」`, ok: spot && fixOk, attempts, detail: spot ? (fixOk ? '' : '找对了，改得不对') : '这个词没错', misread: decoy ? `点了常见的错处「${decoy.w}」：${decoy.why}` : bad ? `改成了常见的错法「${bad.text}」${bad.why ? `：${bad.why}` : ''}` : undefined, final: (spot && fixOk) || undefined };
+  }
+  if (f.lang === 'parse') {
+    const ans = parseBrackets(field(f.body, 'answer'));
+    const roles = parseRoles(field(f.body, 'roles'), [...new Set(ans.spans.map((x) => x.role))]);
+    let mine;
+    try {
+      // 学生写的括号按词对回答案的句子（学生不一定把整句抄全）
+      const got = parseBrackets(String(act.value ?? ''));
+      const words = ans.tokens.map((t) => t.w);
+      mine = got.spans.map((x) => {
+        const text = got.tokens.slice(x.from, x.to + 1).map((t) => t.w).join(' ');
+        const r = wordSpan({ kind: 'phrase', text, n: 0 }, words.map((w) => w));
+        const at = r.error ? wordSpan({ kind: 'phrase', text, n: 1 }, words) : r;
+        return at.error ? null : { role: x.role, from: idxOf(ans.tokens, at.from), to: idxOf(ans.tokens, at.to) };
+      }).filter(Boolean);
+    } catch (e) { return { source: 'page', text: `[系统] 学生写的成分看不懂（${e.message}）` }; }
+    const stepsSrc = field(f.body, 'steps');
+    const groups = stepsSrc ? stepsSrc.split('|').map((g) => g.trim().split(/\s+/)) : null;
+    const k = st.progress[f.id] || 0;
+    const target = groups ? ans.spans.filter((x) => groups[k]?.includes(x.role)) : ans.spans;
+    const r = judgeSpans(groups ? mine.filter((x) => groups[k]?.includes(x.role)) : mine, target);
+    if (r.ok && groups) { st.progress[f.id] = k + 1; st.tries[f.id] = 0; }
+    return { ...base, type: 'parse', q: ans.text, value: act.value, ok: r.ok, attempts, detail: groups ? `第 ${k + 1} 步（${groups[k].join('、')}）` : r.ok ? '' : spansHint(r, roles), check: groups && !r.ok ? spansHint(r, roles) : undefined };
+  }
+  if (f.lang === 'chunk') {
+    const c = parseChunk(field(f.body, 'text'));
+    // 学生写的 / 换成切口（第几个词前面切）
+    const toks = tokenizeSentence(String(act.value ?? ''));
+    const cuts = [];
+    let n = 0;
+    for (const t of toks) { if (t.w === '/') { cuts.push(n); continue; } n++; }
+    const r = judgeChunks(cuts.filter((g) => c.gaps.includes(g)), c);
+    return { ...base, type: 'chunk', q: c.text, value: chunksOf(c.tokens, cuts).join(' / '), ok: r.ok, attempts, detail: r.ok ? '' : chunkHint(r, c.tokens), final: r.ok || undefined };
+  }
+  if (f.lang === 'drill') {
+    const items = parseDrill(f.body.split('\n'));
+    const k = st.progress[f.id] || 0;
+    const it = items[Math.min(k, items.length - 1)];
+    const r = matchText(act.value, it.alts, { sentence: true });
+    const d = r.ok ? null : diagnose(act.value, it.wrongs, { sentence: true });
+    if (r.ok || attempts >= 2) { st.progress[f.id] = k + 1; st.tries[f.id] = 0; }
+    return { ...base, type: 'drill', q: it.q, value: act.value, ok: r.ok, attempts, detail: r.ok ? '' : d?.why || textHint(r), misread: d ? `写成了常见的错法${d.why ? `：${d.why}` : ''}` : undefined };
   }
   if (f.lang === 'answer') {
     const exp = field(f.body, 'answer');
