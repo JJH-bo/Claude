@@ -340,3 +340,5 @@ body.class-docked .class-more:not(.in-bar) { right: calc(var(--cb-r, 20px) + 8px
 /* 边写边显示（features.js 的 stream）：课堂 Claude 写完一段就先画上来，核验之前看得到、点不了；核验过了换成正式的，不再淡入一次 */
 .class-seg.is-preview { pointer-events: none; }
 .class-seg.no-anim { animation: none !important; }
+/* 版面：带 ⤢ 的段右上角留出按钮的地方，字不压在按钮底下 */
+.class-page-body.is-canvas .class-seg:has(> .cv-zoom) { padding-right: 44px; }
