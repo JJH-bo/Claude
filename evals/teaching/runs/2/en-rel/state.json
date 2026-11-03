@@ -94,7 +94,8 @@
   "q-b2": 1,
   "q-b3": 1,
   "cz-b4": 1,
-  "cz-b5": 1
+  "cz-b5": 1,
+  "cz-b6": 1
  },
  "results": {
   "q-b1": [
@@ -157,6 +158,21 @@
     "title": "再填一组",
     "q": "每个空填一个关系词（who / which / that）。",
     "value": "who",
+    "ok": true,
+    "attempts": 1,
+    "detail": "",
+    "final": true
+   }
+  ],
+  "cz-b6": [
+   {
+    "source": "record",
+    "block": "cz-b6",
+    "step": "b6",
+    "type": "cloze",
+    "title": "一个挑，一个补充",
+    "q": "每个空填一个关系词（who / which / that），能填 that 的地方就填 that。",
+    "value": "that | which",
     "ok": true,
     "attempts": 1,
     "detail": "",
@@ -304,6 +320,11 @@
    "role": "claude",
    "seq": 13,
    "text": "那题是我写的问题，只显示了一个空，你填的 who 是对的。至于「为什么逗号后面不行」：that 引导从句时只有「挑出是哪一个」这一种用法；逗号的意思恰好是「不挑，只补充」，两者冲突，所以英语里规定逗号后面换成 which / who。看板上这一句，两个空一个挑、一个补充。\n\n````board new id=b6 title=\"一句里两个空\"\n```cloze\nid: cz-b6\ntitle: 一个挑，一个补充\nq: 每个空填一个关系词（who / which / that），能填 that 的地方就填 that。\ntext: The phone {{that|which|!who=phone 是物}} I bought last week has broken, but my old phone, {{which|!that=前面有逗号，是补充说明，不用 that|!who=phone 是物}} I have used for five years, still works.\nexplain: 第 1 空没有逗号，从我的手机里挑出「上周买的那部」，that / which 都行；第 2 空有逗号，my old phone 已经确定是哪部，从句只是补充，只能用 which。\n```\n````\n\n填完用一句话说：第 1 空为什么 that 可以？\n"
+  },
+  {
+   "role": "student",
+   "seq": 14,
+   "text": "第1空没有逗号，是在挑出是哪一部手机（上周买的那部），所以 that 可以；第2空有逗号只是补充，要用 which。这样 that 就不是万能的了，我有点明白了\n[作答] b6 里的填空 cz-b6「一个挑，一个补充」：「每个空填一个关系词（who / which / that），能填 that 的地方就填 that。」做对了（共 1 次）\n[动作] b6 里的组件 cz-b6：学生标了「有把握」"
   }
  ],
  "turns": [
@@ -489,8 +510,26 @@
    "notes": [],
    "plan": false,
    "view": "# 第 6 块板「一句里两个空」\n\n老师写在板顶的话：那题是我写的问题，只显示了一个空，你填的 who 是对的。至于「为什么逗号后面不行」：that 引导从句时只有「挑出是哪一个」这一种用法；逗号的意思恰好是「不挑，只补充」，两者冲突，所以英语里规定逗号后面换成 which / who。看板上这一句，两个空一个挑、一个补充。\n\n填完用一句话说：第 1 空为什么 that 可以？\n\n## 一句里两个空\n【填空 cz-b6】一个挑，一个补充\n  每个空填一个关系词（who / which / that），能填 that 的地方就填 that。\n  The phone （1）____ I bought last week has broken, but my old phone, （2）____ I have used for five years, still works.\n  （按顺序写每个空，用 | 隔开，比如 \"who | has lived\"）\n\n# 常驻栏\n## 有没有逗号\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）：指人 who，指物 which，**不用 that**\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）：that 也行\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 14,
+   "role": "student",
+   "say": "第1空没有逗号，是在挑出是哪一部手机（上周买的那部），所以 that 可以；第2空有逗号只是补充，要用 which。这样 that 就不是万能的了，我有点明白了",
+   "acts": [
+    {
+     "comp": "cz-b6",
+     "ok": true,
+     "type": "cloze"
+    },
+    {
+     "comp": "cz-b6",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "第1空没有逗号，是在挑出是哪一部手机（上周买的那部），所以 that 可以；第2空有逗号只是补充，要用 which。这样 that 就不是万能的了，我有点明白了\n[作答] b6 里的填空 cz-b6「一个挑，一个补充」：「每个空填一个关系词（who / which / that），能填 that 的地方就填 that。」做对了（共 1 次）\n[动作] b6 里的组件 cz-b6：学生标了「有把握」"
   }
  ],
- "seq": 13,
+ "seq": 14,
  "pendingNotes": []
 }
