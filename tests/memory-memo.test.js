@@ -1,4 +1,5 @@
-// 学习台第 2 批（docs/desk-plan.md 第 4 节）：课堂里的 Claude 用 memo 块改记忆，分三档、改动单、确认 / 不要 / 撤销、我自己改。
+// 学习台第 2 批（docs/desk-plan.md 第 4 节）：课堂里的 Claude 用 memo 块改记忆，分档、改动单、确认 / 不要 / 撤销、我自己改。
+// 学习台自己管自己（docs/autonomy-plan.md）：错题、弱点、复现组、位置改成直接写，规则要确认，掌握不收。
 // 课堂里实际走一遍在真浏览器里另外验（desk-demo.html?dev + 「测试:整理」）。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,7 +43,7 @@ function apply(mem, writes) {
 }
 const hard = (m) => checkMemory(m, { today: TODAY }).problems.filter((p) => !p.soft);
 
-test('memo 块：一行一条，认识的几种；掌握、规则只能提议；读不懂的行说清原因', () => {
+test('memo 块：一行一条，认识的几种；掌握不收；读不懂的行说清原因', () => {
   const r = parseMemoLines([
     'error q="求 A²" step="第 1 步" cause="把 βᵀα 当矩阵" weakness=W19 basis=q-b5',
     '- pref topic=讲法 text="先看图再推公式" basis=say',
@@ -55,14 +56,14 @@ test('memo 块：一行一条，认识的几种；掌握、规则只能提议；
   assert.deepEqual(r.entries.map((e) => e.kind), ['error', 'pref', 'slip']);
   assert.deepEqual(r.entries[0].attrs.basis, ['q-b5']);
   assert.equal(r.errors.length, 3);
-  assert.match(r.errors[0], /掌握状态你只能提议.*propose/);
+  assert.match(r.errors[0], /掌握状态由页面按证据算/);
   assert.match(r.errors[1], /不认识「hello」/);
   assert.match(r.errors[2], /「图」不是 key=value/); // 有空格的值没加引号
   // 协议：board memo 是一种指令；一条也没读懂时整块算看不懂
   const out = parseOutput('好。\n\n````board memo\npref topic=讲法 text="先看图" basis=say\n````\n', { final: true });
   assert.equal(out.ops[0].op, 'memo');
   assert.equal(out.ops[0].entries.length, 1);
-  assert.equal(parseOutput('````board memo\nrule text=x\n````\n', { final: true }).rejected.length, 1);
+  assert.equal(parseOutput('````board memo\nmastery id=L2.2.2 state=讲过\n````\n', { final: true }).rejected.length, 1);
 });
 
 test('依据：证据 id、记忆里的编号、组件 / 段 id 换成证据、say 是学生最近说的话；找不到的报出来', () => {
@@ -73,17 +74,23 @@ test('依据：证据 id、记忆里的编号、组件 / 段 id 换成证据、s
   assert.match(run('error q=x mine=y step=s cause=c').error, /要写依据/);
 });
 
-test('三档：偏好、失误、观察直接写；错题、弱点、复现组、位置等确认；偏好只能是讲法 / 习惯', () => {
+test('分档：规则要确认，别的都直接写；偏好什么 topic 都行', () => {
   const pref = run('pref topic=讲法 text="先看图再推公式" basis=say');
   assert.equal(pref.tier, 'direct');
   assert.equal(pref.coll, 'profile');
-  assert.match(run('pref topic=目标 text=x basis=say').error, /只能是 讲法 \/ 习惯/);
+  assert.equal(run('pref topic=目标 text="考 130 以上" basis=say').tier, 'direct');
+  assert.equal(run('todo text="学生问了相似对角化的几何意义"').data.kind, 'todo');
+  const rule = run('rule cat=讲解 text="出题前先把要用到的规则讲完" basis=say');
+  assert.equal(rule.tier, 'confirm');
+  assert.equal(rule.coll, 'rules');
+  assert.match(run('rule text="x"').error, /要写依据/);
+  assert.match(run('rule cat=随便 text="x" basis=say').error, /cat 只能是/);
   assert.equal(run('slip text="一次出了两道题"').target, 'S-20261027-1-1');
   assert.equal(run('note text="换括号还是慢"').data.kind, 'note');
   assert.equal(run('propose text="W19 可以降一级" about=W19 basis=q-b5').data.kind, 'proposal');
   // 错题：题面、答案从依据的作答里补；编号按这一讲往下编
   const err = run('error step="第 1 步换括号" cause="把 βᵀα 当矩阵" weakness=W19 basis=q-b5');
-  assert.equal(err.tier, 'confirm');
+  assert.equal(err.tier, 'direct');
   assert.equal(err.target, 'L2-08');
   assert.equal(err.data.q, '求 A²');
   assert.equal(err.data.mine, '3A'); // 依据里最后那次作答
@@ -107,7 +114,7 @@ test('三档：偏好、失误、观察直接写；错题、弱点、复现组�
   assert.deepEqual(run('position next="先收 L2-08 的同类题" debts="例 2.3；例 2.4"').patch, { next: '先收 L2-08 的同类题', debts: ['例 2.3', '例 2.4'] });
 });
 
-test('直接写的：课堂里的 Claude 的身份写；越权的在代码层面拦住', () => {
+test('直接写的：课堂里的 Claude 的身份写；越权的（掌握、规则）在代码层面拦住', () => {
   const mem = sampleMemory(TODAY);
   const pd = pendingRecord(run('pref topic=习惯 text="晚上学，别太长" basis=say'), { session: SID, turn: 4 });
   const r = applyPending(pd, mem, { date: TODAY });
@@ -115,36 +122,47 @@ test('直接写的：课堂里的 Claude 的身份写；越权的在代码层面
   const m = apply(mem, r.writes);
   assert.ok(m.profile.some((p) => p.text === '晚上学，别太长' && p.status === 'active'));
   assert.deepEqual(hard(m), []);
-  // 课堂里的 Claude 直接写错题、宣布掌握：assertWrite 拦住
-  assert.throws(() => assertWrite('class', 'errors'), /不能写 errors/);
-  assert.throws(() => applyPending({ ...pendingRecord(run('error step=s cause=c basis=q-b5')), tier: 'direct' }, mem), /不能写 errors/);
-  assert.throws(() => applyPending({ ...pd, data: { ...pd.data, topic: '目标' } }, mem), /只能写「讲法」「习惯」/);
+  // 课堂里的 Claude 宣布掌握、直接改规则：assertWrite 拦住
+  assert.throws(() => assertWrite('class', 'mastery'), /不能写 mastery/);
+  assert.throws(() => assertWrite('class', 'rules'), /不能写 rules/);
+  assert.throws(() => applyPending({ ...pendingRecord(run('rule cat=讲解 text="出题前先讲完规则" basis=say')), tier: 'direct' }, mem), /不能写 rules/);
+  // 错题、弱点直接写进去，自检照样过
+  const e = applyPending(pendingRecord(run('error step="第 1 步" cause="把 βᵀα 当矩阵" weakness=W19 basis=q-b5'), { session: SID }), m, { date: TODAY });
+  const m2 = apply(m, e.writes);
+  assert.equal(m2.errors.find((x) => x.id === 'L2-08').cause, '把 βᵀα 当矩阵');
+  assert.deepEqual(hard(m2), []);
 });
 
-test('等确认的：不点确认不写；确认后照规矩写（状态类记 log，by: class，note 写我确认的）；不要的留痕', () => {
+test('直接写的状态类记 log（by: class）；规则等确认：确认后照规矩写（note 写我确认的），能先改再确认；不要的留痕', () => {
   const mem = sampleMemory(TODAY);
   const w = pendingRecord(run('weakness id=W19 level=L0 basis=q-b5'), { session: SID });
-  assert.equal(w.status, 'open');
   const r = applyPending(w, mem, { date: TODAY });
   const m = apply(mem, r.writes);
   const W19 = m.weaknesses.find((x) => x.id === 'W19');
   assert.equal(W19.level, 'L0');
   const log = W19.log.at(-1);
   assert.equal(log.by, 'class');
-  assert.equal(log.note, `我确认于 ${TODAY}`);
+  assert.equal(log.note, `课堂 ${SID}`);
   assert.equal(log.ref, w.id);
   assert.deepEqual(log.basis, ['ev-1', 'ev-2']);
   assert.deepEqual(r.pd.applied, [{ field: 'level', from: 'L1', to: 'L0' }, { field: 'last', from: addDays(TODAY, -6), to: TODAY }]);
   assert.deepEqual(hard(m), []);
   assert.throws(() => applyPending(r.pd, m), /已经写进去了/);
-  // 改了再确认
-  const e = pendingRecord(run('error step="第 1 步" cause="把 βᵀα 当矩阵" weakness=W19 basis=q-b5'), { session: SID });
-  const r2 = applyPending(e, m, { date: TODAY, edits: { cause: '没看出 βᵀα 是数' } });
+  // 规则：等确认；改了再确认
+  const rl = pendingRecord(run('rule cat=讲解 text="出题前先把要用到的规则讲完" basis=say'), { session: SID });
+  assert.equal(rl.status, 'open');
+  assert.equal(rl.target, 'rule-c1');
+  const r2 = applyPending(rl, m, { date: TODAY, edits: { text: '出一组题之前，逐题列出要用到的规则，没讲过的先讲完' } });
   const m2 = apply(m, r2.writes);
-  assert.equal(m2.errors.find((x) => x.id === 'L2-08').cause, '没看出 βᵀα 是数');
+  const nr = m2.rules.find((x) => x.id === 'rule-c1');
+  assert.equal(nr.text, '出一组题之前，逐题列出要用到的规则，没讲过的先讲完');
+  assert.equal(nr.log.at(-1).note, `我确认于 ${TODAY}`);
   assert.deepEqual(hard(m2), []);
+  // 作废一条规则
+  const rv = run('rule id=rule-c1 status=void why="和 rule-01 重复"', { ...ctx(m2) });
+  assert.deepEqual(rv.patch, { status: 'void', note: '和 rule-01 重复' });
   // 不要
-  const n = rejectPending(pendingRecord(run('position next="x"')), { date: TODAY });
+  const n = rejectPending(pendingRecord(run('rule cat=讲解 text="每块板先写这段要回答什么" basis=say')), { date: TODAY });
   assert.equal(n.pd.status, 'rejected');
   assert.equal(n.writes.length, 1); // 只改改动单，位置没动
   assert.deepEqual(hard(apply(m2, n.writes)), []);
@@ -229,7 +247,7 @@ test('一轮记了什么：板顶下面那一行；改动单的标题', () => {
   assert.equal(nextSlipId([{ id: 'S-20261027-1-2' }], SID, TODAY), 'S-20261027-1-3');
 });
 
-test('数据库这一层：直接写的马上写，等确认的只写改动单；两道新错题确认时不撞号', async () => {
+test('数据库这一层：直接写的马上写，等确认的只写改动单；同一道题不记两次', async () => {
   const db = fakeDb('memo-test');
   db._clear();
   const seed = sampleMemory(TODAY);
@@ -247,21 +265,20 @@ test('数据库这一层：直接写的马上写，等确认的只写改动单�
     'error step=a cause=b basis=q-b5',
     'error step=c cause=d basis=q-b5',
     'weakness id=W19 level=L9 basis=q-b5',
+    'rule cat=讲解 text="出题前先把要用到的规则讲完" basis=say',
   ].join('\n'));
   const { pds, rejected } = await ops.applyMemo(entries, { session: SID, block: 'L2.2.2', turn: 6 });
-  assert.equal(rejected.length, 1);
-  assert.deepEqual(pds.map((p) => [p.kind, p.status, p.target]), [['pref', 'done', pds[0].target], ['error', 'open', 'L2-08'], ['error', 'open', 'L2-09']]);
+  assert.equal(rejected.length, 2);
+  assert.match(rejected[0].error, /这道题已经记过 L2-08/);
+  assert.deepEqual(pds.map((p) => [p.kind, p.status, p.target]), [['pref', 'done', pds[0].target], ['error', 'done', 'L2-08'], ['rule', 'open', 'rule-c1']]);
   mem = await read();
   assert.ok(mem.profile.some((p) => p.text === '先看图'));
-  assert.ok(!mem.errors.some((e) => e.id === 'L2-08')); // 没确认就没写
-  // 先确认第二道（占了 L2-09），再确认第一道
+  assert.ok(mem.errors.some((e) => e.id === 'L2-08'));
+  assert.ok(!(mem.rules || []).some((r) => r.id === 'rule-c1')); // 规则没确认就没写
   await ops.confirm(pds[2]);
   mem = await read();
-  const first = await ops.confirm(pds[1]);
-  assert.equal(first.target, 'L2-08');
-  mem = await read();
-  assert.deepEqual(mem.errors.map((e) => e.id).sort(), ['L2-07', 'L2-08', 'L2-09']);
-  await assert.rejects(ops.confirm(pds[1]), /已经写进去了/);
+  assert.ok(mem.rules.some((r) => r.id === 'rule-c1'));
+  await assert.rejects(ops.confirm(pds[2]), /已经写进去了/);
   await ops.undo(pds[0]);
   mem = await read();
   assert.equal(mem.profile.find((p) => p.text === '先看图').status, 'void');

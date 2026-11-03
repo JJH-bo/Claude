@@ -5,6 +5,7 @@
 // 纯函数，有测试；画面和调用在 planview.js。
 import { chunkLine, chunkText } from './textbook.js';
 import { fixLatexEscapes } from './ingest.js';
+import { spaceOfDoc, spaceOfId } from '../memory/space.js';
 
 const one = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
 const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]).map(String);
@@ -114,7 +115,18 @@ export function mapDoc(row, old = null, { today = '', book = '' } = {}) {
  * 题目用到没讲过的规则、一块板塞讲解加题。所以这里要它课前就把可执行的规则写完整、排好讲解顺序（一块板一个点）、
  * 每道题写清用到哪几条规则、放在哪一步之后，页面再核一遍依赖（checkPrep）。
  */
-export function prepPrompt({ block, material = [], books = [], memoryText = '', rulesText = '', components = [], subject = '', recent = '', due = '', lessons = '' }) {
+/**
+ * 还没补的待办（课上学生问了教案以外的内容，课堂里的 Claude 记的 todo，docs/autonomy-plan.md）：这一科的、不在 done 里的，最早的在前。
+ * done：已经被某次备课补上的待办编号（meta/todos 的 done，页面在备课写完后记）
+ */
+export function openTodos(mem = {}, space = '', done = []) {
+  const gone = new Set((done || []).map(String));
+  return (Array.isArray(mem.observations) ? mem.observations : [])
+    .filter((o) => o && o.kind === 'todo' && o.status !== 'done' && !o.void && !gone.has(String(o.id)) && (!space || spaceOfDoc('observations', o, mem) === space || (o.block && spaceOfId(o.block) === space)))
+    .sort((a, b) => (a.at || 0) - (b.at || 0));
+}
+
+export function prepPrompt({ block, material = [], books = [], memoryText = '', rulesText = '', components = [], subject = '', recent = '', due = '', lessons = '', todos = [] }) {
   const b = block || {};
   return [
     '你是这个学生的老师，现在给下一节课备课。备好的教案交给课堂里的 Claude（也是 Opus 5.5）在学习台里照着上：它每一轮都会带着教案、学生的记忆和组件说明，现场写黑板、出题、判断学生懂没懂。它上课时来不及把整节的材料从头读一遍，所以**要讲的规则、讲的顺序、每道题用到什么，都在这里想好**：课上现编，就会出现「题目用到了没讲过的规则、学生撞墙后才补」。',
@@ -138,6 +150,7 @@ export function prepPrompt({ block, material = [], books = [], memoryText = '', 
     memoryText || '（没有）',
     recent ? `\n## 最近几节课\n${recent}` : '',
     due ? `\n## 到期的复现组（开头复现从这里挑，按学生的规则：一轮最多几组、从没复现 > 上次没过 > 过期久）\n${due}` : '',
+    todos.length ? `\n## 学生上课时问过、教案里没有的（待办）\n和这一块有关的排进讲解顺序补上，补上了的编号写进 todos；和这一块无关的留着以后补\n${todos.map((t) => `- ${t.id}${t.block ? `（${t.block}）` : ''}：${String(t.text || '').slice(0, 300)}`).join('\n')}` : '',
     '',
     `## 能用的组件\n${components.join('、')}`,
     '',
@@ -154,7 +167,8 @@ export function prepPrompt({ block, material = [], books = [], memoryText = '', 
     '  "chunks": ["这节课要照着讲的教材、文稿条目编号（从上面挑；会全文放进资料包，别挑不用的）"],',
     '  "components": ["这节课会用到的组件名（从上面挑，三到八个）"],',
     '  "plan": "补充说明：上面没写到的推进细节、什么情况下换讲法（可以空）",',
-    '  "student": "这节课特别要注意的学生情况（记忆里已经有的不用抄，只写对这节课最要紧的一两句）"',
+    '  "student": "这节课特别要注意的学生情况（记忆里已经有的不用抄，只写对这节课最要紧的一两句）",',
+    '  "todos": ["这节课补上的待办编号（上面「待办」里的；没有就空数组）"]',
     '}',
     '',
     '写之前照这几条自己核一遍：',
@@ -195,7 +209,7 @@ export function checkPrep(main = {}, problems = {}) {
 }
 
 /** 读备课结果：字段清理、编号只留挂着的、组件只留认得的、页面核一遍依赖；返回 { main, problems, warnings } */
-export function parsePrep(raw, { block, chunkIds = [], components = [], today = '', reviewIds = null } = {}) {
+export function parsePrep(raw, { block, chunkIds = [], components = [], today = '', reviewIds = null, todos = [] } = {}) {
   const o = jsonOf(raw);
   const text = (v, n = 8000) => String(v ?? '').trim().slice(0, n);
   const okComp = new Set(components);
@@ -210,6 +224,8 @@ export function parsePrep(raw, { block, chunkIds = [], components = [], today = 
     block: block?.id || null,
     chunks: list(o.chunks).filter((id) => chunkIds.includes(id)),
     components: list(o.components).filter((c) => okComp.has(c)).slice(0, 10),
+    // 这节课要补的待办：带上原话，课堂里的 Claude 看得到学生以前问过什么
+    ...(() => { const t = list(o.todos).map((id) => todos.find((x) => String(x.id) === String(id))).filter(Boolean).map((x) => ({ id: String(x.id), text: text(x.text, 300) })); return t.length ? { todos: t } : {}; })(),
     by: 'desk', at: Date.now(), ...(today ? { date: today } : {}),
   };
   const problems = { items: (Array.isArray(o.problems) ? o.problems : []).filter((p) => p && p.q).slice(0, 20).map((p) => ({ q: text(p.q, 2000), answer: text(p.answer, 2000), point: text(p.point, 200), ...(list(p.needs).length ? { needs: list(p.needs).slice(0, 8) } : {}), ...(Number(p.after) ? { after: Number(p.after) } : {}), ...(p.traps ? { traps: text(p.traps, 400) } : {}), source: text(p.source, 200) })) };
@@ -226,6 +242,7 @@ export function lessonPlanText(main = {}) {
   if (Array.isArray(main.sequence) && main.sequence.length) out.sequence = main.sequence.map((x) => `${x.step}. ${x.point}${x.how ? `\n   怎么讲：${x.how}` : ''}${x.check ? `\n   确认：${x.check}` : ''}`).join('\n');
   if (Array.isArray(main.review) && main.review.length) out.review = main.review.map((r) => `- ${r.id}：${r.how}`).join('\n');
   if (Array.isArray(main.prepCheck) && main.prepCheck.length) out.prepCheck = main.prepCheck.map((w) => `- ${w}`).join('\n');
+  if (Array.isArray(main.todos) && main.todos.length) out.todos = main.todos.map((t) => `- ${t.text}`).join('\n');
   return out;
 }
 

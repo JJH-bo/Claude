@@ -1,6 +1,6 @@
 // 导出备份（docs/desk-plan.md 3.4）：整个记忆库（可选带不带证据、各节课的黑板）存成一个 JSON 文件，用 downloads 能力让我保存。
-// 恢复不做成按钮：外部的 Claude 照说明书第七节「备份和恢复」，用 ArtifactData 的 batch 按文件里的 docs 一批批写回。
-// 所以文件里每一条都已经是 batch 要的样子（collection、doc_id、data），一次最多 50 条、1 MiB，restoreBatches 就是照这个切的。
+// 恢复：学习台首页「从备份恢复」，页面自己写回（restorePlan；学习台自己管自己，不经过外部 Claude，docs/autonomy-plan.md）。
+// 文件里每一条也是 ArtifactData batch 要的样子（collection、doc_id、data），开发那边修数据时照 restoreBatches 切成一批批写回。
 // 纯函数，有测试（tests/memory-report.test.js）。
 import { MEMORY_COLLECTIONS } from './schema.js';
 
@@ -52,6 +52,26 @@ export function backupProblem(b) {
   if (b.v !== BACKUP_VERSION) return `备份文件的版本是 ${b.v}，这一版只认 ${BACKUP_VERSION}`;
   if (!Array.isArray(b.docs)) return '备份文件里没有 docs';
   return '';
+}
+
+/**
+ * 页面自己恢复：返回要写的 [{ path, data }] 和几条会覆盖现在的。have：数据库里已经有的 'collection/doc_id'（Set）。
+ * overwrite：已有的也用备份里的覆盖；不覆盖时只补缺的（默认，不会把这段时间新写的冲掉）
+ */
+export function restorePlan(b, { have = new Set(), overwrite = false } = {}) {
+  const why = backupProblem(b);
+  if (why) throw new Error(why);
+  const writes = [];
+  let clash = 0;
+  for (const d of b.docs) {
+    if (!d || !d.collection || d.doc_id === undefined || !d.data || typeof d.data !== 'object') continue;
+    const path = `${d.collection}/${d.doc_id}`;
+    const exists = have.has(path);
+    if (exists) clash++;
+    if (exists && !overwrite) continue;
+    writes.push({ path, data: d.data });
+  }
+  return { writes, clash, total: b.docs.length };
 }
 
 /**

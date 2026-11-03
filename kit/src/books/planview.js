@@ -5,7 +5,7 @@
 import { escapeHtml, mdToHtml } from '../render.js';
 import { toast } from '../record.js';
 import { assertWrite, toDate, dueList } from '../memory/schema.js';
-import { mapPrompt, parseMap, mapDoc, prepPrompt, parsePrep, parsePages } from './plan.js';
+import { mapPrompt, parseMap, mapDoc, prepPrompt, parsePrep, parsePages, openTodos } from './plan.js';
 import { loadBooks } from './importer.js';
 import { blockChunks, chunkLine } from './textbook.js';
 import { memoryDigest } from '../memory/digest.js';
@@ -110,14 +110,19 @@ export function createPlanner({ db, getAI, model, getData, space }) {
       .map((d) => ({ ...d, r: revs.get(d.id) })).sort((a, b) => (a.r?.result ? 1 : 0) - (b.r?.result ? 1 : 0) || (a.r?.result === '没过' ? 0 : 1) - (b.r?.result === '没过' ? 0 : 1) || a.days - b.days);
     const dueText = due.map((d) => `- ${d.id} ${d.title}（${d.days < 0 ? `过期 ${-d.days} 天` : '今天到期'}；${d.r?.result ? `上次${d.r.result}` : '从没复现过'}${d.r?.content?.length ? `；内容：${[].concat(d.r.content).slice(0, 3).join('；')}` : ''}）`).join('\n');
     const lessons = activeLessons(data.lessons, sp).map((l) => `- ${l.id} ${l.text}`).join('\n');
+    // 上课时记下的待办（学生问了教案以外的）：还没补的带上，补上了的记进 meta/todos（页面自己的）
+    const todoSnap = await db.doc('meta/todos').get().catch(() => null);
+    const doneTodos = todoSnap?.exists ? (todoSnap.data().done || []) : [];
+    const todos = openTodos(data, sp, doneTodos).slice(-20);
     onStep('Claude 在备课（一次调用，一两分钟）…');
-    const r = await ask(prepPrompt({ block, material, books, memoryText: mem.text, rulesText: rules, components, subject, recent, due: dueText, lessons }));
-    const { main, problems } = parsePrep(r.text, { block, chunkIds: material.map((c) => c.id), components, today, reviewIds: due.map((d) => d.id) });
+    const r = await ask(prepPrompt({ block, material, books, memoryText: mem.text, rulesText: rules, components, subject, recent, due: dueText, lessons, todos }));
+    const { main, problems } = parsePrep(r.text, { block, chunkIds: material.map((c) => c.id), components, today, reviewIds: due.map((d) => d.id), todos });
     if (range) main.pages = `${range[0]}-${range[1]}`;
     main.cost = { bytes: r.bytes, model: r.model };
     const ids = packIds(sp);
     await db.doc(`pack/${ids.main}`).set(main);
     await db.doc(`pack/${ids.problems}`).set(problems);
+    if (main.todos?.length) await db.doc('meta/todos').set({ done: [...new Set([...doneTodos, ...main.todos.map((t) => t.id)])].slice(-500), at: Date.now() }).catch(() => {});
     onStep('备好了');
     return main;
   }

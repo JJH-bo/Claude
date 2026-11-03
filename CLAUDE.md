@@ -8,7 +8,7 @@
 - **一个学习台（所有东西在一处）：`docs/hub-plan.md`**；记忆分两层（全文 + 目录）、省额度不丢信息：`docs/memory-plan.md`；教材板块（入库、按需读）和学习台自己备课：`docs/textbook-plan.md`；学习台的记录、交互、内部 Claude 改记忆：`docs/desk-plan.md`（记录能力、交互、内部 Claude 改记忆；外内协作的分工；分批和验收）。新对话做学习台先读它。
 - 下一步的总计划（线代和 408 一起做到优秀：验收尺子、外壳升级、线代六章、408 加深）和进度：`docs/quality-plan.md`
 - 教学方向的升级（教学守则：失误归纳成守则不再累加；学习台备课出教案；板放不下自动分屏等不花额度的修复）：`docs/teach-plan.md`
-- **学习台自己管自己**（外部 Claude 只做开发；课堂里的 Claude 管学习台，规则和掌握仍要我确认；记忆不冗杂：拦照抄、条数上限、顺着下课整理定期合并）和进度：`docs/autonomy-plan.md`。现在做学习台以它为准。
+- **学习台自己管自己**（外部 Claude 只做开发；课堂里的 Claude 管学习台，规则和掌握仍要我确认；记忆不冗杂：拦照抄、条数上限、顺着下课整理定期合并）和进度：`docs/autonomy-plan.md`。现在做学习台以它为准（2026-11-03 做完第 1、2 批）。
 - 攻学习台的上限（学得会、学得牢：信心标定、按证据算掌握、页面自己跑的练习和混练、教学尺子、课堂计划块、学生逐行推导）和进度：`docs/learning-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
@@ -112,7 +112,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 ### 学习台和记忆库（`kit/src/memory/`，`docs/learner-memory-spec.md`）
 
 - 分三批做，每一批做完对话里的 Claude 用一节真课验过再做下一批。**现在做完的是第 1、2 批**（记忆库本身；在学习台里上课）。原来的第 3 批并进了 `docs/desk-plan.md`（学习台做强：记录、交互、内部 Claude 改记忆），以它为准；**desk-plan 四批都做完了**（记录能力、课堂里的 Claude 改记忆、给我看的页面、复现课 / 启动语 / 说明书瘦身 / 组件手册按需带 / 统计）。
-- `schema.js`（纯函数）：十四类集合（`COLLECTIONS`：中文名、`history` / `state`、谁能写、编号的正则、必填、只能取的值、日期字段、指向别的类的字段、改了要记 log 的字段；改动单 `pending`、教学守则 `lessons`）；四种角色 `chat` / `class` / `page` / `me`（我在页面上点的），`assertWrite` 在代码层面拦住不该写的（课堂里的 Claude 只能写 `observations`、`slips`、`lessons`、`profile`；错题、弱点、复现组、位置只有 `chat` 和 `me`）；撤销时限 `UNDO_DAYS`；复现档位 1 → 3 → 7 → 14 → 30（`nextTier`、`reviewDue`：到期 = last + tier，页面算）；`applyChange` 改状态类时按字段记 log。
+- `schema.js`（纯函数）：十四类集合（`COLLECTIONS`：中文名、`history` / `state`、谁能写、编号的正则、必填、只能取的值、日期字段、指向别的类的字段、改了要记 log 的字段；改动单 `pending`、教学守则 `lessons`）；四种角色 `chat` / `class` / `page` / `me`（我在页面上点的），`assertWrite` 在代码层面拦住不该写的（学习台自己管自己以后，课堂里的 Claude 能写 `observations`、`slips`、`lessons`、`profile`、错题、弱点、复现组、位置；规则只有 `chat` 和 `me`（它写的规则走确认档，我点了以 me 写），掌握只有 `chat` 和 `me`（页面算、我确认）；`chat` 现在指开发那边修数据）；撤销时限 `UNDO_DAYS`；复现档位 1 → 3 → 7 → 14 → 30（`nextTier`、`reviewDue`：到期 = last + tier，页面算）；`applyChange` 改状态类时按字段记 log。
 - `check.js`（纯函数）：自检对话里的 Claude 写的记忆（编号、字段、日期、指向的 id、结论挂证据），外加指纹 `meta/ledger`：历史类（错题、观察、失误）改了、删了记一条提醒留 7 天；状态类改了 `tracked` 字段却没在 log 里记到新值就一直报（指纹停在旧值，补上 log 才前进）。结果写回 `meta/memcheck` 给对话里的 Claude 读。
 - `desk.js`：学习台首页（今天、自检、记忆库每类几条）；页面只写 `meta`。`sample.js` 是一份守规矩的示例记忆（`?dev` 的「填入示例记忆」、测试都用它）。说明书 `CLAUDE-PROJECT.md` 第七节的 JSON 例子拼起来要能过自检（`tests/memory.test.js` 守着）。
 - 在学习台里上课（第 2 批）：首页「开新课」→ `sessions/{编号}`（`c-20261027-1`，页面写），`pack/main`、`pack/problems` 抄进 `sessions/{编号}/pack/`；地址带 `#编号` 就进这节课（`desk.js` 的 `classHash` / `enterClass`，进出都整页刷新，课堂挂的全局监听不留）。课堂照旧是 `classroom.js`，多一个 `desk` 参数：
@@ -124,14 +124,15 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - 课后报告 `report.js`（纯函数）：下课后 `desk.js` 的 `writeReport` 读这节课的证据、观察、失误、上一节下课以后的补记，算好写进 `sessions/{编号}/report/main`（`SESSION_SCOPED` 里有 `report`），要点记在 `sessions/{编号}.report`；下课时没写成的，首页打开时补写（`fixReports`）。一道题 = 组件 + 第几步（`itemKey`），尝试序列、结果（`OUTCOMES`）、按 `tags` 汇总、时长去掉 10 分钟以上的空档。
   - 证据补全：作答 / 动作带 `turn`（发生时最新一轮的 seq，`evCtx`）；下课那一刻没交的草稿记成 `src: draft`（`draftEvidence`，`classroom.js` 的 `allDrafts`）；板书导出的图在 say 证据里记 `ink`。
   - 补记：首页「补记」（`manual.js` 的表单，贴图照课堂输入条的写法绕 Notability 的坑），记成 `src: manual`（`manualEvidence`，没有 session）。
-  - 备份：`backup.js`（纯函数）把记忆库、资料包、每节课的报告（可选证据、黑板）拼成一个 JSON，`docs` 每条就是 ArtifactData batch 的样子；首页「导出备份」用 `downloads` 能力存（`store.js` 的 `getDownloads`，`?dev` 用下载链接）。恢复由外部 Claude 照说明书第七节「备份和恢复」写回（`restoreBatches` 是同样的切法，测试用）。首页还显示 assets 用了多少（`assets.list()` 的 `usage`）。
+  - 备份：`backup.js`（纯函数）把记忆库、资料包、每节课的报告（可选证据、黑板）拼成一个 JSON，`docs` 每条就是 ArtifactData batch 的样子；首页「导出备份」用 `downloads` 能力存（`store.js` 的 `getDownloads`，`?dev` 用下载链接）。首页「从备份恢复」页面自己写回（`restorePlan`：默认只补缺的，覆盖要我再点一次）；开发那边修数据照 `restoreBatches` 切成 batch。首页还显示 assets 用了多少（`assets.list()` 的 `usage`）。
 - 课堂里的 Claude 改记忆（desk-plan 第 2 批）：
   - 写法：输出里的 ```` ```board memo ```` 块，一行一条（`protocol.js` 的 `memoOp` → `memo.js` 的 `parseMemoLines`），不用工具（工具 `lesson_note`、`slip_note` 留着兼容，说明里不再推荐）。说明在 `prompt.js` 的 `MEMO_DOC`（`DESK_DOC` 里）。
-  - `memo.js`（纯函数）：三档 `MEMO_KINDS`（direct：pref / slip / lesson / note / propose；confirm：error / weakness / review / position；mastery、rule 拒绝；`block` 由课堂自己处理：`blockSwitch` 查过后改这节课的块）、依据 `resolveBasis`（组件 id / 段 id 换成这节课的证据，`say` 是最近一句话）、`planEntry` 查编号字段取值、改动单 `pendingRecord`、执行 `applyPending`（直接写的用 class 的身份，确认的用 me；状态类记 log，`ref` 是改动单编号）、`rejectPending`、`undoPending`（状态类按 `applied` 退回，新加的改 `void`；历史类追加 `void` 的更正）、我自己改 `meChange`、作废的 `voidedIds`（`digest.js` 跳过它们，并列出还在等确认的）。
+  - `memo.js`（纯函数）：分档 `MEMO_KINDS`（direct：pref / slip / lesson / note / propose / todo / error / weakness / review / position；confirm：rule；mastery 拒绝；`docs/autonomy-plan.md`）；不冗杂：新弱点、复现组、偏好、规则和已有的几乎一样不收（`similarity`），同一道题不记两次错题，每类有上限 `CAPS`（`overCaps`），合并写 `status=merged into=…`（`voidedIds` 当作废，摘要、页面都不带）；每科每 `TIDY_EVERY`（5）节课或到了上限，下课的 `closingPrompt({ tidy })` 带上 `tidyText` 的目录让它顺带合并（`tidyDue`）；`block` 由课堂自己处理：`blockSwitch` 查过后改这节课的块）、依据 `resolveBasis`（组件 id / 段 id 换成这节课的证据，`say` 是最近一句话）、`planEntry` 查编号字段取值、改动单 `pendingRecord`、执行 `applyPending`（直接写的用 class 的身份，确认的用 me；状态类记 log，`ref` 是改动单编号）、`rejectPending`、`undoPending`（状态类按 `applied` 退回，新加的改 `void`；历史类追加 `void` 的更正）、我自己改 `meChange`、作废的 `voidedIds`（`digest.js` 跳过它们，并列出还在等确认的）。
   - `memops.js`：数据库这一层（课堂和首页共用）：`applyMemo`、`confirm`（自动编号被占了就换下一个）、`reject`、`undo`、`me`。确认只由 `memoview.js` 里我点的按钮调用。
   - `memoview.js`：改动单的画面（板顶那句话下面的一行小字、小结板上的整理单、首页的「待确认」）：确认 / 改 / 不要 / 撤销，点依据看那次作答原文。`classroom.js` 的 `decoratePage`（`boardview.js` 的 `decorate` 钩子）挂上去，板记着 `memo`（改动单 id，存进 `class_pages`）。
   - 下课：`desk.makeReport` 先算一份报告，`report.js` 的 `reportText` 放进 `closingPrompt({ report })`，小结和整理单同一次写；小结正文是 memo 块以外的文字。
-  - 首页：「待确认」「我改记忆」两张卡。
+  - 首页：「待确认」「我改记忆」两张卡；等确认的三条以上有「全部确认」。
+  - 待办 `todo`（`observations` 的 `kind: todo`）：课上被问到教案以外的内容，记下来；备课时 `plan.js` 的 `openTodos` 带上，补上了的写进教案 `todos`（课堂看得到），编号记进 `meta/todos` 的 `done`。
 - 教学守则（`docs/teach-plan.md`）：`lessons`（`T-…`，状态类）是失误归纳出来的「下次照着做」。上课时又犯写 `lesson id=… again=…`（不另记失误），只说板放不下的失误不收（`layoutOnly`）；下课时 `closingPrompt({ slips })`（`slipsToFold`：这一科还没归纳的失误全文）要它全部并进守则（改写、合并 `status=retired into=…`）；一科最多 `LESSONS_MAX` 条、几乎照抄的新守则不收（`similarity`）。`digest.js`：守则紧跟规则全文带，已归纳的失误（`absorbedSlips`）不再带。首页「我改记忆」能改、能不要（`meChange` 的 `lesson` / `lesson-retire`）。
 - 给我看的页面和第 4 批（desk-plan 第 3、4 批）：
   - 开场简报：首页打开时写 `meta/brief`、`brief-cs`、`brief-en`（`views.js` 的 `deskBrief`：接手要知道的 + 这一科记忆库的目录），对话里的 Claude 开场 get 一份。

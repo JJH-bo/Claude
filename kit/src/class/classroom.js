@@ -37,7 +37,7 @@ import { shouldNudge, stuckText, STUCK_MS } from './stuck.js';
 import { fromEvidence, sayEvidence, draftEvidence, observationRecord, slipRecord, memoryRead } from '../memory/session.js';
 import { callCost, usageOf, usageText } from './usage.js';
 import { reportText } from '../memory/report.js';
-import { slipsToFold, blockSwitch } from '../memory/memo.js';
+import { slipsToFold, blockSwitch, tidyDue, tidyText } from '../memory/memo.js';
 import { spaceOfId } from '../memory/space.js';
 import { textbookForClass, readChunks, searchChunks } from '../books/textbook.js';
 
@@ -422,7 +422,7 @@ export async function renderClass(root, meta, desk = null) {
       else p.talkEl.after(el);
     }
     desk.memo.view.attach(el, () => p.memo || [], p.kind === 'closing'
-      ? { mode: 'list', title: '整理单：等你确认的，点「确认」才写进学习台' }
+      ? { mode: 'list', title: '整理单：已经写进学习台，不对就点「撤销」；规则等你点「确认」' }
       : { mode: 'line' });
   }
 
@@ -1379,7 +1379,7 @@ export async function renderClass(root, meta, desk = null) {
       },
       desk ? {
         name: 'lesson_note',
-        description: '记一条给课后看的观察，存进学习台的 observations，项目对话里的 Claude 课后会读。kind：note 是观察（比如学生反复出现的错误），proposal 是提议（弱点、掌握、复现这些你不能改，看到该改的就提议，比如「W19 这节课两次都对了，可以考虑降一级」）。about 写相关的编号（W19、L2-07、L2.2.1#tr……）。',
+        description: '记一条观察，存进学习台的 observations（以后的课会带着）。kind：note 是观察（比如学生反复出现的错误），proposal 是提议。改弱点、错题、复现组直接写 memo 块，比这个工具省一整轮。about 写相关的编号（W19、L2-07、L2.2.1#tr……）。',
         inputSchema: { type: 'object', properties: { text: { type: 'string' }, kind: { type: 'string', enum: ['note', 'proposal'] }, about: { type: 'array', items: { type: 'string' } } }, required: ['text'] },
         async execute(input) {
           const text = String(input?.text ?? '').trim().slice(0, 2000);
@@ -1388,18 +1388,18 @@ export async function renderClass(root, meta, desk = null) {
           staged.calls.push({ name: 'lesson_note', input: { text, kind, about: about.length ? about : undefined } });
           if (!text) throw new Error('要写 text');
           staged.notes.push({ text, kind, about });
-          return kind === 'proposal' ? '记下了这条提议，课后由项目对话里的 Claude 决定采不采纳。' : '记下了，下课后给项目对话里的 Claude 看。';
+          return kind === 'proposal' ? '记下了这条提议。要改记忆就直接写 memo 块。' : '记下了。';
         },
       } : {
         name: 'lesson_note',
-        description: '记一条给课后看的观察（比如学生反复出现的错误），项目对话里的 Claude 课后会读。',
+        description: '记一条观察（比如学生反复出现的错误），以后的课会带着。',
         inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
         async execute(input) {
           const text = String(input?.text ?? '').trim().slice(0, 2000);
           staged.calls.push({ name: 'lesson_note', input: { text } });
           if (!text) throw new Error('要写 text');
           staged.notes.push({ text, kind: 'note' });
-          return '记下了，下课后给项目对话里的 Claude 看。';
+          return '记下了。';
         },
       },
       ...(desk ? [{
@@ -1541,7 +1541,11 @@ export async function renderClass(root, meta, desk = null) {
       // 学习台里：先用代码算一份课后报告放进这次的输入，小结和整理单同一次写（docs/desk-plan.md 4.2，不多调用一次）
       const report = desk?.makeReport ? await desk.makeReport({ turns: history, steps: steps() }).then(reportText, () => '') : '';
       const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(false), board: boardState(), subject: session.subject, memory: memoryArg(), ...planArg() });
-      const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review, slips: desk ? slipsToFold(desk.mem, spaceOfId(desk.block || '')) : '', plan: FEATURES.plan === false ? null : latestPlan(history) }) }], maxBytes: promptLimit(), stub: teacher.tools });
+      // 每几节课（或者某一类到了上限）顺带整理：合并重复的弱点、复现组、关于学生的记录（memo.js 的 tidyDue）
+      const sp = spaceOfId(desk?.block || '');
+      const why = desk ? tidyDue(desk.mem, sp, desk.sid) : '';
+      const tidy = why ? { why, text: tidyText(desk.mem, sp) } : null;
+      const fit = fitTurns({ system, history: [...promptHistory(history), { role: 'system', text: closingPrompt({ report, review: desk?.review, slips: desk ? slipsToFold(desk.mem, sp) : '', plan: FEATURES.plan === false ? null : latestPlan(history), tidy }) }], maxBytes: promptLimit(), stub: teacher.tools });
       const cost = (why) => callCost({ bytes: fit.bytes, why });
       let res;
       try {
