@@ -139,7 +139,7 @@ export const fileidxEngine = {
   table(input, r) {
     const active = input.levels.filter((l) => l.count);
     return {
-      q: '把每一级地址项能指向的块数、管的逻辑块号范围填进表里。', qhtml: '', dir: 'row',
+      q: '把每一级地址项能指向的块数、管的逻辑块号范围填进表里。', dir: 'row',
       head: ['能指向的块', '起始逻辑块号', '结束逻辑块号'],
       rows: active.map((l) => ({ label: l.name, cells: [{ v: String(l.blocks), num: true }, { v: String(l.start), num: true }, { v: String(l.end), num: true }] })),
       extra: [

@@ -1,0 +1,41 @@
+{
+  "unit": "LRU 页面置换",
+  "subject": "操作系统",
+  "steps": [
+    {
+      "id": "k1",
+      "seq": 1,
+      "pin": true,
+      "title": "LRU",
+      "md": "缺页且块都满时，换出**最久没被访问**的页。\n命中也是一次访问：被命中的页变成最新的。一开始调入也算缺页。"
+    },
+    {
+      "id": "s1",
+      "seq": 2,
+      "page": 1,
+      "title": "命中算不算新",
+      "md": "```quiz\nid: q-lru\nq: 3 个物理块，依次调入 4、5、6；接着访问 4（命中），再访问 7。LRU 换出哪一页？\n- [ ] 4\n- [x] 5\n- [ ] 6\nexplain: 4 刚被访问过，是最新的；最久没被访问的是 5。只按调入的先后换（FIFO）才会换出 4。\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "例题推一遍",
+      "md": "引用串 7 0 1 2 0 3 0 4 2 3 0 3 2，3 个物理块。每一次访问先判断命中还是缺页；缺页时在表的最后一列点出换出哪一页。表下面写着最近使用的先后，对照着看。\n\n```paging\nid: pg-lru\ntitle: LRU 例题\nalgo: lru\nrefs: 7 0 1 2 0 3 0 4 2 3 0 3 2\nframes: 3\nask: hit, victim, faults\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "练够 3 道",
+      "md": "页面随机出引用串，写出依次换出的页（空格隔开）。做对 3 题；写错时先回去对一下「最近使用的先后」。\n\n```practice\nid: pr-lru\ntitle: LRU 练 3 道\nuse: paging\nalgo: lru\nquiz: victims\ncount: 3\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "FIFO 还是 LRU",
+      "md": "最后混着来：每一题页面挑 FIFO 或 LRU（看题目里写的算法），写出依次换出的页。做对 2 题。\n\n```practice\nid: pr-mix\ntitle: 混着练\nuse: paging\ncount: 2\npick a = word(fifo, lru)\npick r = seq(12, 0, 5)\nalgo: \\calc{a}\nrefs: \\calc{list(r)}\nframes: 3\nquiz: victims\n```"
+    }
+  ]
+}

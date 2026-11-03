@@ -228,3 +228,19 @@ test('组件字段里的 \\calc{…}：换成 let 量的精确值（矩阵、分
   const run = elimEngine.run(elimEngine.parse({ matrix: r.fields.matrix, inverse: 'true' }));
   assert.ok(run.X);
 });
+
+test('vary:（演示上的滑块）：名字 = 最小..最大，step、init、单位；写错了说清楚', async () => {
+  const { parseVary } = await import('../kit/src/stepperspec.js');
+  assert.deepEqual(parseVary('d = 1..10 step 1 km; L = 64..1536 step 64 init 1024 bit'), [
+    { name: 'd', min: 1, max: 10, step: 1, init: 1, unit: 'km' },
+    { name: 'L', min: 64, max: 1536, step: 64, init: 1024, unit: 'bit' },
+  ]);
+  assert.deepEqual(parseVary('m = 576..1500 step 4 init 1500'), [{ name: 'm', min: 576, max: 1500, step: 4, init: 1500, unit: '' }]);
+  assert.throws(() => parseVary('d = 1-10'), /名字 = 最小\.\.最大/);
+  assert.throws(() => parseVary('d = 5..1'), /最大值要比最小值大/);
+  assert.throws(() => parseVary('step = 1..3'), /保留的名字/);
+  assert.equal(parseVary('t = 0..50 step 5 μs')[0].name, 't', '演示组件里没有联动的 t：滑块可以叫 t（时间）');
+  assert.throws(() => parseVary('d = 0..10000'), /太多了/);
+  assert.throws(() => parseVary('d = 1..9 init 12'), /init 要在 1 到 9 之间/);
+  assert.throws(() => parseVary('a = 1..2; b = 1..2; c = 1..2; d = 1..2'), /最多 3 个/);
+});

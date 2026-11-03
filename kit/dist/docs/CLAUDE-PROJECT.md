@@ -1,6 +1,6 @@
 # 学习台 · 给 Claude 的教学说明
 
-> **版本：2026-11-03h**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
+> **版本：2026-11-03i**　学习台：https://claude.ai/artifact/BCAMUUkMWc2rt5hSS1ULHo
 >
 > 这份说明的**最新版**一直放在**学习台** artifact 里（文件 `CLAUDE-PROJECT.md`）。每个新对话里，第一次做和学习有关的事（写黑板、备课、读课堂记录、改记忆）之前，先用 `Artifact` 工具读它：`action: "read"`，`url` 是上面的学习台地址，`path: "CLAUDE-PROJECT.md"`。
 > - 读到的版本比你手上这份新：以读到的为准，这份里和它不一样的地方全部作废。回复里顺便告诉我「项目指令里的说明是旧版（版本号），学习台里是新版（版本号）」。
@@ -146,15 +146,13 @@ a = [-1, 2, 1]
 b = [1, 1, -2]
 ```
 
-一行一个 `名字 = 表达式`，后面的行可以用前面的名字。定义一次，之后所有的段、组件（`answer`、`scene`、`matrix`……）和公式里的 `\calc` 都能直接用这些名字，不用每个组件再写一遍 `let`（组件自己的 `let` 同名时用自己的）。精确值（分数）保存。`I`、`E`、`pi`、`e`、`step`、`t` 是保留的名字。
+一行一个 `名字 = 表达式`，后面的行可以用前面的名字。定义一次，之后所有的段、组件（`answer`、`scene`、`matrix`……）和公式里的 `\calc` 都能直接用这些名字，不用每个组件再写一遍 `let`（组件自己的 `let` 同名时用自己的）。精确值（分数）保存。课堂、实时黑板里 `let` 放在哪一段都行，之后的段、别的板都认。`I`、`E`、`pi`、`e`、`step`、`t` 是保留的名字。
 
 ### 公式里的三个工具：`\calc`、`\hl`、`\chalk`
 
 - **`\calc{表达式}`：让页面算，不要心算。**任何公式里都能写（正文、题面、提示、解析、标签、课堂里说的话），页面用精确分数算好再写进公式：`$A^2=\calc{A^2}$`、`$\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=\calc{b'*a}$`、`$\operatorname{tr}A=\calc{tr(A)}$`。变量来自 `let` 块（组件里还有组件自己的 `let`）。矩阵写成 `bmatrix`，分数写成 $\tfrac{1}{2}$。开方、三角这类算不准的写成小数。算不出来（变量没定义、尺寸不对）会画成红框并报写法错误。**凡是要写上黑板的数，都用 `\calc` 让页面算**，改数出新题时也一样。
-- **`\hl{名字}{…}`：给一项起名字**，本身不画任何东西。课堂里 `board mark term=名字` 靠它找到这一项去圈、框、划。名字只用字母、数字、`-`、`_`。一个矩阵整个包起来，`board mark of=名字 row=2` 就能标这个矩阵的第 2 行。
-- **`\chalk{颜色}{…}`：这一项用彩色粉笔写**（静态的；颜色跟着黑板风格走，比 `\color` 好）。颜色：`yellow` `pink` `blue` `green` `orange` `purple` `red` `white`，含义同上面的颜色约定。
-
-写的时候就要强调的，直接写进公式：`\boxed{…}`、`\cancel{…}`（约去）、`\underbrace{…}_{\text{…}}`、`\chalk{pink}{…}`。
+- **`\hl{名字}{…}`：给一项起名字**，本身不画任何东西。课堂里 `board mark term=名字` 靠它找到这一项去圈、框、划。名字只用字母、数字、`-`、`_`。
+- **`\chalk{颜色}{…}`：这一项用彩色粉笔写**（静态的；颜色跟着黑板风格走，比 `\color` 好）。颜色同上面的颜色约定（`yellow` `pink` `blue`……）。
 
 ### 其他组件
 
@@ -173,6 +171,7 @@ b = [1, 1, -2]
 - `answer`（线代）：基、特征向量、含 n 的式子 → `components/answer.md`
 - `conjecture`：说出你的发现（由页面里的 Claude 批改；`grade: off` 只记录不批改） → `components/conjecture.md`
 - `practice`：程序出题、程序判分 → `components/practice.md`
+- `practice` / `use`（数据结构、操作系统、组成原理、计网）：演示组件当练习题 → `components/practice.md`
 - `practice`（线代）：practice 的内置题型（线代） → `components/practice.md`
 - `practice`（数据结构）：practice 的内置题型（数据结构） → `components/practice.md`
 - `quiz`：选择题 / 填空题 → `components/quiz.md`
@@ -188,7 +187,7 @@ b = [1, 1, -2]
 - `calc` / `hl` / `chalk`：`\calc`、`\hl`、`\chalk` → `components/calc.md`
 - `recognize`：认方法快练（只认方法，不计算） → `components/recognize.md`
 - `findbug`：找错 → `components/findbug.md`
-- `graph`（线代）：函数图（概率分布、面积、函数性质） → `components/graph.md`
+- `graph`（线代、计网）：函数图（概率分布、面积、函数性质） → `components/graph.md`
 - `space`（线代）：三维图（可以拖动旋转） → `components/space.md`
 - `stepper`：一步步走的过程 → `components/stepper.md`
 - `frames`：自己写每一步的演示（菜单上没有的过程） → `components/frames.md`

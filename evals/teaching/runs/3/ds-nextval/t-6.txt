@@ -1,0 +1,17 @@
+对，停在 2，理由也说清了：相同就接着退，遇到不同（或退到 0）就停。我把「什么时候停」补进常驻栏。现在把一整个串的 nextval 从左到右求一遍，每一格先你猜，再看页面怎么算。
+
+````board pin id=k2 title="白比和停下"
+在 $j$ 失配、退到 $k=next[j]$：若 $T[k]=T[j]$，必然失配（白比），接着退；$T[k]\ne T[j]$ 或退到 0 就停。停下的位置就是 $nextval[j]$。
+````
+
+````board new id=b6 title="一格格求 nextval"
+```kmp
+id: k-nv1
+title: ababaab 的 nextval
+pattern: ababaab
+show: nextval
+ask: nextval
+```
+````
+
+每一格照你刚才的退法猜；猜完留意页面每一格是怎么得出来的，有没有比一路退更快的办法。

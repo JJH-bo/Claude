@@ -99,7 +99,7 @@ export const fragEngine = {
   table(input, r) {
     if (r.dropped) throw new Error('DF = 1 时不分片，没有表可填（mode: fill 去掉，或者 df: 0）');
     return {
-      q: '把最后各片的总长度、片偏移、MF 填进表里。', qhtml: '', dir: 'row',
+      q: `IP 数据报总长度 ${input.total} 字节（首部 ${input.header} 字节），要经过 MTU ${input.mtus.join('、')} 字节的链路。把最后各片的总长度、片偏移、MF 填进表里。`, dir: 'row',
       head: ['总长度', '片偏移', 'MF'],
       rows: r.frags.map((f, i) => ({ label: `第 ${i + 1} 片`, cells: [{ v: String(f.len + input.header), num: true }, { v: String(f.off / 8), num: true }, { v: String(f.mf), num: true }] })),
       extra: [{ label: '一共几片', v: String(r.frags.length), num: true }],

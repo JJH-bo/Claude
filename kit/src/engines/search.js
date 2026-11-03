@@ -101,7 +101,7 @@ function kmpRun({ T, S, show, use, mistake }) {
       });
     }
     if (show === 'nextval') {
-      steps.push({ view: v(), msg: `再求 nextval：nextval[1] = 0；j ≥ 2 时，如果 T[j] = T[next[j]]，失配后退到 next[j] 还是会失配，所以 nextval[j] = nextval[next[j]]；不相等就是 next[j]。` });
+      steps.push({ view: v(), msg: `再求 nextval：nextval[1] = 0；之后一格格看：在 j 处失配、退到 next[j] 时，那里的字符和 T[j] 一样吗？` });
       for (let j = 1; j <= n; j++) {
         shown.nextval[j] = nv[j];
         if (j === 1) { steps.push({ view: v({ j }), msg: 'nextval[1] = 0。' }); continue; }
@@ -109,7 +109,7 @@ function kmpRun({ T, S, show, use, mistake }) {
         const same = T[j] === T[k];
         steps.push({
           view: v({ j, ref: k }),
-          msg: same ? `T[${j}] = '${T[j]}' 和 T[next[${j}]] = T[${k}] = '${T[k]}' 相等：nextval[${j}] = nextval[${k}] = ${nv[j]}。` : `T[${j}] = '${T[j]}' 和 T[${k}] = '${T[k]}' 不相等：nextval[${j}] = next[${j}] = ${k}。`,
+          msg: same ? `T[${j}] = '${T[j]}' 和 T[next[${j}]] = T[${k}] = '${T[k]}' 相等：在 j = ${j} 失配后退到 ${k} 还是会失配，所以接着退，nextval[${j}] = nextval[${k}] = ${nv[j]}。` : `T[${j}] = '${T[j]}' 和 T[${k}] = '${T[k]}' 不相等：nextval[${j}] = next[${j}] = ${k}。`,
           ask: { tag: 'nextval', kind: 'number', q: `nextval[${j}] 是多少？`, answer: nv[j] },
         });
       }

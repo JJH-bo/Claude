@@ -3,7 +3,8 @@ import MarkdownIt from 'markdown-it';
 import katex from 'katex';
 import { blocks } from './blocks/index.js';
 import { session } from './session.js';
-import { calcValue, expandCalc, parseLets } from './exact.js';
+import { calcValue, expandCalc, parseLets, letValue } from './exact.js';
+import './paramcalc.js'; // 含参数的 \calc（let 里写 a = param）：exact.js 遇到参数时交给它
 import { MARK_COLORS } from './markspec.js';
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false, typographer: false });
@@ -165,7 +166,7 @@ function prerunLets(src) {
         if (body) {
           try {
             for (const d of parseLets(body.join('\n'))) {
-              try { session.vars[d.name] = calcValue(d.src, session.vars).value; } catch { /* 组件会报 */ }
+              try { session.vars[d.name] = letValue(d.name, calcValue(d.src, session.vars).value); } catch { /* 组件会报 */ }
             }
           } catch { /* 组件会报 */ }
         }
@@ -227,7 +228,9 @@ export function renderLesson(src, root) {
     if (!own && session.live && (ANSWERING.has(name) || FIGURES.has(name) || blocks[name].stepper)) session.problem(el, name, `这个组件没写 id:，暂时按 ${el.dataset.bid} 记。请加一行 id:（同一个单元里不重复）`, { soft: true });
     // 组件文字里的 \calc：有自己 let 的组件（answer、scene、predict、matrix）自己带着变量查；别的按整节课的量查。
     // 要现在查：解析这类文字往往答完题才显示，那时再报就晚了
-    if (!SELF_CALC.has(name)) for (const msg of calcProblems(body)) session.problem(el, name, msg);
+    // 带 vary:（滑块）的演示：字段里的 \calc{d} 用的是滑块的值，演示组件自己查
+    const selfCalc = SELF_CALC.has(name) || (blocks[name]?.stepper && /^\s*vary\s*[:：]/m.test(body));
+    if (!selfCalc) for (const msg of calcProblems(body)) session.problem(el, name, msg);
     try {
       blocks[name](el, body);
     } catch (e) {

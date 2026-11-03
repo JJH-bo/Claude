@@ -4,16 +4,17 @@
 import { splitSeq, readRadix, groupDigits } from './textcheck.js';
 import { escapeHtml } from './render.js';
 
-// shape：{ kind: 'seq', single } | { kind: 'radix', base, width }
+// shape：{ kind: 'seq', single } | { kind: 'radix', base, width } | { kind: 'line', ph, mode, echo(写的) → 读懂的样子 }（数集、方程、定点数）
 export function textAnswerInput(container, shape) {
   const root = document.createElement('div');
   root.className = `ti ti-${shape.kind}`;
   const radix = shape.kind === 'radix';
+  const line = shape.kind === 'line';
   const ph = radix
     ? `${shape.base === 2 ? '写 0 和 1' : '写 0–9、A–F'}${shape.width ? `，共 ${shape.width} 位` : ''}，可以空格分组`
-    : '按顺序写，用空格或逗号隔开';
+    : line ? shape.ph : '按顺序写，用空格或逗号隔开';
   // 二进制只有 0 和 1：用数字键盘；十六进制和序列要字母
-  const mode = radix && shape.base === 2 ? 'numeric' : 'text';
+  const mode = line ? shape.mode || 'text' : radix && shape.base === 2 ? 'numeric' : 'text';
   root.innerHTML = `<input class="ti-input" type="text" inputmode="${mode}" autocomplete="off" autocorrect="off" autocapitalize="${radix ? 'characters' : 'off'}" spellcheck="false" placeholder="${escapeHtml(ph)}" aria-label="${escapeHtml(ph)}">
     <div class="ti-echo" aria-hidden="true"></div>`;
   container.appendChild(root);
@@ -26,6 +27,13 @@ export function textAnswerInput(container, shape) {
   function paint() {
     const v = input.value;
     if (!v.trim()) { echo.innerHTML = ''; return; }
+    if (line) {
+      // 读懂的样子写在下面（数集化成区间、方程数一数几个），读不懂的说为什么
+      let t = '';
+      try { t = shape.echo?.(v) || ''; } catch (e) { echo.innerHTML = `<span class="ti-err">${escapeHtml(e.message)}</span>`; return; }
+      echo.innerHTML = t ? `<span class="ti-read${state ? ` ${state}` : ''}">${escapeHtml(t)}</span>` : '';
+      return;
+    }
     if (radix) {
       let d;
       try { d = readRadix(v, shape.base); } catch (e) { echo.innerHTML = `<span class="ti-err">${escapeHtml(e.message)}</span>`; return; }

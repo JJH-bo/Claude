@@ -1,0 +1,1 @@
+{"say": "next[2]=1，T[2]=b，T[1]=a，不一样，所以停在1。nextval[2]=1。", "acts": [{"comp": "k-nv1", "value": "1"}], "sure": {"k-nv1": true}}

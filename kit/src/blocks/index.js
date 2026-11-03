@@ -24,55 +24,12 @@ import { image } from './image.js';
 import { code } from './code.js';
 import { cloze, errfind, parse, drill, chunk, link as enLink } from './english.js';
 import { stepperBlock } from '../stepper.js';
-import { sortEngine } from '../engines/sort.js';
-import { treeEngine } from '../engines/tree.js';
-import { kmpEngine, hashEngine, bsearchEngine } from '../engines/search.js';
-import { netEngine } from '../engines/graph.js';
-import { traceEngine } from '../engines/trace.js';
-import { schedEngine, pagingEngine, bankerEngine, diskEngine } from '../engines/os.js';
-import { addrEngine } from '../engines/addr.js';
-import { bitsEngine, cacheEngine, pipeEngine } from '../engines/co.js';
-import { subnetEngine, tcpEngine, windowEngine } from '../engines/net4.js';
-import { framesEngine } from '../engines/frames.js';
+import { ENGINES } from '../engines/registry.js';
 import { elimEngine } from '../engines/elim.js';
 import { elimDo } from './elimdo.js';
 import { parseFields } from '../parse.js';
-import { detEngine } from '../engines/det.js';
-import { eigEngine, schmidtEngine } from '../engines/eig.js';
-import { quadEngine } from '../engines/quad.js';
-import { crcEngine, hammingEngine } from '../engines/codes.js';
-import { allocEngine } from '../engines/osmem.js';
-import { memexpEngine } from '../engines/comem.js';
-import { faddEngine } from '../engines/cofloat.js';
-import { mulEngine } from '../engines/comul.js';
-import { asmEngine } from '../engines/coasm.js';
-import { divEngine } from '../engines/codiv.js';
-import { fileidxEngine } from '../engines/osfile.js';
-import { pagetableEngine } from '../engines/ospt.js';
-import { fragEngine } from '../engines/netfrag.js';
-import { encodeEngine } from '../engines/netcode.js';
-import { huffmanEngine } from '../engines/huffman.js';
-import { ufEngine } from '../engines/uf.js';
-import { buildtreeEngine } from '../engines/buildtree.js';
-import { threadEngine } from '../engines/thread.js';
-import { forestEngine } from '../engines/forest.js';
-import { avlEngine, rbtEngine } from '../engines/balanced.js';
-import { btreeEngine } from '../engines/btree.js';
-import { stackEngine } from '../engines/stack.js';
-import { cqueueEngine } from '../engines/cqueue.js';
-import { compressEngine } from '../engines/compress.js';
-import { extsortEngine } from '../engines/extsort.js';
-import { memEngine } from '../engines/osvm.js';
-import { bitmapEngine } from '../engines/osbitmap.js';
-import { deadlockEngine } from '../engines/osdeadlock.js';
-import { eaEngine } from '../engines/coea.js';
-import { opcodeEngine } from '../engines/coopcode.js';
-import { layoutEngine } from '../engines/colayout.js';
-import { irqEngine } from '../engines/coirq.js';
-import { csmaEngine, switchEngine } from '../engines/netmac.js';
-import { dvEngine } from '../engines/netdv.js';
-import { utilEngine, rttEngine } from '../engines/netperf.js';
 import { pvBlock } from './pvdo.js';
+import { encodeDo } from './encodedo.js';
 
 // 代码块语言名 → 组件
 export const blocks = {
@@ -82,59 +39,11 @@ export const blocks = {
   let: letBlock, matrix, sketch, derive, image, code,
   // 英语（语法）：填空、改错、句子成分、句型操练（判分在 entext.js）
   cloze, errfind, parse, drill, chunk, link: enLink,
-  // 一步步走的演示（stepper.js 外壳 + engines/ 里的纯函数引擎）
-  sort: stepperBlock(sortEngine),
-  tree: stepperBlock(treeEngine),
-  kmp: stepperBlock(kmpEngine),
-  hash: stepperBlock(hashEngine),
-  bsearch: stepperBlock(bsearchEngine),
-  net: stepperBlock(netEngine),
-  trace: stepperBlock(traceEngine),
-  sched: stepperBlock(schedEngine),
-  paging: stepperBlock(pagingEngine),
-  banker: stepperBlock(bankerEngine),
-  disk: stepperBlock(diskEngine),
-  addr: stepperBlock(addrEngine),
-  bits: stepperBlock(bitsEngine),
-  cache: stepperBlock(cacheEngine),
-  pipe: stepperBlock(pipeEngine),
-  subnet: stepperBlock(subnetEngine),
-  tcp: stepperBlock(tcpEngine),
-  window: stepperBlock(windowEngine),
-  frames: stepperBlock(framesEngine),
+  // 一步步走的演示（stepper.js 外壳 + engines/ 里的纯函数引擎，名字在 engines/registry.js）
+  ...Object.fromEntries(Object.entries(ENGINES).filter(([k]) => k !== 'elim' && k !== 'pv').map(([k, e]) => [k, stepperBlock(e)])),
   elim: elimBlock(),
-  det: stepperBlock(detEngine),
-  eig: stepperBlock(eigEngine),
-  schmidt: stepperBlock(schmidtEngine),
-  quad: stepperBlock(quadEngine),
-  crc: stepperBlock(crcEngine),
-  hamming: stepperBlock(hammingEngine),
-  alloc: stepperBlock(allocEngine),
-  memexp: stepperBlock(memexpEngine),
-  fadd: stepperBlock(faddEngine),
-  mul: stepperBlock(mulEngine),
-  asm: stepperBlock(asmEngine),
-  div: stepperBlock(divEngine),
-  fileidx: stepperBlock(fileidxEngine),
-  pagetable: stepperBlock(pagetableEngine),
-  frag: stepperBlock(fragEngine),
-  encode: stepperBlock(encodeEngine),
-  // 树（二）：哈夫曼、并查集、由遍历序列建树、线索二叉树、树和森林 ↔ 二叉树
-  huffman: stepperBlock(huffmanEngine),
-  uf: stepperBlock(ufEngine),
-  buildtree: stepperBlock(buildtreeEngine),
-  thread: stepperBlock(threadEngine),
-  forest: stepperBlock(forestEngine),
-  // 平衡树：平衡二叉树、红黑树、B 树 / B+ 树
-  avl: stepperBlock(avlEngine), rbt: stepperBlock(rbtEngine), btree: stepperBlock(btreeEngine),
-  // 线性结构：栈的应用、循环队列、特殊矩阵的压缩存储；外部排序
-  stack: stepperBlock(stackEngine), cqueue: stepperBlock(cqueueEngine), compress: stepperBlock(compressEngine), extsort: stepperBlock(extsortEngine),
-  // 操作系统（二）：访存的整条链和有效访问时间、位示图、死锁检测（资源分配图化简）
-  mem: stepperBlock(memEngine), bitmap: stepperBlock(bitmapEngine), deadlock: stepperBlock(deadlockEngine),
-  // 组成原理（二）：寻址方式、扩展操作码、大小端与对齐、中断屏蔽
-  ea: stepperBlock(eaEngine), opcode: stepperBlock(opcodeEngine), layout: stepperBlock(layoutEngine), irq: stepperBlock(irqEngine),
-  // 计网（二）：CSMA/CD、距离向量（RIP）、交换机自学习、信道利用率、HTTP 要几个 RTT
-  csma: stepperBlock(csmaEngine), dv: stepperBlock(dvEngine), switch: stepperBlock(switchEngine), util: stepperBlock(utilEngine), rtt: stepperBlock(rttEngine),
+  // encode：mode: do 是学生自己画波形（blocks/encodedo.js）
+  encode: doBlock(ENGINES.encode, encodeDo),
   // 进程同步：信号量 P/V（写了 run: 是演示；没写是学生自己点进程，blocks/pvdo.js）
   pv: pvBlock(),
 };
@@ -142,7 +51,15 @@ export const blocks = {
 // elim：mode: do 是学生自己做行变换（blocks/elimdo.js），其余照演示组件（演示 / quiz / fill）
 function elimBlock() {
   const demo = stepperBlock(elimEngine);
-  const f = (el, src) => (/^do$/i.test(String(parseFields(src).fields.mode ?? '').trim()) ? elimDo(el, src) : demo(el, src));
+  const f = (el, src, opts) => (/^do$/i.test(String(parseFields(src).fields.mode ?? '').trim()) ? elimDo(el, src) : demo(el, src, opts));
+  f.stepper = true;
+  return f;
+}
+
+// 别的有「学生自己动手」写法的演示组件：mode: do 走自己的画面，其余照演示组件
+function doBlock(engine, doFn) {
+  const demo = stepperBlock(engine);
+  const f = (el, src, opts) => (/^do$/i.test(String(parseFields(src).fields.mode ?? '').trim()) ? doFn(el, src) : demo(el, src, opts));
   f.stepper = true;
   return f;
 }

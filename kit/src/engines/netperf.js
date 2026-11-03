@@ -207,7 +207,9 @@ export const utilEngine = {
     return { q: `${ctx.join('，')}。${a.q}`, type: 'num', answer: ansText(a.answer) };
   },
   table(input, r) {
-    return { q: '把每个量算出来填进表里（单位见每一行）。', qhtml: '', dir: 'row', head: ['值'], rows: r.vals.map((x) => ({ label: x.label, cells: [{ v: ansText(x.v), num: true }] })) };
+    // 题面写出条件（和 quiz 一样的那一句）；不画开始的样子：时序图上写着周期，等于给了答案
+    const intro = this.quiz(input, r).q.replace(/。[^。]*$/, '。');
+    return { q: `${intro}把每个量算出来填进表里（单位见每一行）。`, qhtml: '', dir: 'row', head: ['值'], rows: r.vals.map((x) => ({ label: x.label, cells: [{ v: ansText(x.v), num: true }] })) };
   },
   // 常见错法：周期里只算了单程传播时延、忘了发送时延、忘了确认帧的时延、利用率没封顶、GBN 和 SR 的序号公式弄混
   variants(input) {
@@ -368,7 +370,8 @@ export const rttEngine = {
   // 考卷上那张表：每一段几个 RTT，下面写总数
   table(input, r) {
     const plan = rttPlan(input);
-    return { q: '每一段要几个 RTT？', qhtml: '', dir: 'row', head: ['几个 RTT'], rows: plan.phases.map((p) => ({ label: p.text, cells: [{ v: String(p.rtts), num: true }] })), extra: [{ label: '一共几个 RTT', v: String(r.said.total), num: true }] };
+    const intro = this.quiz(input, r).q.replace(/。[^。]*$/, '。');
+    return { q: `${intro}每一段要几个 RTT？`, qhtml: '', dir: 'row', head: ['几个 RTT'], rows: plan.phases.map((p) => ({ label: p.text, cells: [{ v: String(p.rtts), num: true }] })), extra: [{ label: '一共几个 RTT', v: String(r.said.total), num: true }] };
   },
   // 常见错法：忘了 TCP 握手、忘了基本页面那一个 RTT、流水线和非流水线弄混、并行连接的批数没向上取整、没管并行数的上限
   variants(input) {

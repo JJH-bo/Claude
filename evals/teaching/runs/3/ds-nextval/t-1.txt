@@ -1,0 +1,17 @@
+好，先热个身：nextval 是从 next 来的，我们先把 next 算一遍。下面这个串，你写出它的 next 数组。
+
+````board pin id=k1 title="口径（王道）"
+位置从 1 数；$next[1]=0$；$next[j]$ = $T[1..j-1]$ 最长相等前后缀的长度 $+1$。
+````
+
+````board new id=b1 title="热身：求 next"
+```kmp
+id: q-next1
+title: 写出 next 数组
+pattern: aabaac
+show: next
+mode: quiz
+```
+````
+
+六个数按位置 1 到 6 写，空格隔开就行。

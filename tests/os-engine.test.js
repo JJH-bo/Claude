@@ -129,3 +129,21 @@ test('银行家算法的常见错法：Max 当 Need、Work 加的不是 Allocati
   assert.equal(askDiag(bankerEngine, q2.input, ask2, '能分配'), pick(bankerEngine, q2.input, /试分配以后没改/).label);
   assert.equal(askDiag(bankerEngine, q2.input, ask2, '不能：分配了就不安全'), '');
 });
+
+test('CLOCK 的填表：每块的访问位（改进型还有修改位）和指针，块的先后按物理块', async () => {
+  const { pagingEngine } = await import('../kit/src/engines/os.js');
+  const input = pagingEngine.parse({ refs: '1 2 3 4 1 2 5 1 2 3 4 5', frames: '3', algo: 'clock' });
+  const t = pagingEngine.table(input, pagingEngine.run(input));
+  assert.deepEqual(t.head, ['块 1', '块 2', '块 3', '块 1 访问位', '块 2 访问位', '块 3 访问位', '指针（第几块）', '缺页', '换出']);
+  const col = (k) => t.rows[k].cells.map((c) => [].concat(c.v)[0]);
+  // 访问 4：三块访问位都是 1，转一圈清 0，换掉块 1 的页 1，指针到块 2
+  assert.deepEqual(col(3), ['4', '2', '3', '1', '0', '0', '2', '√', '1']);
+  // 访问 3（第 10 次）：块 2 的页 1 换成 3，访问位 0 1 0，指针到块 3
+  assert.deepEqual(col(9), ['5', '3', '2', '0', '1', '0', '3', '√', '1']);
+  assert.ok(t.rows[0].cells.every((c) => !c.group), 'CLOCK 的块有先后，不能乱序');
+  const e = pagingEngine.parse({ refs: '2 3w 2 4', frames: '2', algo: 'eclock' });
+  assert.ok(pagingEngine.table(e, pagingEngine.run(e)).head.includes('块 2 修改位'));
+  // 别的算法照旧：块的先后不论
+  const f = pagingEngine.parse({ refs: '1 2 3', frames: '2', algo: 'fifo' });
+  assert.equal(pagingEngine.table(f, pagingEngine.run(f)).rows[0].cells[0].group, 'f');
+});

@@ -361,23 +361,34 @@ export const pagingEngine = {
   view: pagingView,
   quiz(input, r, fields) {
     const what = String(fields.quiz || 'faults').toLowerCase();
-    const head = `页面引用串 ${input.refs.join(' ')}，分 ${input.frames} 个物理块，用${PAGING[input.algo]}。`;
-    if (what === 'victims') return { q: `${head}依次写出被换出的页。`, type: 'seq', answer: r.victims.join(' ') || '无' };
+    const head = `页面引用串 ${input.refs.join(' ')}，分 ${input.frames} 个物理块，用${PAGING[input.algo]}。${input.init ? '开始时内存里的页如下。' : ''}`;
+    const qhtml = input.init ? pagingView(r.steps[0].view, input) : undefined;
+    if (what === 'victims') return { q: `${head}依次写出被换出的页。`, qhtml, type: 'seq', answer: r.victims.join(' ') || '无' };
     // 错法「一开始调入不算缺页」：缺页次数少算了开头那几次
     const faults = input.noInitial ? r.faults - Math.min(input.frames, new Set(input.refs).size) : r.faults;
-    return { q: `${head}一共缺页多少次（一开始调入也算）？`, type: 'seq', answer: String(faults) };
+    return { q: `${head}一共缺页多少次（一开始调入也算）？`, qhtml, type: 'seq', answer: String(faults) };
   },
   // 考卷上那张表：每次访问一列，各物理块里是哪页（同一列里的物理块不管顺序）、缺没缺页、换出谁
   table(input, r) {
     const cols = r.steps.filter((x) => x.view.k >= 0 && !x.view.end).map((x) => x.view.cols.at(-1));
-    const head = [...Array.from({ length: input.frames }, (_, f) => `块 ${f + 1}`), '缺页', '换出'];
+    // CLOCK：考卷上那张过程表还要写每块的访问位（改进型还有修改位）和指针；这时块的先后有意义（指针按块走），不能乱序
+    const clock = input.algo === 'clock' || input.algo === 'eclock';
+    const F = Array.from({ length: input.frames }, (_, f) => f);
+    const head = [...F.map((f) => `块 ${f + 1}`), ...(clock ? F.map((f) => `块 ${f + 1} 访问位`) : []), ...(input.algo === 'eclock' ? F.map((f) => `块 ${f + 1} 修改位`) : []), ...(clock ? ['指针（第几块）'] : []), '缺页', '换出'];
+    const bit = (c, arr, f) => ({ v: c.slots[f] == null ? ['', '0'] : String(arr[f]), num: true });
     return {
-      q: `页面引用串 ${input.refs.join(' ')}，分 ${input.frames} 个物理块，用${PAGING[input.algo]}。每访问一页，写出各物理块里的页（同一列里先后不论）、缺页打 √、被换出的页。`,
+      q: `页面引用串 ${input.refs.join(' ')}，分 ${input.frames} 个物理块，用${PAGING[input.algo]}。每访问一页，写出各物理块里的页${clock ? '、每块的访问位' + (input.algo === 'eclock' ? '和修改位' : '') + '、访问完指针指着第几块' : '（同一列里先后不论）'}、缺页打 √、被换出的页。`,
       dir: 'col',
       copy: true,
       head,
-      rows: cols.map((c) => ({ label: c.ref, cells: [...c.slots.map((x) => ({ v: x ?? '', group: 'f' })), { v: c.fault ? '√' : '', mark: true }, { v: c.victim ?? '' }] })),
-      qhtml: '',
+      rows: cols.map((c) => ({ label: c.ref, cells: [
+        ...c.slots.map((x) => ({ v: x ?? '', ...(clock ? {} : { group: 'f' }) })),
+        ...(clock ? F.map((f) => bit(c, c.use, f)) : []),
+        ...(input.algo === 'eclock' ? F.map((f) => bit(c, c.mod, f)) : []),
+        ...(clock ? [{ v: String(c.ptr + 1), num: true }] : []),
+        { v: c.fault ? '√' : '', mark: true }, { v: c.victim ?? '' }] })),
+      // 有 init 时画开始的样子（哪几页已经在内存里、访问位、指针）
+      qhtml: input.init ? pagingView(r.steps[0].view, input) : '',
     };
   },
   // 常见错法：换成别的置换算法（改进型 CLOCK 只和简单 CLOCK 比：init 里的位别的算法用不上）；「一开始调入不算缺页」；改进型 CLOCK 第 1 轮也清了访问位

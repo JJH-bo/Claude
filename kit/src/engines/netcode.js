@@ -152,18 +152,42 @@ function view(s, input) {
   return `${g}</svg>`;
 }
 
+// —— 学生自己画波形（mode: do，blocks/encodedo.js）：判分和错法诊断，纯函数 ——
+// drawn：每位两个半码元 [[前, 后], …]，没画的是 null。返回 { ok, empty（第几位还没画完）, bad（第几位不对，从 0 数）, misread }
+export function judgeDrawn(input, drawn) {
+  const c = input.codes[0];
+  const want = encodeBits(input.bits, c, { start: input.start, up: input.up });
+  const empty = drawn.findIndex((h) => !h || h[0] == null || h[1] == null);
+  if (empty >= 0) return { ok: false, empty, bad: -1, misread: '' };
+  const bad = want.findIndex((h, i) => h[0] !== drawn[i][0] || h[1] !== drawn[i][1]);
+  if (bad < 0) return { ok: true, empty: -1, bad: -1, misread: '' };
+  // 错法：约定反了、按别的编码画的（整串对得上才算）
+  const same = (w) => w.every((h, i) => h[0] === drawn[i][0] && h[1] === drawn[i][1]);
+  const tries = [
+    ...(c === 'manchester' ? [['flip', c, '像是曼彻斯特的约定反过来了']] : []),
+    ...(c === 'diffman' ? [['diffInvert', c, '像是把差分曼彻斯特的「位开始处有跳变」当成了 1'], ['', 'manchester', '像是画成了曼彻斯特（差分曼彻斯特看位开始处跳不跳）']] : []),
+    ...(c === 'manchester' ? [['', 'diffman', '像是画成了差分曼彻斯特']] : []),
+    ...(c === 'nrzi' ? [['nrziOne', c, '像是按「1 翻转」画的 NRZI'], ['', 'nrz', '像是画成了 NRZ（NRZI 看的是翻不翻转）']] : []),
+    ...(c === 'nrz' ? [['', 'nrzi', '像是画成了 NRZI']] : []),
+  ];
+  const hit = tries.find(([m, code]) => { try { return same(encodeBits(input.bits, code, { start: input.start, up: input.up, mistake: m })); } catch { return false; } });
+  return { ok: false, empty: -1, bad, misread: hit ? hit[2] : '' };
+}
+export const halvesText = (h) => h.map((x) => (x ? `${x[0] ?? '?'}${x[1] ?? '?'}` : '??')).join(' ');
+export { NAMES as ENCODE_NAMES, LEVEL as ENCODE_LEVEL };
+
 export const encodeEngine = {
   name: 'encode', title: '编码波形', parse, run, view,
   quiz(input, r) {
-    if (input.halves) return { q: `下面是${NAMES[input.codes[0]]}的波形，读出比特串。`, type: 'bin', width: r.bits.length, answer: `0b${r.bits.join('')}` };
+    if (input.halves) return { q: `下面是${NAMES[input.codes[0]]}的波形，读出比特串。`, qhtml: view(r.steps[0].view, input), type: 'bin', width: r.bits.length, answer: `0b${r.bits.join('')}` };
     const c = input.codes[0];
     return { q: `把 ${input.bits.join('')} 编成${NAMES[c]}${c === 'nrzi' || c === 'diffman' ? `（开始之前是${LEVEL[input.start]}电平）` : ''}，按顺序写出每个半码元的电平（高写 1、低写 0，一位两个）。`, type: 'bin', width: 2 * input.bits.length, answer: `0b${r.waves[c].flat().join('')}` };
   },
   // 考卷上那张表：每一位的两个半码元（编码），或者每一位是几（读波形）
   table(input, r) {
-    if (input.halves) return { q: '每一位是几？', qhtml: '', dir: 'col', head: r.bits.map((_, i) => `${i + 1}`), rows: [{ label: '比特', cells: r.bits.map((b) => ({ v: String(b), num: true })) }] };
+    if (input.halves) return { q: '每一位是几？', dir: 'col', head: r.bits.map((_, i) => `${i + 1}`), rows: [{ label: '比特', cells: r.bits.map((b) => ({ v: String(b), num: true })) }] };
     return {
-      q: '每一位的两个半码元是高还是低？（写「高低」或「10」）', qhtml: '', dir: 'col',
+      q: '每一位的两个半码元是高还是低？（写「高低」或「10」）', dir: 'col',
       head: input.bits.map((b, i) => `${i + 1}（${b}）`),
       rows: input.codes.map((c) => ({ label: NAMES[c], cells: r.waves[c].map((h) => ({ v: [pair(h), h.join('')] })) })),
     };

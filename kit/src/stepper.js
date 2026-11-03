@@ -5,9 +5,9 @@
 //   课堂里的 figure set step= / play step / highlight（第几个格子、第几个结点闪一下）；学生走到第几步记成动作（刷新后恢复）。
 import { parseFields } from './parse.js';
 import { session } from './session.js';
-import { widget, mdToHtml, tex2html, escapeHtml, calcProblems } from './blocks/common.js';
-import { figureControls } from './plot.js';
-import { commonSpec, resolveAsks, checkAsk, askAnswerText, stepLabel, parseAskField, fillSpec, checkFill, cellName, cellAnswer, fillOrder, misreadFill, trackFields, calcFields } from './stepperspec.js';
+import { widget, mdToHtml, tex2html, escapeHtml, calcProblems, calcScope } from './blocks/common.js';
+import { figureControls, sliderText } from './plot.js';
+import { commonSpec, resolveAsks, checkAsk, askAnswerText, stepLabel, parseAskField, fillSpec, checkFill, cellName, cellAnswer, fillOrder, misreadFill, trackFields, calcFields, parseVary } from './stepperspec.js';
 import { markDraft } from './drafts.js';
 import { answerWidget, textAnswerSpec } from './blocks/answer.js';
 import { snapshot, animateFrom, settle } from './morph.js';
@@ -33,24 +33,38 @@ const plainText = (s) => String(s || '').replace(/\$/g, '').replace(/\s+/g, ' ')
 export function stepperBlock(engine) {
   block.stepper = true; // render.js：演示组件都是「图」（课堂 figure 能动），也可能有作答，要写 id
   return block;
-  function block(el, src) {
+  // opts（practice 的 use: 把演示组件当一道练习题时给）：
+  //   gate()：问的都答完了 / quiz、fill 做完了（代替关卡）；onFinal(记录)：每条最终结果；
+  //   note：作答记录的题目后面带上这一题取的数；embedded：不登记成课堂能动的图
+  function block(el, src, opts = {}) {
+    const record = (e) => {
+      if (opts.note) e = { ...e, q: e.q ? `${e.q}（${opts.note}）` : opts.note };
+      session.record(e);
+      if (e.final) opts.onFinal?.(e);
+    };
     // frames 这种正文里自己有「key: 值」的行的：字段只从开头那一段读（engine.head）
-    // 字段里的 \calc{…}（matrix: \calc{A}）先换成这节课 let 量的精确值
-    const calced = calcFields(parseFields(engine.head ? engine.head(src) : src).fields, session.vars);
+    // 字段里的 \calc{…}（matrix: \calc{A}）先换成这节课 let 量的精确值（practice 里还有这一题取的数）
+    const raw = parseFields(engine.head ? engine.head(src) : src).fields;
+    // vary:（演示上的滑块）：字段里的 \calc{d} 用滑块现在的值；拖动时整个演示按新值重算（revary）
+    const vary = raw.vary !== undefined ? parseVary(raw.vary) : null;
+    let varyVals = vary ? Object.fromEntries(vary.map((v) => [v.name, v.init])) : {};
+    const calced = calcFields(raw, { ...calcScope(), ...varyVals });
     const tracked = trackFields(calced.fields);
     for (const e of calced.errors) session.problem(el, engine.name, e);
     const { fields } = tracked;
     const common = commonSpec(fields);
-    const input = engine.parse(fields, src);
+    let input = engine.parse(fields, src);
     // 有的引擎自带要问的（trace 的 predict:）：没写 ask: 时照它问
     if ((fields.ask === undefined || fields.ask === '') && engine.defaultAsk) { const d = engine.defaultAsk(input); if (d) common.ask = parseAskField(d); }
-    const run = engine.run(input);
-    const steps = run.steps;
-    const last = steps.length - 1;
+    let run = engine.run(input);
+    let steps = run.steps;
+    let last = steps.length - 1;
+    if (vary && (common.ask || common.mode !== 'demo' || steps.some((x) => x.blanks))) throw new Error('vary:（滑块）只用在演示上（mode: demo、不写 ask:）：要我作答的，换数用 practice 的 use:');
     const { asks, which, errors } = resolveAsks(common.ask, steps);
     for (const e of errors) session.problem(el, engine.name, e);
-    for (const e of engine.problems?.(input, run) || []) session.problem(el, engine.name, e, { soft: true });
-    for (const msg of calcProblems([fields.title, fields.q, fields.note])) session.problem(el, engine.name, msg);
+    // practice 里随机取的数：「数据已经有序」这类提醒不是老师写的问题，不报
+    if (!opts.embedded) for (const e of engine.problems?.(input, run) || []) session.problem(el, engine.name, e, { soft: true });
+    for (const msg of calcProblems([fields.title, fields.q, fields.note], varyVals)) session.problem(el, engine.name, msg);
     const quiz = common.mode === 'quiz' ? engine.quiz?.(input, run, fields) : null;
     if (common.mode === 'quiz' && !quiz) throw new Error(`${engine.name} 没有 quiz 模式`);
     let fill = null;
@@ -80,6 +94,7 @@ export function stepperBlock(engine) {
       <div class="sv-quiz" ${quiz ? '' : 'hidden'}></div>
       <div class="sv-fill" ${fill ? '' : 'hidden'}></div>
       <div class="sv-demo" ${quiz || fill ? 'hidden' : ''}>
+        ${vary ? '<div class="sliders sv-vary"></div><div class="sv-vary-err muted" hidden></div>' : ''}
         <div class="sv-stage"></div>
         <div class="sv-msg" aria-live="polite"></div>
         <div class="sv-ask" hidden></div>
@@ -104,7 +119,7 @@ export function stepperBlock(engine) {
     const scrub = body.querySelector('.sv-scrub');
 
     // 关卡（guided 课件）：有 ask 的，问的都答过（或放弃）才算；quiz 做完算；纯演示不拦人
-    const gate = acts ? session.gate(el, title) : null;
+    const gate = acts ? (opts.gate || session.gate(el, title)) : null;
     const answered = new Set(); // 已经答过（或放弃）的步
     const blankDone = new Set(); // 挖了空的步：已经填对（或看了答案）的
     let blanking = -1; // 正在填空的那一步（-1：没有）
@@ -115,13 +130,55 @@ export function stepperBlock(engine) {
 
     // —— 课堂操作：变量只有一个 step（停在第几步）；highlight i：第 i 个格子 / 结点闪一下 ——
     const slider = { kind: 'slider', name: 'step', min: 0, max: last, step: 1, init: 0, mods: {}, srcLine: 'step' };
-    const cmds = [slider];
-    const state = { slider: { step: 0 }, override: {} };
-    const ctl = figureControls({ root: stage, cmds, state, extra: {}, env: () => ({ step: k }), draw: () => draw() });
+    const varySliders = (vary || []).map((v) => ({ kind: 'slider', name: v.name, min: v.min, max: v.max, step: v.step, init: v.init, mods: {}, srcLine: `vary ${v.name}`, unit: v.unit }));
+    const cmds = [...varySliders, slider];
+    const state = { slider: { step: 0, ...varyVals }, override: {} };
+    const ctl = figureControls({ root: stage, cmds, state, extra: {}, env: () => ({ step: k, ...varyVals }), draw: () => draw() });
     slider.sync = () => {};
+    if (vary) {
+      const box = body.querySelector('.sv-vary');
+      for (const c of varySliders) {
+        const row = document.createElement('div');
+        row.className = 'coef';
+        row.innerHTML = `<span class="coef-name">${tex2html(c.name)}</span><input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.init}" aria-label="${escapeHtml(c.name)}"><output></output>${c.unit ? `<span class="sv-vary-unit">${escapeHtml(c.unit)}</span>` : ''}`;
+        const inp = row.querySelector('input'), out = row.querySelector('output');
+        c.sync = (moving = false) => { inp.value = state.slider[c.name]; out.textContent = sliderText(state.slider[c.name], moving); };
+        inp.addEventListener('input', () => { ctl.stop(c.name); state.slider[c.name] = Number(inp.value); c.sync(); draw(); });
+        c.sync();
+        box.appendChild(row);
+      }
+    }
+    // 滑块的值变了：按新值把字段重算一遍、重新跑；停在原来那一步（步数少了就停在最后）。算不了的值说出来，画面留在上一个能算的
+    const varyErr = body.querySelector('.sv-vary-err');
+    function revary() {
+      if (!vary) return;
+      // 对到滑块的刻度上（figure play d 1 10 走的中间值是小数：引擎按刻度上的值算）
+      const snap = (v, x) => Number(Math.min(v.max, Math.max(v.min, v.min + Math.round((x - v.min) / v.step) * v.step)).toFixed(10));
+      const now = Object.fromEntries(vary.map((v) => [v.name, snap(v, Number(state.slider[v.name]))]));
+      if (vary.every((v) => now[v.name] === varyVals[v.name])) return;
+      varyVals = now;
+      const at = vary.map((v) => `${v.name} = ${sliderText(now[v.name])}`).join('，');
+      const atEnd = k === last; // 停在最后一步的（start: end 看结果），换了值也看结果
+      try {
+        const c2 = calcFields(raw, { ...calcScope(), ...now });
+        if (c2.errors.length) throw new Error(c2.errors[0]);
+        const in2 = engine.parse(c2.fields, src);
+        const r2 = engine.run(in2);
+        input = in2; run = r2; steps = r2.steps; last = steps.length - 1;
+        variantRuns = null;
+        varyErr.hidden = true;
+      } catch (e) {
+        varyErr.hidden = false;
+        varyErr.textContent = `${at} 时算不了：${e.message}（画面还是上一个能算的值）`;
+      }
+      slider.max = last;
+      scrub.max = String(last);
+      if (state.slider.step > last || atEnd) state.slider.step = last;
+    }
     const want = () => Math.max(0, Math.min(last, Math.floor(Number(state.slider.step) + 1e-9)));
 
     function draw() {
+      revary();
       const to = want();
       const moved = to !== k;
       // 一步一步走（下一步、上一步、播放）时补过渡：挪了位置的滑过去、变了颜色的渐变；一下跳好几步就直接换
@@ -144,7 +201,7 @@ export function stepperBlock(engine) {
       // highlight 用的「命令」：画面里有几个 data-cmd 就有几条（从 1 数）
       const n = Math.max(0, ...[...stage.querySelectorAll('[data-cmd]')].map((x) => Number(x.dataset.cmd) || 0));
       // 只留 step 这个滑块再重排：滑块在数组最后，cmds.length = 1 会留下第一个格子、把滑块丢了（第二次 figure set step 就报没有 step）
-      cmds.splice(0, cmds.length, slider);
+      cmds.splice(0, cmds.length, ...varySliders, slider);
       for (let i = 1; i <= n; i++) cmds.unshift({ kind: 'item', srcLine: `第 ${i} 个`, mods: {} });
       // 正在填空时先不给说明（说明里常常就有答案）
       msg.innerHTML = filling ? '<span class="muted">把上面的空填好，点「检查」。</span>' : `${verdict ? `<span class="sv-verdict">${verdict}</span>` : ''}${mdToHtml(s.msg || '', { inline: true })}`;
@@ -185,7 +242,7 @@ export function stepperBlock(engine) {
         blankTries++;
         const bad = bl.map((b, i) => (cellOkFor(b, vals[i] ?? '') ? -1 : i)).filter((i) => i >= 0);
         inputs.forEach((x, i) => { x.classList.toggle('is-bad', bad.includes(i)); x.classList.toggle('is-ok', !bad.includes(i) && !!vals[i]?.trim()); });
-        session.record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(steps[at].msg ? `第 ${at} 步的空` : ''), value: vals.map((v, i) => `${i + 1}:${v.trim() || '（空）'}`).join(' '), ok: !bad.length, attempts: blankTries, detail: `第 ${at} 步的空`, ms: Date.now() - blankT0, el });
+        record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(steps[at].msg ? `第 ${at} 步的空` : ''), value: vals.map((v, i) => `${i + 1}:${v.trim() || '（空）'}`).join(' '), ok: !bad.length, attempts: blankTries, detail: `第 ${at} 步的空`, ms: Date.now() - blankT0, el });
         if (!bad.length) { finishBlanks(at, { ok: true }); return; }
         const fb = askBox.querySelector('.sv-ask-fb');
         fb.hidden = false;
@@ -199,7 +256,7 @@ export function stepperBlock(engine) {
     }
     function finishBlanks(at, { ok = false, revealed = false, giveup = false }) {
       blankDone.add(at);
-      session.record({ type: 'stepper', engine: engine.name, final: true, title, q: `第 ${at} 步的空`, ok, attempts: blankTries, revealed: revealed || undefined, giveup: giveup || undefined, expected: (steps[at].blanks || []).map((b) => [].concat(b.v)[0]).join('、'), detail: `第 ${at} 步的空`, ms: Date.now() - blankT0, el });
+      record({ type: 'stepper', engine: engine.name, final: true, title, q: `第 ${at} 步的空`, ok, attempts: blankTries, revealed: revealed || undefined, giveup: giveup || undefined, expected: (steps[at].blanks || []).map((b) => [].concat(b.v)[0]).join('、'), detail: `第 ${at} 步的空`, ms: Date.now() - blankT0, el });
       if (giveup) session.event('giveup', el, { step: at, title: '填空' });
       verdict = ok ? `✓ 填对了${blankTries > 1 ? `（第 ${blankTries} 次）` : ''}` : '答案已经写上了。';
       blanking = -1;
@@ -327,7 +384,7 @@ export function stepperBlock(engine) {
         const a = v.run.steps.flatMap((x) => [x.ask, ...(x.asks || [])]).find((y) => y && y.q === ask.q && y.kind === ask.kind);
         try { return !!a && checkAsk(a, given).ok; } catch { return false; }
       })?.label || '');
-      session.record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(ask.q), value: shown, pick: ask.kind === 'pick' || undefined, ok: r.ok, attempts: pending.attempts, detail: `第 ${at} 步`, misread: misread || undefined, ms: Date.now() - pending.t0, el });
+      record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(ask.q), value: shown, pick: ask.kind === 'pick' || undefined, ok: r.ok, attempts: pending.attempts, detail: `第 ${at} 步`, misread: misread || undefined, ms: Date.now() - pending.t0, el });
       if (r.ok) { finishAsk({ ok: true }); return; }
       const fb = askBox.querySelector('.sv-ask-fb');
       fb.hidden = false;
@@ -343,7 +400,7 @@ export function stepperBlock(engine) {
       if (!pending) return;
       const { ask, at, attempts } = pending;
       answered.add(at);
-      session.record({ type: 'stepper', engine: engine.name, final: true, title, q: plainText(ask.q), ok, attempts, giveup: giveup || undefined, revealed: revealed || undefined, expected: askAnswerText(ask), detail: `第 ${at} 步`, ms: Date.now() - pending.t0, el });
+      record({ type: 'stepper', engine: engine.name, final: true, title, q: plainText(ask.q), ok, attempts, giveup: giveup || undefined, revealed: revealed || undefined, expected: askAnswerText(ask), detail: `第 ${at} 步`, ms: Date.now() - pending.t0, el });
       if (giveup) session.event('giveup', el, { step: at, title: plainText(ask.q) });
       verdict = ok ? `✓ 猜对了${attempts > 1 ? `（第 ${attempts} 次）` : ''}` : `答案：${escapeHtml(askAnswerText(ask))}`;
       if (ask.explain) verdict += `　${mdToHtml(ask.explain, { inline: true })}`;
@@ -388,10 +445,10 @@ export function stepperBlock(engine) {
             return !!a && textAnswerSpec(quiz.type || 'seq', a.answer, { width: quiz.width }).check(t.text).ok;
           } catch { return false; }
         })?.label || '');
-        session.record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(q), value: t.text, ok: t.ok, attempts: t.attempts, detail: '写出结果', misread: misread || undefined, el });
+        record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(q), value: t.text, ok: t.ok, attempts: t.attempts, detail: '写出结果', misread: misread || undefined, el });
       };
       answerWidget(qbox, { q, qhtml: quiz.qhtml ? `<div class="sv-stage sv-stage-q">${quiz.qhtml}</div>` : '', text: spec, explain: quiz.explain, hint: fields.hint, onTry }, (r) => {
-        session.record({ type: 'stepper', engine: engine.name, final: true, title, q: plainText(q), ok: r.ok, attempts: r.attempts, revealed: r.revealed || undefined, expected: spec.display, detail: '写出结果', el });
+        record({ type: 'stepper', engine: engine.name, final: true, title, q: plainText(q), ok: r.ok, attempts: r.attempts, revealed: r.revealed || undefined, expected: spec.display, detail: '写出结果', el });
         gate?.();
         qbox.insertAdjacentHTML('beforeend', '<button type="button" class="btn sv-show-demo">看一步步的过程</button>');
         qbox.querySelector('.sv-show-demo').addEventListener('click', (e) => { e.currentTarget.remove(); demo.hidden = false; go(0, { record: false }); });
@@ -408,7 +465,7 @@ export function stepperBlock(engine) {
       const values = t.rows.map((row) => row.cells.map(() => ''));
       values.extra = (t.extra || []).map(() => '');
       const q = [fields.q, t.q || '把下面这张表填完整，点「检查」。'].filter(Boolean).join('\n\n');
-      const pic = t.qhtml ?? engine.view(steps[0].view, input, { k: 0 });
+      const pic = t.qhtml ?? engine.view(steps[0].view, input, { k: 0, md: mdToHtml, tex: (x) => tex2html(x) });
       const width = (cell) => Math.max(2, Math.min(9, Math.max(...[].concat(cell.v).map((x) => String(x ?? '').length)) + 1));
       const cellHtml = (cell, r, c) => {
         if (cell.given) return `<td class="sv-fill-given">${escapeHtml(cellAnswer(cell) === '（空）' ? '' : cellAnswer(cell))}</td>`;
@@ -489,7 +546,7 @@ export function stepperBlock(engine) {
         box.querySelector('.sv-fill-check').hidden = true;
         box.querySelector('.sv-fill-reveal').hidden = true;
         box.querySelector('.sv-fill-giveup').hidden = true;
-        session.record({ type: 'stepper', engine: engine.name, final: true, title, q: plainText(q), ok: how === 'ok', attempts, revealed: revealed || undefined, giveup: how === 'giveup' || undefined, detail: '填表', ms: Date.now() - t0, el });
+        record({ type: 'stepper', engine: engine.name, final: true, title, q: plainText(q), ok: how === 'ok', attempts, revealed: revealed || undefined, giveup: how === 'giveup' || undefined, detail: '填表', ms: Date.now() - t0, el });
         gate?.();
         box.insertAdjacentHTML('beforeend', '<button type="button" class="btn sv-show-demo">看一步步的过程</button>');
         box.querySelector('.sv-show-demo').addEventListener('click', (e) => { e.currentTarget.remove(); demo.hidden = false; go(0, { record: false }); });
@@ -504,7 +561,7 @@ export function stepperBlock(engine) {
         if (res.ok) {
           fb.className = 'sv-fill-fb is-ok';
           fb.textContent = attempts === 1 && !revealed ? '✓ 全对。' : `✓ 全对（检查了 ${attempts} 次${revealed ? `，看了 ${revealed} 格答案` : ''}）。`;
-          session.record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(q), value: '全部填对', ok: true, attempts, detail: '填表', el });
+          record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(q), value: '全部填对', ok: true, attempts, detail: '填表', el });
           finish('ok');
           return;
         }
@@ -516,7 +573,7 @@ export function stepperBlock(engine) {
         if (attempts >= 2) box.querySelector('.sv-fill-reveal').hidden = false;
         elOf(at(res.first), res.first.c)?.focus?.({ preventScroll: true });
         const misread = misreadFill(t, values, variants().map((v) => { try { const vt = engine.table(v.input, v.run, fields); return vt ? { label: v.label, table: fillSpec(vt, fields).table } : null; } catch { return null; } }).filter(Boolean));
-        session.record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(q), value: res.first.empty ? `填到${name}还空着` : `${name}写的「${said}」`, ok: false, attempts, detail: `填表：前 ${res.okCount}/${res.total} 格对`, misread: misread || undefined, el });
+        record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(q), value: res.first.empty ? `填到${name}还空着` : `${name}写的「${said}」`, ok: false, attempts, detail: `填表：前 ${res.okCount}/${res.total} 格对`, misread: misread || undefined, el });
       });
       box.querySelector('.sv-fill-reveal').addEventListener('click', () => {
         if (!last || done) return;
@@ -574,13 +631,24 @@ export function stepperBlock(engine) {
       labels: () => [...new Set([...stage.querySelectorAll('[data-cmd]')].map(labelOf).filter(Boolean))].slice(0, 20),
       on: ctl.on,
       animate: ctl.animate,
-      play: (name, from, to, ms) => { if (name !== 'step') throw new Error(`演示只有一个变量 step（停在第几步，0 到 ${last}）`); closeAsk(); return ctl.play('step', from, to, ms); },
+      play: (name, from, to, ms) => {
+        if (vary?.some((v) => v.name === name)) return ctl.play(name, from, to, ms);
+        if (name !== 'step') throw new Error(varsText());
+        closeAsk();
+        return ctl.play('step', from, to, ms);
+      },
       highlight: ctl.highlight,
-      vars: () => ({ step: k }),
-      snapshot: () => ({ step: k }),
-      // 课堂里老师直接跳：不问（问题留给学生自己点「下一步」时）
+      vars: () => ({ step: k, ...varyVals }),
+      snapshot: () => ({ step: k, ...varyVals }),
+      // 课堂里老师直接跳：不问（问题留给学生自己点「下一步」时）。vary 的滑块也能 set（figure set d=5）
       set(name, value) {
-        if (name !== 'step') throw new Error(`演示只有一个变量 step（停在第几步，0 到 ${last}）`);
+        const v0 = vary?.find((v) => v.name === name);
+        if (v0) {
+          const x = Number(value);
+          if (!(x >= v0.min && x <= v0.max)) throw new Error(`${name} 写 ${v0.min} 到 ${v0.max} 之间的数`);
+          return ctl.set(name, x, { ms: 0 });
+        }
+        if (name !== 'step') throw new Error(varsText());
         const v = Math.round(Number(value));
         if (!(v >= 0 && v <= last)) throw new Error(`step 写 0 到 ${last} 之间的数`);
         stopPlay();
@@ -590,6 +658,10 @@ export function stepperBlock(engine) {
         return ctl.set('step', v, { ms: 0 });
       },
     };
+    function varsText() {
+      return vary ? `这个演示的变量：step（停在第几步，0 到 ${last}）、${vary.map((v) => `${v.name}（${v.min} 到 ${v.max}）`).join('、')}` : `演示只有一个变量 step（停在第几步，0 到 ${last}）`;
+    }
+    if (opts.embedded) return api;
     const id = session.registerScene(el, api, title);
     el.dataset.scene = id;
     // 画好以后：写了却没用上的字段（拼错了，或者这种用法用不上）

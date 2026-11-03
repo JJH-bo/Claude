@@ -141,11 +141,11 @@ function view(s, input) {
 export const allocEngine = {
   name: 'alloc', title: '动态分区分配', parse, run, view,
   quiz(input, r) {
-    return { q: '每次分配的起始地址依次是多少？（失败的写 ×，空格隔开）', type: 'seq', answer: r.log.filter((x) => x.op.kind === 'alloc').map((x) => (x.start === null ? '×' : fmt(x.start))).join(' ') };
+    return { q: '每次分配的起始地址依次是多少？（失败的写 ×，空格隔开）', qhtml: view(r.steps[0].view, input, { k: 0 }), type: 'seq', answer: r.log.filter((x) => x.op.kind === 'alloc').map((x) => (x.start === null ? '×' : fmt(x.start))).join(' ') };
   },
   table(input, r) {
     const rows = r.log.filter((x) => x.op.kind === 'alloc').map((x) => ({ label: `${x.op.name}（${fmt(x.op.size)}）`, cells: [{ v: x.start === null ? ['×', '失败', '不能'] : [fmt(x.start), String(x.start)] }] }));
-    return { q: '每个作业分到的起始地址（分不到写 ×）。', qhtml: '', dir: 'row', head: ['起始地址'], rows };
+    return { q: '每个作业分到的起始地址（分不到写 ×）。', dir: 'row', head: ['起始地址'], rows };
   },
   // 常见错法：按别的算法找、回收时没和相邻的空闲区合并
   variants(input) {

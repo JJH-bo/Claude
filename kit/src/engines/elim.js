@@ -645,6 +645,11 @@ export function view(s, input, opts = {}) {
 // ================= 写结果、填表 =================
 
 export function quiz(input, r) {
+  // 题面画开始的样子（矩阵、增广矩阵、向量组）：quiz 时看不到演示，不画就不知道做哪一题
+  const q = quiz0(input, r);
+  return q && { ...q, qhtml: view(r.steps[0].view, input, { k: 0 }) };
+}
+function quiz0(input, r) {
   if (input.param) return { q: `${input.param} 取哪些值时要单独讨论？（从小到大，空格隔开）`, type: 'seq', answer: r.special.join(' ') || '无' };
   if (input.goal === 'rank') return { q: '求这个矩阵的秩。', type: 'num', answer: String(r.rank) };
   if (input.goal === 'basis') return { q: `求向量组 ${input.names.join(', ')} 的秩。`, type: 'num', answer: String(r.rank) };
@@ -656,33 +661,33 @@ export function table(input, r) {
   const num = (x) => ({ v: x.toString(), num: true });
   if (input.param) {
     return {
-      q: `含参数 ${input.param}：每种情况写出 r(A)${input.B ? '、r(A | b) 和解的情况（无解 / 唯一解 / 无穷多解）' : ''}。`, qhtml: '', dir: 'row',
+      q: `含参数 ${input.param}：每种情况写出 r(A)${input.B ? '、r(A | b) 和解的情况（无解 / 唯一解 / 无穷多解）' : ''}。`, dir: 'row',
       head: ['r(A)', ...(input.B ? ['r(A | b)', '解的情况'] : [])],
       rows: r.cases.map((c) => ({ label: c.label, cells: [{ v: String(c.rankA), num: true }, ...(input.B ? [{ v: String(c.rankAug), num: true }, { v: [KIND_TEXT[c.kind], KIND_TEXT[c.kind].replace(/解$/, '')] }] : [])] })),
     };
   }
   if (input.goal === 'basis') {
     const pc = r.pivots;
-    if (!r.reps.length) return { q: '求向量组的秩。', qhtml: '', dir: 'row', head: ['秩'], rows: [{ label: '', cells: [{ v: String(r.rank), num: true }] }] };
+    if (!r.reps.length) return { q: '求向量组的秩。', dir: 'row', head: ['秩'], rows: [{ label: '', cells: [{ v: String(r.rank), num: true }] }] };
     return {
-      q: `极大无关组取 ${pc.map((c) => input.names[c]).join('、')}，把其余的向量用它们表示：写出系数。`, qhtml: '', dir: 'row',
+      q: `极大无关组取 ${pc.map((c) => input.names[c]).join('、')}，把其余的向量用它们表示：写出系数。`, dir: 'row',
       head: pc.map((c) => input.names[c]), rows: r.reps.map((x) => ({ label: `${input.names[x.j]} =`, cells: x.coef.map(num) })),
       extra: [{ label: '秩', v: String(r.rank), num: true }],
     };
   }
   if (input.goal === 'solve') {
     const head = Array.from({ length: input.n }, (_, j) => varName(input, j));
-    if (r.sol.kind === 'unique') return { q: '解这个方程组。', qhtml: '', dir: 'row', head, rows: [{ label: '解', cells: r.sol.x.map(num) }] };
+    if (r.sol.kind === 'unique') return { q: '解这个方程组。', dir: 'row', head, rows: [{ label: '解', cells: r.sol.x.map(num) }] };
     if (r.sol.kind === 'infinite') {
       const fv = r.sol.free.map((j) => varName(input, j));
-      return { q: `写出通解：特解（自由未知数 ${fv.join('、')} 都取 0），和基础解系（${fv.join('、')} 依次取 ${r.sol.free.map((_, t) => `(${r.sol.free.map((__, u) => (u === t ? 1 : 0)).join(', ')})`).join('、')}）。`, qhtml: '', dir: 'row', head, rows: [{ label: '特解 η', cells: r.sol.x0.map(num) }, ...r.sol.basis.map((b, t) => ({ label: `ξ${t + 1}`, cells: b.map(num) }))], extra: [{ label: 'r(A)', v: String(r.rank), num: true }] };
+      return { q: `写出通解：特解（自由未知数 ${fv.join('、')} 都取 0），和基础解系（${fv.join('、')} 依次取 ${r.sol.free.map((_, t) => `(${r.sol.free.map((__, u) => (u === t ? 1 : 0)).join(', ')})`).join('、')}）。`, dir: 'row', head, rows: [{ label: '特解 η', cells: r.sol.x0.map(num) }, ...r.sol.basis.map((b, t) => ({ label: `ξ${t + 1}`, cells: b.map(num) }))], extra: [{ label: 'r(A)', v: String(r.rank), num: true }] };
     }
-    return { q: '这个方程组无解：写出 r(A) 和 r(A | b)。', qhtml: '', dir: 'row', head: ['r(A)', 'r(A | b)'], rows: [{ label: '', cells: [{ v: String(r.rank), num: true }, { v: String(r.augRank), num: true }] }] };
+    return { q: '这个方程组无解：写出 r(A) 和 r(A | b)。', dir: 'row', head: ['r(A)', 'r(A | b)'], rows: [{ label: '', cells: [{ v: String(r.rank), num: true }, { v: String(r.augRank), num: true }] }] };
   }
   if ((input.goal === 'inverse' || input.goal === 'matrixeq') && r.X) {
-    return { q: input.goal === 'inverse' ? '写出 A⁻¹。' : '写出 X。', qhtml: '', dir: 'row', head: r.X[0].map((_, j) => `第 ${j + 1} 列`), rows: r.X.map((row, i) => ({ label: `第 ${i + 1} 行`, cells: row.map(num) })) };
+    return { q: input.goal === 'inverse' ? '写出 A⁻¹。' : '写出 X。', dir: 'row', head: r.X[0].map((_, j) => `第 ${j + 1} 列`), rows: r.X.map((row, i) => ({ label: `第 ${i + 1} 行`, cells: row.map(num) })) };
   }
-  if (input.goal === 'rank') return { q: '求秩。', qhtml: '', dir: 'row', head: ['秩'], rows: [{ label: 'r(A)', cells: [{ v: String(r.rank), num: true }] }] };
+  if (input.goal === 'rank') return { q: '求秩。', dir: 'row', head: ['秩'], rows: [{ label: 'r(A)', cells: [{ v: String(r.rank), num: true }] }] };
   return null;
 }
 

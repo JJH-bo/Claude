@@ -6,7 +6,7 @@
 //   ```
 // 按出现的先后算：后面的行可以用前面的名字；同一个名字再定义一次就换成新的（以后画的组件用新的）
 import { session } from '../session.js';
-import { parseLets, calcValue } from '../exact.js';
+import { parseLets, calcValue, letValue } from '../exact.js';
 
 export function letBlock(el, src) {
   const defs = parseLets(src);
@@ -19,7 +19,7 @@ export function letBlock(el, src) {
       throw new Error(`${name} = ${expr.slice(0, 60)} 算不出来：${e.message}`);
     }
     // 精确的存精确值；开方、三角这类存小数
-    session.vars[name] = r.value;
+    session.vars[name] = letValue(name, r.value);
     done.push(name);
   }
   el.dataset.lets = done.join(',');

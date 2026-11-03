@@ -1,0 +1,55 @@
+{
+  "unit": "秩一矩阵的幂：Aⁿ = (βᵀα)ⁿ⁻¹A",
+  "subject": "线代",
+  "steps": [
+    {
+      "id": "s1",
+      "seq": 1,
+      "page": 1,
+      "title": "先把 A 写出来",
+      "md": "```let\na = [1, 2, -1]\nb = [2, 1, 1]\nA = a*b'\n```\n\n$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 是「列 × 行」（外积 outer product），$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 是「行 × 列」（内积 inner product）。先想形状：\n\n```quiz\nid: q-shape\nq: $\\boldsymbol\\alpha,\\boldsymbol\\beta$ 是 3 维列向量。$\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 和 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 分别是：\n- [x] 3×3 矩阵；一个数\n- [ ] 一个数；3×3 矩阵\n- [ ] 都是 3×3 矩阵\n- [ ] 都是一个数\nexplain: $(3\\times1)(1\\times3)=3\\times3$；$(1\\times3)(3\\times1)=1\\times1$，就是一个数。\n```\n\n```answer\nid: q-A\ntitle: 算出 A\nq: $\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$，算出 $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$。\nanswer: a*b'\nbefore: A =\nhint: 第 $i$ 行是 $\\alpha_i$ 乘行向量 $\\boldsymbol\\beta^{\\mathrm T}$。\nexplain: $A=\\calc{A}$：三行都是 $\\boldsymbol\\beta^{\\mathrm T}$ 的倍数，秩为 1。\n```"
+    },
+    {
+      "id": "k1",
+      "seq": 2,
+      "pin": true,
+      "title": "题目",
+      "md": "$\\boldsymbol\\alpha=\\calc{a}$，$\\boldsymbol\\beta=\\calc{b}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$，求 $A^{10}$。"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "A² 和 A 什么关系",
+      "md": "页面替你乘好了 $A\\cdot A$。点结果里的数，看它是哪一行乘哪一列；再把 $A^2$ 和 $A$ 逐格比一比。\n\n```matrix\nid: m-sq\ntitle: A 乘 A\nproduct A A name=A2\n```\n\n```answer\nid: q-k\ntitle: 几倍\nq: $A^2$ 是 $A$ 的几倍？\nanswer: b'*a\nbefore: A^2 =\nafter: \\,A\nhint: 挑 $A$ 里一个不为 0 的格子，看 $A^2$ 同一格是它的几倍；再换一格验一下。\nexplain: $A^2=\\calc{A^2}=\\calc{b'*a}\\,A$。\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "为什么是这个倍数",
+      "md": "不看数，用 $\\boldsymbol\\alpha,\\boldsymbol\\beta$ 推。从 $A^2$ 出发一行一行往下写，页面随机取几组 $\\boldsymbol\\alpha,\\boldsymbol\\beta$ 核对每一行和上一行相等。$\\boldsymbol\\alpha$、$\\boldsymbol\\beta$ 可以打成 `a`、`b`，转置打 `'`。\n\n```derive\nid: dd-a2\nmode: do\ntitle: 推 A²\nq: $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$（$\\boldsymbol\\alpha,\\boldsymbol\\beta$ 是 3 维列向量）。从 $A^2$ 推到「一个数 × $A$」。\nvars: a=vec(3) b=vec(3)\nlet A = a*b'\nstart: A^2\ngoal: (b'*a)*A\n```\n\n```quiz\nid: q-tr\nq: 对任意 3 维列向量，$\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$ 总等于 $A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$ 的哪个量？\n- [x] $\\operatorname{tr}A$（主对角线之和）\n- [ ] $|A|$\n- [ ] $A$ 的 $(1,1)$ 元\n- [ ] $r(A)$\nexplain: $A$ 的第 $i$ 个对角元是 $\\alpha_i\\beta_i$，加起来正是 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。这里 $\\operatorname{tr}A=\\calc{tr(A)}=\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。只给矩阵、不给 $\\boldsymbol\\alpha,\\boldsymbol\\beta$ 时就用它。\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "推到 n 次，算 A¹⁰",
+      "md": "```answer\nid: q-An\ntitle: Aⁿ\nq: 写出 $A^n$（$n\\ge1$），用 $n$ 和 $A$ 表示（$A=\\calc{A}$）。\nformula: n\nanswer: (b'*a)^(n-1)*A\nbefore: A^n =\nhint: $A^3=A^2\\cdot A$，把上一块板的结论代进去，看前面的系数怎么长；再看 $n=1$ 时对不对。\nexplain: $A^n=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)^{n-1}A=\\calc{b'*a}^{\\,n-1}A$：每多乘一个 $A$，中间多出一个 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$。\n```\n\n```answer\nid: q-10\ntitle: A¹⁰ 的指数\nq: 于是 $A^{10}=(\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha)^{m}A$，$m$ 是几？\nanswer: 9\nbefore: m =\nhint: 代进上一题的式子，$n=10$。\nexplain: $A^{10}=\\calc{b'*a}^{9}A$，不要写成 $\\calc{b'*a}^{10}A$。\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 5,
+      "title": "练：给 α、β 求系数",
+      "md": "换几组数练到不用想。页面每次给一组新的 $\\boldsymbol\\alpha,\\boldsymbol\\beta$：\n\n```practice\nid: pr-vec\ntitle: 秩一：求系数\ntype: custom\ncount: 3\npick u = vec(3, -2, 2)\npick w = vec(3, -2, 2)\npick k = int(3, 5)\nwhere w'*u != 0\nwhere abs(w'*u) <= 3\nq: 设 $\\boldsymbol\\alpha=\\calc{u}$，$\\boldsymbol\\beta=\\calc{w}$，$A=\\boldsymbol\\alpha\\boldsymbol\\beta^{\\mathrm T}$。已知 $A^{\\calc{k}}=cA$，求 $c$。\nanswer: (w'*u)^(k-1)\nbefore: c =\nhint: 先算 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha$（对应分量相乘再相加），再取 $\\calc{k-1}$ 次方。\nexplain: $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=\\calc{w'*u}$，$A^{\\calc{k}}=(\\calc{w'*u})^{\\calc{k-1}}A=\\calc{(w'*u)^(k-1)}\\,A$。\n```"
+    },
+    {
+      "id": "s6",
+      "seq": 7,
+      "page": 6,
+      "title": "练：只给矩阵",
+      "md": "这次不给 $\\boldsymbol\\alpha,\\boldsymbol\\beta$，只给矩阵：先认出各行成比例（秩为 1），再用 $\\operatorname{tr}A$。\n\n```practice\nid: pr-mat\ntitle: 秩一：写 Aⁿ\ntype: custom\ncount: 3\npick u = vec(3, -2, 2)\npick w = vec(3, -2, 2)\nlet A = u*w'\nwhere tr(A) != 0\nwhere abs(tr(A)) <= 3\nq: 设 $A=\\calc{A}$，写出 $A^n$。\nformula: n\nanswer: tr(A)^(n-1)*A\nbefore: A^n =\nhint: 各行成比例，$A$ 的秩为 1：$A^n=(\\operatorname{tr}A)^{n-1}A$，$\\operatorname{tr}A$ 是主对角线之和。\nexplain: $\\operatorname{tr}A=\\calc{tr(A)}$，所以 $A^n=(\\calc{tr(A)})^{n-1}A$。\n```"
+    }
+  ]
+}

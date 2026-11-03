@@ -1,0 +1,26 @@
+好，今天看秩一矩阵（rank-one matrix）$A=\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$ 的幂。先从形状开始：同样两个向量，乘的顺序一换，出来的东西完全不同。
+
+````board pin id=k1 title="这节课的记号"
+```let
+a = [1, 2]
+b = [3, 1]
+A = a*b'
+```
+$\boldsymbol\alpha=(1,2)^{\mathrm T}$，$\boldsymbol\beta=(3,1)^{\mathrm T}$，都是 $2\times1$ 的列向量
+````
+
+````board new id=b1 title="先看形状"
+$\boldsymbol\alpha$、$\boldsymbol\beta$ 都是 $2\times1$ 的列向量，$\boldsymbol\beta^{\mathrm T}$ 是 $1\times2$ 的行。
+
+```quiz
+id: q-shape1
+q: $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$（列在前、行在后）乘出来是什么形状？
+- [ ] 一个数（$1\times1$）
+- [x] $2\times2$ 的矩阵
+- [ ] $2\times1$ 的列向量
+- [ ] 乘不了
+explain: $(2\times1)(1\times2)$：外面的两个数决定形状，是 $2\times2$。
+```
+````
+
+不用算具体的数，选一个就行。

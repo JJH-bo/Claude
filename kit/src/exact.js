@@ -89,12 +89,21 @@ function decimal(x) {
 
 // —— 值：数（Q）、向量（Q 的数组，列向量）、矩阵（Q 的二维数组，按行）——
 export const isQ = (x) => x instanceof Q;
+
+// 参数：let 块里写 `a = param`，a 不取值。算到含参数的式子时交给 paramcalc.js（按 a 的多项式精确地算）
+export class Sym { constructor(name) { this.name = name; } }
+export const isSym = (x) => x instanceof Sym;
+let symbolic = null;
+export function useSymbolic(fn) { symbolic = fn; }
+class NeedSymbolic extends Error { constructor() { super('含参数'); this.symbolic = true; } }
 export const isQVec = (x) => Array.isArray(x) && x.length > 0 && x.every(isQ);
 export const isQMat = (x) => Array.isArray(x) && x.length > 0 && x.every((r) => isQVec(r) && r.length === x[0].length);
 
 /** JS 的数 / 数组（浮点）或已经是精确的值 → 精确的值 */
 export function toExact(v) {
   if (v instanceof Q || isRadix(v)) return v;
+  // 含参数算出来的（paramcalc.js 的多项式）：后面用到它的也按参数算
+  if (v && typeof v === 'object' && !Array.isArray(v) && Array.isArray(v.c) && typeof v.toFactorTeX === 'function') throw new NeedSymbolic();
   if (typeof v === 'number' || typeof v === 'bigint') return Q.from(v);
   if (Array.isArray(v)) return v.map(toExact);
   throw new Error('这里需要数、向量或矩阵');
@@ -350,6 +359,55 @@ const FUNCS = {
   // 只为写出来的：vmat(A) 写成行列式的竖线 |…|；qf(A) 把对称矩阵写成二次型 x₁² + 2x₁x₂ + …（练习题的题面用）
   vmat: (M) => { square(M, '行列式'); return new Shown(`\\begin{vmatrix}${M.map((r) => r.map((x) => x.toTeX()).join(' & ')).join(' \\\\ ')}\\end{vmatrix}`, exactText(M)); },
   qf: (M) => quadFormShown(M),
+  // 含参数时 factor(det(A)) 写成因式分解的样子（paramcalc.js）；没有参数时就是它自己
+  factor: (x) => x,
+  expand: (x) => x,
+  // 向量的几个小工具（practice 取数用）：el(v, 2) 第 2 个分量（从 1 数）、sort(v) 从小到大、sum(v)、cumsum(v) 前缀和
+  el: (v, i) => { vec(v); const k = int(i, '第几个') - 1; if (k < 0 || k >= v.length) throw new Error(`没有第 ${k + 1} 个分量（一共 ${v.length} 个，从 1 数）`); return v[k]; },
+  sort: (v) => vec(v).slice().sort((a, b) => a.cmp(b)),
+  sum: (v) => vec(v).reduce((s, x) => s.add(x), ZERO),
+  cumsum: (v) => { let s = ZERO; return vec(v).map((x) => (s = s.add(x))); },
+  // fix(x, 2, 4)：定点小数的补码（2 位符号位、4 位小数）：fix(-11/16, 2, 4) = 11.0101（answer 的 type: fixed 用）
+  fix: (x, sb, n) => {
+    q(x, 'fix() 里');
+    const s = int(sb, '符号位'), f = int(n, '小数位');
+    if (s < 1 || s > 2 || f < 1 || f > 16) throw new Error('fix(x, 符号位 1 或 2, 小数位 1～16)');
+    if (x.cmp(new Q(-1n)) < 0 || x.cmp(new Q(1n)) >= 0) throw new Error(`fix() 只写 -1 ≤ x < 1 的定点小数（现在是 ${x}）`);
+    const m = x.mul(new Q(1n << BigInt(f)));
+    if (!m.integer) throw new Error(`${x} 写成 ${f} 位二进制小数写不尽`);
+    const w = BigInt(s + f);
+    const v = m.n < 0n ? m.n + (1n << w) : m.n;
+    const d = v.toString(2).padStart(s + f, '0');
+    const t = `${d.slice(0, s)}.${d.slice(s)}`;
+    return new Shown(t, t);
+  },
+  // sbin(x, n)：二进制真值（带正负号，组成原理的题面、演示组件的 x: 字段用）：整数写 n 位（sbin(-3, 3) = -011），
+  // 纯小数写 n 位小数（sbin(-13/16, 4) = -0.1101）。和 bin() 不同：负数不写成补码
+  sbin: (x, n) => {
+    q(x, 'sbin() 里');
+    const w = Number(bigInt(n === undefined ? new Q(0n) : n, '位数'));
+    const neg = x.n < 0n, a = neg ? x.neg() : x;
+    let digits;
+    if (a.integer) {
+      digits = a.n.toString(2);
+      if (w && digits.length > w) throw new Error(`${x} 用 ${w} 位放不下`);
+      digits = digits.padStart(w || 1, '0');
+    } else {
+      if (!w) throw new Error('小数要写小数位数，比如 sbin(-13/16, 4)');
+      const m = a.mul(new Q(1n << BigInt(w)));
+      if (!m.integer) throw new Error(`${x} 写成 ${w} 位二进制小数写不尽`);
+      if (a.cmp(new Q(1n)) >= 0) throw new Error(`sbin() 只写纯小数（|x| < 1）或整数（现在是 ${x}）`);
+      digits = `0.${m.n.toString(2).padStart(w, '0')}`;
+    }
+    const t = `${neg ? '-' : ''}${digits}`;
+    return new Shown(t, t);
+  },
+  // list(v)：向量写成空格隔开的一串（演示组件的 array:、refs: 这类字段用；practice 的 seq() 取到的就是向量）
+  list: (v) => {
+    if (!Array.isArray(v) || v.some((x) => Array.isArray(x))) throw new Error('list() 里写一个向量，比如 list(v)');
+    const items = v.map((x) => exactText(x));
+    return new Shown(items.join(',\\ '), items.join(' '));
+  },
   // 精确地四舍五入（分数不经过浮点）：dec(61/4) = 15.25，dec(8/3) = 2.67，dec(x, 3)
   dec: (x, k) => decExact(q(x, 'dec() 里'), k === undefined ? 2 : int(k, '位数')),
 };
@@ -373,6 +431,8 @@ class Shown extends Radix {
   constructor(tex, text) { super(text, 0); this.tex = tex; }
   toTeX() { return this.tex; }
 }
+/** 一段只能写出来的文字（practice 的 word() / str() 取到的：lru、abaabc），\calc{w} 写出来就是它 */
+export const textValue = (t) => new Shown(`\\text{${String(t).replace(/[\\{}]/g, '')}}`, String(t));
 function quadFormShown(M) {
   square(M, '二次型');
   if (!M.every((r, i) => r.every((x, j) => x.cmp(M[j][i]) === 0))) throw new Error('qf(A)：二次型的矩阵要对称');
@@ -422,7 +482,9 @@ function run(n, vars) {
   switch (n.t) {
     case 'num': return n.big !== undefined ? new Q(n.big) : Q.from(n.v);
     case 'var': {
+      if (n.name in vars && vars[n.name] instanceof Sym) throw new NeedSymbolic();
       if (n.name in vars) return toExact(vars[n.name]);
+      if (n.name === 'param') return new Sym(null);
       if (n.name === 'pi' || n.name === 'e') throw new Inexact(n.name === 'pi' ? 'π ' : 'e ');
       if (n.name === 'I' || n.name === 'E') return eye(2);
       throw new Error(`未定义的变量 ${n.name}`);
@@ -509,12 +571,17 @@ export function calcValue(src, vars = {}) {
   const ast = typeof src === 'string' ? parse(src) : src;
   try {
     const value = run(ast, vars || {});
+    if (value instanceof Sym) return { value, exact: true, tex: value.name || 'a', text: 'param', float: NaN };
     return { value, exact: true, tex: exactTeX(value), text: exactText(value), float: toFloat(value) };
   } catch (e) {
+    if (e?.symbolic) {
+      if (!symbolic) throw new Error('这里不能用参数');
+      return symbolic(ast, vars || {});
+    }
     if (!e?.inexact) throw e;
   }
   const fv = {};
-  for (const [k, v] of Object.entries(vars || {})) fv[k] = toFloat(v);
+  for (const [k, v] of Object.entries(vars || {})) if (!(v instanceof Sym)) fv[k] = toFloat(v);
   const value = evaluateFloat(ast, fv);
   // dec(sqrt(2), 3) 这种：小数算出来以后照 dec 写好了，按它写的位数（不再截成 4 位有效数字）
   if (isRadix(value)) return { value, exact: false, tex: value.toTeX(), text: value.digits, float: value.base === 10 ? Number(value.digits) : NaN };
@@ -529,7 +596,7 @@ export function letScope(cmds, base = {}) {
   const scope = { ...base };
   for (const c of cmds || []) {
     if (c?.kind !== 'let' || !c.src) continue;
-    try { scope[c.name] = calcValue(c.src, scope).value; } catch { /* 组件画的时候会报 */ }
+    try { scope[c.name] = letValue(c.name, calcValue(c.src, scope).value); } catch { /* 组件画的时候会报 */ }
   }
   return scope;
 }
@@ -537,9 +604,12 @@ export function letScope(cmds, base = {}) {
 /** 精确的量 → 浮点（给 expr.js 求值的组件当初始变量） */
 export function floatVars(vars) {
   const out = {};
-  for (const [k, v] of Object.entries(vars || {})) out[k] = toFloat(v);
+  for (const [k, v] of Object.entries(vars || {})) if (!(v instanceof Sym)) out[k] = toFloat(v);
   return out;
 }
+
+/** let 的结果：写的是 param 时记成叫这个名字的参数 */
+export const letValue = (name, v) => (v instanceof Sym && !v.name ? new Sym(name) : v);
 
 // —— let 块：整节课的量 ——
 const LET_LINE = /^\s*(?:let\s+)?([A-Za-z_Ͱ-Ͽ][\wͰ-Ͽ]*)\s*[=＝]\s*(.+?)\s*$/;

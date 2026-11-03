@@ -1,0 +1,48 @@
+{
+  "unit": "相似对角化求 Aⁿ：自己选 P",
+  "subject": "线代",
+  "steps": [
+    {
+      "id": "s1",
+      "seq": 1,
+      "page": 1,
+      "title": "特征值",
+      "md": "```let\nA = [[1, 2], [2, 1]]\n```\n\n第一步找特征值（eigenvalue）：先写出特征多项式（characteristic polynomial）$|\\lambda E-A|$，再求它的根。\n\n```answer\nid: q-char\ntitle: 特征多项式\nq: 写出 $A=\\calc{A}$ 的特征多项式 $|\\lambda E-A|$（展开或因式分解都行）。\nformula: λ\nanswer: λ^2 - tr(A)*λ + det(A)\nbefore: |\\lambda E-A| =\nhint: 先写出 $\\lambda E-A$ 的四个元素（副对角是 $0-2$），再用二阶行列式：主对角乘积**减去**副对角乘积。\nexplain: $\\lambda E-A=\\begin{bmatrix}\\lambda-1&-2\\\\-2&\\lambda-1\\end{bmatrix}$，$|\\lambda E-A|=(\\lambda-1)^2-(-2)(-2)$。\n```\n\n```eig\nid: eg-vals\ntitle: 特征值是哪几个\nmatrix: \\calc{A}\ngoal: eig\nmode: quiz\n```"
+    },
+    {
+      "id": "k1",
+      "seq": 2,
+      "pin": true,
+      "title": "题目",
+      "md": "$A=\\calc{A}$，求可逆矩阵 $P$ 使 $P^{-1}AP$ 为对角矩阵，并求 $A^n$。"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "选你的 P",
+      "md": "对每个特征值解 $(\\lambda E-A)\\mathbf x=\\mathbf 0$，各取一个特征向量，**按列**排成 $P$。取哪个倍数、谁放第一列，你自己定。\n\n```answer\nid: q-P\ntitle: 你的 P\nq: 写出一个可逆矩阵 $P$，使 $P^{-1}AP$ 为对角矩阵（$A=\\calc{A}$）。\nanswer: [[1, 1], [1, -1]]\ncheck: det(ans) != 0 => $P$ 不可逆：两列成比例了，要取属于**不同**特征值的特征向量\ndet(mat(A*col(ans, 1), col(ans, 1))) == 0 => 第 1 列不是 $A$ 的特征向量：算一下 $A\\mathbf p_1$，它不是 $\\mathbf p_1$ 的倍数\ndet(mat(A*col(ans, 2), col(ans, 2))) == 0 => 第 2 列不是 $A$ 的特征向量：算一下 $A\\mathbf p_2$，它不是 $\\mathbf p_2$ 的倍数\nhint: $\\lambda=3$ 时 $3E-A=\\begin{bmatrix}2&-2\\\\-2&2\\end{bmatrix}$，两行成比例，只剩一个方程。\nexplain: 例如 $\\lambda_1=3$ 取 $(1,1)^{\\mathrm T}$，$\\lambda_2=-1$ 取 $(1,-1)^{\\mathrm T}$，$P=\\begin{bmatrix}1&1\\\\1&-1\\end{bmatrix}$。倍数、先后换了都对。\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "按你的 P 算 P⁻¹AP",
+      "md": "```answer\nid: q-D\ntitle: P⁻¹AP\nq: 用你上一块板写的 $P$，算出 $P^{-1}AP$。\nanswer: inv(ans(q-P))*A*ans(q-P)\nbefore: P^{-1}AP =\nhint: 不用真去求逆：$AP$ 的第 $i$ 列是 $\\lambda_i\\mathbf p_i$。对角线上是特征值，**顺序跟着你的 $P$ 的列走**。\nexplain: $P$ 的第 $i$ 列属于 $\\lambda_i$，$P^{-1}AP$ 的第 $i$ 个对角元就是 $\\lambda_i$，其余是 0。\n```\n\n```quiz\nid: q-swap\nq: 把你的 $P$ 的两列交换一下（其余不变），$P^{-1}AP$ 会：\n- [x] 还是对角矩阵，两个对角元换了位置\n- [ ] 完全不变\n- [ ] 不再是对角矩阵\nexplain: 交换两列相当于换了特征向量的先后，对角元（特征值）跟着换位置；每一列仍是特征向量，所以还是对角的。\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "为什么 Aⁿ = PΛⁿP⁻¹",
+      "md": "记 $\\Lambda=P^{-1}AP$。先把 $A$ 用 $P$、$\\Lambda$ 表示出来：\n\n```quiz\nid: q-dir\nq: 由 $P^{-1}AP=\\Lambda$，$A$ 等于：\n- [x] $P\\Lambda P^{-1}$\n- [ ] $P^{-1}\\Lambda P$\n- [ ] $\\Lambda$\nexplain: 两边左乘 $P$、右乘 $P^{-1}$：$P(P^{-1}AP)P^{-1}=A$，所以 $A=P\\Lambda P^{-1}$。\n```\n\n点「下一行」一行行看：\n\n```derive\nid: d-pow\ntitle: 推 Aⁿ\nA^n = (P\\Lambda P^{-1})(P\\Lambda P^{-1})\\cdots(P\\Lambda P^{-1})   // $n$ 个相乘\n    = P\\Lambda\\,\\hl{mid}{(P^{-1}P)}\\,\\Lambda\\,(P^{-1}P)\\cdots(P^{-1}P)\\,\\Lambda P^{-1}   // 结合律：相邻的 $P^{-1}P$ 先乘\n    = P\\Lambda^nP^{-1}   // $P^{-1}P=E$，中间全消掉\n    = P\\begin{bmatrix}\\lambda_1^n&0\\\\0&\\lambda_2^n\\end{bmatrix}P^{-1}   // 对角矩阵的幂：对角元各自 $n$ 次方\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 5,
+      "title": "写出 Aⁿ 并检验",
+      "md": "用你自己的 $P$ 算 $P\\Lambda^nP^{-1}$，每一格写成含 $n$ 的式子：\n\n```answer\nid: q-An\ntitle: Aⁿ 的每一格\nq: 写出 $A^n$ 的每一个元素（$A=\\calc{A}$），用 $3^n$、$(-1)^n$ 表示。\nformula: n\nanswer: [[(3^n + (-1)^n)/2, (3^n - (-1)^n)/2], [(3^n - (-1)^n)/2, (3^n + (-1)^n)/2]]\nbefore: A^n =\nhint: $P^{-1}$ 先算好（二阶：主对角互换、副对角变号、除以 $|P|$），再算 $P\\Lambda^n$，最后乘 $P^{-1}$。\nexplain: 取 $P=\\begin{bmatrix}1&1\\\\1&-1\\end{bmatrix}$，$A^n=P\\begin{bmatrix}3^n&0\\\\0&(-1)^n\\end{bmatrix}P^{-1}=\\tfrac12\\begin{bmatrix}3^n+(-1)^n&3^n-(-1)^n\\\\3^n-(-1)^n&3^n+(-1)^n\\end{bmatrix}$。\n```\n\n```answer\nid: q-n2\ntitle: 代数检验\nq: 你的式子在 $n=1$ 时应当回到 $A$。再代 $n=2$：用你的式子算出 $A^2$，再和直接乘的 $A\\cdot A$ 比一比。\nanswer: A^2\nbefore: A^2 =\nhint: 代 $n=2$：$3^2=9$，$(-1)^2=1$。\nexplain: $A^2=\\calc{A^2}$。式子在 $n=1,2$ 都对得上，才算检验过。\n```"
+    }
+  ]
+}

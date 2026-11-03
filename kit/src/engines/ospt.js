@@ -87,7 +87,7 @@ export const pagetableEngine = {
   table(input, r) {
     const names = r.widths.map((_, i) => (r.levels === 1 ? '页号' : i === 0 ? '页目录号' : `第 ${i + 1} 级页号`));
     return {
-      q: '把逻辑地址每个字段的位数填进表里（给了地址的，再填它在这一级的下标）。', qhtml: '', dir: 'row',
+      q: '把逻辑地址每个字段的位数填进表里（给了地址的，再填它在这一级的下标）。', dir: 'row',
       head: input.vaddr !== null ? ['位数', '下标'] : ['位数'],
       rows: [...names.map((n, i) => ({ label: n, cells: [{ v: String(r.widths[i]), num: true }, ...(input.vaddr !== null ? [{ v: String(r.idx[i]), num: true }] : [])] })), { label: '页内偏移', cells: [{ v: String(input.off), num: true }, ...(input.vaddr !== null ? [{ v: String(Number(input.vaddr & ((1n << BigInt(input.off)) - 1n))), num: true }] : [])] }],
       extra: [{ label: '几级页表', v: String(r.levels), num: true }],

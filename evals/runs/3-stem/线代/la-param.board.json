@@ -1,0 +1,55 @@
+{
+  "unit": "含参数的方程组：a 取何值时唯一解、无解、无穷多解",
+  "subject": "线代",
+  "steps": [
+    {
+      "id": "s1",
+      "seq": 1,
+      "page": 1,
+      "title": "唯一解从哪来",
+      "md": "```let\na = param\nA = [[1, 1, a], [1, a, 1], [a, 1, 1]]\nb = [1, 1, -2]\nA1 = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]\nM1 = mat(col(A1, 1), col(A1, 2), col(A1, 3), b)\nA2 = [[1, 1, -2], [1, -2, 1], [-2, 1, 1]]\nM2 = mat(col(A2, 1), col(A2, 2), col(A2, 3), b)\n```\n\n题目在常驻栏。先不算，想清楚判断的依据：$A$ 是方阵，它的行列式（determinant）$|A|$ 一不为 0，方程组会怎样？\n\n```quiz\nid: q-why\nq: 若 $|A|\\ne0$，方程组 $A\\mathbf x=\\mathbf b$（$\\mathbf b$ 是任意给定的）一定：\n- [x] 有唯一解\n- [ ] 有无穷多解\n- [ ] 可能无解，要看 $\\mathbf b$\nexplain: $|A|\\ne0\\Rightarrow A$ 可逆，两边左乘 $A^{-1}$ 得 $\\mathbf x=A^{-1}\\mathbf b$：解存在，而且只能是这一个。用秩说：$r(A)=r(A\\mid\\mathbf b)=3=n$。\n```\n\n```conjecture\nid: cj-why\ntitle: 一句话说理由\nq: 为什么 $|A|\\ne0$ 时解**存在**、而且**只有一个**？两件事各用半句话说。\ngrade: off\nrubric: 要点 (1) 存在：$A$ 可逆，$\\mathbf x=A^{-1}\\mathbf b$ 代回去成立；(2) 唯一：两个解相减得 $A(\\mathbf x_1-\\mathbf x_2)=\\mathbf 0$，左乘 $A^{-1}$ 得 $\\mathbf x_1=\\mathbf x_2$（或说 $r(A)=r(A\\mid\\mathbf b)=3=n$）。只说出一半算部分正确。\nanswer: 存在：$A$ 可逆，$\\mathbf x=A^{-1}\\mathbf b$ 就是一个解；唯一：两个解相减得 $A(\\mathbf x_1-\\mathbf x_2)=\\mathbf 0$，左乘 $A^{-1}$ 得 $\\mathbf x_1=\\mathbf x_2$。\nplaceholder: 存在是因为……；只有一个是因为……\n```"
+    },
+    {
+      "id": "k1",
+      "seq": 2,
+      "pin": true,
+      "title": "题目",
+      "md": "$A=\\calc{A}$，$\\mathbf b=\\calc{b}$\n\n$a$ 取何值时 $A\\mathbf x=\\mathbf b$ 有唯一解、无解、无穷多解？\n\n判据：比 $r(A)$ 和 $r(A\\mid\\mathbf b)$，未知数 $n=3$。"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "算出 |A|",
+      "md": "在纸上（或打开板书）算，结果写成关于 $a$ 的式子。小提示：每一列三个数加起来都一样。\n\n```answer\nid: q-det\ntitle: 算 |A|\nq: 计算 $|A|$，其中 $A=\\calc{A}$。结果写成关于 $a$ 的式子（因式分解或展开都行）。\nformula: a\nanswer: det(A)\nbefore: |A| =\nhint: 每一列加起来都是 $a+2$：把第 2、3 行都加到第 1 行，第 1 行就能提出公因子 $a+2$。\nexplain: $|A|=\\calc{factor(det(A))}$。第 2、3 行加到第 1 行后提出 $a+2$，第 1 行变成 $(1,1,1)$；再用它消下面两行，化成上三角。\n```\n\n```answer\nid: q-zero\ntitle: |A|=0 的 a\nq: $a$ 取哪些值时 $|A|=0$？写成集合，比如 $\\{1, 2\\}$。\ntype: interval\nanswer: a == 1 或 a == -2\nhint: 看上一题因式分解后的每个因式，什么时候为 0。\nexplain: $|A|=\\calc{factor(det(A))}$，所以 $a=1$ 或 $a=-2$。只有这两个值要单独讨论。\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "a = 1：化成阶梯形",
+      "md": "代 $a=1$：$(A\\mid\\mathbf b)=\\calc{M1}$。$|A|=0$ 只说明「不是唯一解」，到底无解还是无穷多解，要化成阶梯形（echelon form）比两个秩（rank）。自己做行变换：\n\n```elim\nid: el-a1\ntitle: a = 1 时的增广矩阵\nmatrix: \\calc{M1}\naugmented: true\nmode: do\ntarget: ref\n```\n\n```answer\nid: q-r1\ntitle: 两个秩\nq: $a=1$ 时，$r(A)$ 和 $r(A\\mid\\mathbf b)$ 各是多少？\nanswer: [rank(A1), rank(M1)]\nbefore: \\big(r(A),\\ r(A\\mid\\mathbf b)\\big) =\nhint: 在阶梯形里数非零行：只看竖线左边数一次，带上最后一列再数一次。\nexplain: $r(A)=\\calc{rank(A1)}$，$r(A\\mid\\mathbf b)=\\calc{rank(M1)}$：最后一行左边全是 0、右边不是 0，写回方程是「$0=$ 非零数」。\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 4,
+      "title": "a = −2：化成阶梯形",
+      "md": "代 $a=-2$：$(A\\mid\\mathbf b)=\\calc{M2}$。这次每一步变了的那一行你自己算出来，页面逐个数核对。\n\n```elim\nid: el-a2\ntitle: a = −2 时的增广矩阵\nmatrix: \\calc{M2}\naugmented: true\nmode: do\ntarget: ref\nwrite: rows\n```\n\n```answer\nid: q-r2\ntitle: 两个秩\nq: $a=-2$ 时，$r(A)$ 和 $r(A\\mid\\mathbf b)$ 各是多少？\nanswer: [rank(A2), rank(M2)]\nbefore: \\big(r(A),\\ r(A\\mid\\mathbf b)\\big) =\nhint: 三行加起来是什么？阶梯形最后一行是不是整行都是 0？\nexplain: $r(A)=\\calc{rank(A2)}$，$r(A\\mid\\mathbf b)=\\calc{rank(M2)}$：最后一行整行是 0（三个方程加起来正好是 $0=0$）。\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 5,
+      "title": "收拢：写成数集",
+      "md": "```quiz\nid: q-kinds\nq: 由两个秩的比较，下面哪一组对？\n- [x] $a=1$ 无解；$a=-2$ 无穷多解\n- [ ] $a=1$ 无穷多解；$a=-2$ 无解\n- [ ] 两个都是无穷多解（因为 $|A|=0$）\n- [ ] 两个都无解（因为 $|A|=0$）\nexplain: $a=1$：$r(A)=\\calc{rank(A1)}<r(A\\mid\\mathbf b)=\\calc{rank(M1)}$，无解。$a=-2$：$r(A)=r(A\\mid\\mathbf b)=\\calc{rank(M2)}<3$，无穷多解，有 $\\calc{3-rank(A2)}$ 个自由未知数。$|A|=0$ 两种都可能，要看 $\\mathbf b$。\n```\n\n```answer\nid: q-set\ntitle: 唯一解的范围\nq: 有唯一解的 $a$ 组成的集合是什么？区间、不等式、「$a\\ne\\cdots$」的写法都行。\ntype: interval\nanswer: a != 1 且 a != -2\nhint: 唯一解 $\\iff|A|\\ne0$：从全体实数里去掉让 $|A|=0$ 的值。\nexplain: $a\\ne1$ 且 $a\\ne-2$，即 $(-\\infty,-2)\\cup(-2,1)\\cup(1,+\\infty)$。\n```"
+    },
+    {
+      "id": "s6",
+      "seq": 7,
+      "page": 6,
+      "title": "对照：整套讨论",
+      "md": "页面把含 $a$ 的增广矩阵直接消一遍。每种情况揭晓之前先说出结论，和你前面几块板做的对照。\n\n```elim\nid: el-all\ntitle: 含参数 a 的整套讨论\nmatrix: \\calc{A}\nb: \\calc{b}\nparam: a\nask: special, case\n```"
+    }
+  ]
+}

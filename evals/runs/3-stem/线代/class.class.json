@@ -1,0 +1,43 @@
+{
+  "unit": "相似对角化求 Aⁿ：自己选 P",
+  "subject": "线代",
+  "pack": {
+    "main": {
+      "unit": "相似对角化求 Aⁿ：自己选 P",
+      "goal": "能自己求特征值、特征向量，自己选 P（倍数、先后都可以）使 P⁻¹AP 为对角矩阵，按自己的 P 写出 P⁻¹AP；能说清 Aⁿ = PΛⁿP⁻¹ 为什么成立，写出 Aⁿ 的每个元素，并代 n=1 检验。",
+      "textbook": "定理：n 阶矩阵 A 可相似对角化 ⟺ A 有 n 个线性无关的特征向量。若 Ap_i = λ_i p_i（i=1,…,n），P = (p_1, …, p_n) 可逆，则 P⁻¹AP = Λ = diag(λ_1, …, λ_n)，Λ 的第 i 个对角元是 P 的第 i 列所属的特征值。由 A = PΛP⁻¹ 得 Aⁿ = PΛⁿP⁻¹。特征多项式 |λE − A|。例题：A = [[1, 2], [2, 1]]，求可逆矩阵 P 使 P⁻¹AP 为对角矩阵，并求 Aⁿ。",
+      "plan": "1. 写特征多项式（answer formula: λ），求特征值；2. 学生自己解特征向量、选 P（answer 的 check: 判，任意倍数、先后都对）；3. 按学生自己的 P 算 P⁻¹AP（answer: inv(ans(q-P))*A*ans(q-P)），问交换两列会怎样；4. 推 Aⁿ = PΛⁿP⁻¹（先问 A = PΛP⁻¹ 还是 P⁻¹ΛP，再用 derive 一行行写）；5. 写 Aⁿ 每一格（formula: n 按格判），代 n=1、2 检验。",
+      "block": "L5.2.1",
+      "components": [
+        "answer",
+        "quiz",
+        "eig",
+        "derive",
+        "matrix"
+      ]
+    },
+    "problems": {
+      "items": [
+        {
+          "q": "A = [[1, 2], [2, 1]]，求可逆矩阵 P 使 P⁻¹AP 为对角矩阵，并求 Aⁿ。",
+          "answer": "特征值 3、−1；例如 P = [[1, 1], [1, −1]]；Aⁿ = ½[[3ⁿ+(−1)ⁿ, 3ⁿ−(−1)ⁿ], [3ⁿ−(−1)ⁿ, 3ⁿ+(−1)ⁿ]]",
+          "point": "相似对角化求幂",
+          "source": "验收题库第三批 la-power2"
+        }
+      ]
+    }
+  },
+  "turns": [
+    {
+      "teacher": "先找特征值：把特征多项式写出来，展开或因式分解都行。\n\n````board plan\n目标：学生自己选 P（倍数、先后随意），按自己的 P 算 P⁻¹AP，写出 Aⁿ 并代 n=1、2 检验\n猜：|λE−A| 里副对角两个负数相乘再被减，符号容易错；P⁻¹AP 和 PΛP⁻¹ 的方向容易反\n证实：先让学生写特征多项式（formula: λ），错了看在哪个 λ 上对不上，再用具体的 λ 分开两种算法\n````\n\n````board pin id=k1 title=\"题目\"\n```let\nA = [[1, 2], [2, 1]]\n```\n$A=\\calc{A}$，求可逆矩阵 $P$ 使 $P^{-1}AP$ 为对角矩阵，并求 $A^n$。\n````\n\n````board new id=b1 title=\"特征多项式\"\n特征值（eigenvalue）是特征多项式（characteristic polynomial）$|\\lambda E-A|$ 的根。\n\n```answer\nid: q-char\ntitle: 特征多项式\nq: 写出 $A=\\calc{A}$ 的特征多项式 $|\\lambda E-A|$（展开或因式分解都行）。\nformula: λ\nanswer: λ^2 - tr(A)*λ + det(A)\nbefore: |\\lambda E-A| =\nhint: 先写出 $\\lambda E-A$ 的四个元素，再用二阶行列式算。\n```\n````"
+    },
+    {
+      "student": "[作答] b1 里的 answer q-char「特征多项式」：填了 λ^2-2λ+5（错，第 1 次），用时 52 秒",
+      "teacher": "先不改原题，取一个具体的 $\\lambda$ 算一下。\n\n````board plan\n目标：同上\n猜：λ^2-2λ+5 = (λ−1)²+4，副对角 (−2)(−2) 被加上去了，λE−A 本身多半写对了\n证实：取 λ=4，|4E−A| 正确是 9−4=5，按「加」算是 13，一题分开\n````\n\n````board new id=b2 title=\"代一个数试试\"\n```answer\nid: q-l4\ntitle: λ = 4 时\nq: 取 $\\lambda=4$：写出矩阵 $4E-A$，再算行列式 $|4E-A|$（$A=\\calc{A}$）。\nanswer: det(4*E - A)\nbefore: |4E-A| =\nhint: 先把 $4E-A$ 的四个数写在草稿上，再算二阶行列式。\n```\n````\n\n先写出 $4E-A$ 的四个数，再算。"
+    },
+    {
+      "student": "没懂，为什么？",
+      "teacher": "二阶行列式公式里**自带一个减号**，副对角那一项要整个被减掉。\n\n````board add id=b3 title=\"二阶行列式的减号\"\n```derive\nid: d-sign\ntitle: 副对角那一项\nstart: all\n|\\lambda E-A| = \\begin{vmatrix}\\lambda-1&-2\\\\-2&\\lambda-1\\end{vmatrix}   // 副对角是 $0-2=-2$\n    = (\\lambda-1)(\\lambda-1)\\;\\hl{minus}{-}\\;\\hl{off}{(-2)(-2)}   // 主对角乘积 **减去** 副对角乘积\n    = (\\lambda-1)^2-4   // $(-2)(-2)=+4$，再被前面的减号减掉\n```\n````\n\n````board mark target=d-sign term=minus note=\"公式自带的减号\" color=pink\nterm=off note=\"先算出 +4\" color=yellow\n````\n\n照这个再算上面 $\\lambda=4$ 那题：先算副对角乘积，再减。"
+    }
+  ]
+}

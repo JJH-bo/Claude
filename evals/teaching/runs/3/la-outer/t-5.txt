@@ -1,0 +1,17 @@
+你的感觉没错：严格说它是一个 $1\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。
+
+````board new id=b4 title="[5] 和 5 一样吗"
+常驻栏里 $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha=[\,\calc{b'*a}\,]$，一个 $1\times1$ 矩阵。
+
+```answer
+id: q-a11
+title: 按矩阵乘法乘
+q: 按矩阵乘法规则算 $(2\times1)(1\times1)$：$\begin{bmatrix}1\\2\end{bmatrix}\begin{bmatrix}\calc{b'*a}\end{bmatrix}$ 等于多少？
+answer: (b'*a)*a
+before: \begin{bmatrix}1\\2\end{bmatrix}\begin{bmatrix}\calc{b'*a}\end{bmatrix} =
+hint: 结果是 $2\times1$：第 $i$ 行 = 左边第 $i$ 行的那个数 × 右边那一列的那个数。
+explain: 第 1 行 $1\cdot\calc{b'*a}$，第 2 行 $2\cdot\calc{b'*a}$。
+```
+````
+
+算完以后，拿结果和 $\boldsymbol\alpha=(1,2)^{\mathrm T}$ 比一比。

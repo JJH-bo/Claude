@@ -349,7 +349,7 @@ export function fillSpec(table, fields = {}) {
 // —— 字段名的拼写检查 ——
 // 组件读过的字段都记下来（读的时候没写也算：引擎会先看「有没有 b:」），源码里写了却从来没被读过的，
 // 就是写错了名字、或者这个组件 / 这种用法用不上它（比如没写 mode: fill 却写了 given:）。不报的话作者以为生效了。
-const SHELL_FIELDS = ['id', 'title', 'q', 'note', 'link'];
+const SHELL_FIELDS = ['id', 'title', 'q', 'note', 'link', 'vary'];
 export function trackFields(raw) {
   const seen = new Set(SHELL_FIELDS);
   const fields = new Proxy(raw, {
@@ -389,9 +389,45 @@ export function calcFields(fields, scope = {}) {
   const out = { ...fields };
   for (const [k, v] of Object.entries(fields)) {
     if (TEXT_FIELDS.has(k) || typeof v !== 'string' || !v.includes('\\calc')) continue;
-    const r = expandCalc(v, (e) => exactText(calcValue(e, scope).value), { wrap: false });
+    const r = expandCalc(v, (e) => calcValue(e, scope).text, { wrap: false });
     out[k] = r.tex;
     for (const e of r.errors) errors.push(`${k}: 里的 \\calc{${e.expr.trim().slice(0, 40)}} 算不出来：${e.msg}`);
   }
   return { fields: out, errors };
+}
+
+/**
+ * 演示组件上的滑块 vary:（拖距离、帧长、MTU，看结果怎么变；字段里用 \calc{d} 写它）：
+ *   vary: d = 1..10 step 1 km; L = 64..1500 step 64 init 1000 bit
+ * 每一项「名字 = 最小..最大」，可选 step（默认 1）、init（默认最小值）、后面的字是单位（写在读数后面）。
+ * 返回 [{ name, min, max, step, init, unit }]；写错了抛出中文原因
+ */
+export function parseVary(src) {
+  const out = [];
+  for (const part of String(src ?? '').split(/[;；]/).map((x) => x.trim()).filter(Boolean)) {
+    const m = part.match(/^([A-Za-z_]\w*)\s*=\s*(-?\d+(?:\.\d+)?)\s*(?:\.\.|…|~|到)\s*(-?\d+(?:\.\d+)?)(.*)$/);
+    if (!m) throw new Error(`vary: 每一项写「名字 = 最小..最大」，比如 vary: d = 1..10 step 1 km（看不懂「${part}」）`);
+    const [, name, a, b, rest0] = m;
+    // t 在图里是联动用的，演示组件里没有它，滑块可以叫 t（时间）
+    if (['step', 'pi', 'e'].includes(name)) throw new Error(`vary: ${name} 是保留的名字，换一个`);
+    if (out.some((x) => x.name === name)) throw new Error(`vary: ${name} 写了两次`);
+    let rest = rest0.trim();
+    const take = (key) => {
+      const r = rest.match(new RegExp(`(?:^|\\s)${key}\\s*=?\\s*(-?\\d+(?:\\.\\d+)?)`));
+      if (!r) return null;
+      rest = (rest.slice(0, r.index) + rest.slice(r.index + r[0].length)).trim();
+      return Number(r[1]);
+    };
+    const min = Number(a), max = Number(b);
+    const step = take('step') ?? 1;
+    const init = take('init') ?? min;
+    if (!(max > min)) throw new Error(`vary: ${name} 的最大值要比最小值大`);
+    if (!(step > 0)) throw new Error(`vary: ${name} 的 step 要是正数`);
+    if ((max - min) / step > 400) throw new Error(`vary: ${name} 从 ${min} 到 ${max}、step ${step} 有 ${Math.floor((max - min) / step) + 1} 档，太多了（最多 400 档）：把 step 写大一点`);
+    if (!(init >= min && init <= max)) throw new Error(`vary: ${name} 的 init 要在 ${min} 到 ${max} 之间`);
+    out.push({ name, min, max, step, init, unit: rest });
+  }
+  if (!out.length) throw new Error('vary: 写「名字 = 最小..最大」，比如 vary: d = 1..10 step 1 km');
+  if (out.length > 3) throw new Error('vary: 最多 3 个滑块');
+  return out;
 }

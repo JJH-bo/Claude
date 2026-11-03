@@ -10,7 +10,7 @@
 //   answer: A^5
 //   explain: $A^5=(\operatorname{tr}A)^4A=\calc{A^5}$
 import { parse } from './expr.js';
-import { calcValue, expandCalc, isQ, Q } from './exact.js';
+import { calcValue, expandCalc, isQ, Q, textValue } from './exact.js';
 
 const CMD = /^(pick|let|where)\s+(.*)$/i;
 const NAME = /^[A-Za-z_][\w]*$/;
@@ -18,7 +18,7 @@ const ONE_LINE = new Set(['id', 'title', 'type', 'types', 'count', 'level', 'ans
 // 常数和图里的变量名不能拿来 pick；n 只有在 formula: n（答案是含 n 的式子）时才不能用
 // I、E 可以用（组成原理里 E 是阶码）：题目里的量只在这个题型里有效，单独写 E 就是它，E(3) 照样是单位矩阵
 const RESERVED = new Set(['pi', 'e', 'step', 't']);
-const GENS = ['int', 'choice', 'vec', 'mat'];
+const GENS = ['int', 'choice', 'vec', 'mat', 'bits', 'seq', 'word', 'str'];
 
 /** 解析模板。返回 { fields, picks, lets, wheres }；写错了抛出中文原因 */
 export function parseTemplate(src) {
@@ -29,24 +29,7 @@ export function parseTemplate(src) {
     const line = raw.replace(/\s+#\s.*$/, '').trimEnd();
     if (!line.trim()) { if (last) fields[last] += '\n'; continue; }
     const t = line.trim();
-    const c = t.match(CMD);
-    if (c) {
-      const kind = c[1].toLowerCase();
-      try {
-        if (kind === 'where') { parse(c[2]); wheres.push({ src: c[2].trim(), line: t }); }
-        else {
-          const m = c[2].match(/^([A-Za-z_]\w*)\s*=\s*(.+)$/);
-          if (!m) throw new Error(`${kind} 的写法：${kind} 名字 = ${kind === 'pick' ? 'int(-3, 3)' : '表达式'}`);
-          if (RESERVED.has(m[1])) throw new Error(`${m[1]} 是保留的名字，换一个`);
-          if (kind === 'pick') picks.push({ name: m[1], ...parsePick(m[2]), line: t });
-          else { parse(m[2]); lets.push({ name: m[1], src: m[2].trim(), line: t }); }
-        }
-      } catch (e) {
-        throw new Error(`「${t.slice(0, 60)}」：${e.message}`);
-      }
-      last = null;
-      continue;
-    }
+    if (commandLine(t, { picks, lets, wheres })) { last = null; continue; }
     const f = line.match(/^([A-Za-z][\w-]*)\s*[:：]\s?(.*)$/);
     if (f) { last = f[1].toLowerCase(); fields[last] = f[2]; continue; }
     if (last && !ONE_LINE.has(last)) fields[last] += '\n' + line;
@@ -63,15 +46,72 @@ export function parseTemplate(src) {
   return { fields, picks, lets, wheres };
 }
 
+/**
+ * 一行 pick / let / where（自定义题型、practice 的 use: 共用）：是命令就解析进 into，返回 true；
+ * 不是命令返回 false；写错了抛出中文原因（带着这一行）
+ */
+export function commandLine(t, into) {
+  const c = t.match(CMD);
+  if (!c) return false;
+  const kind = c[1].toLowerCase();
+  try {
+    if (kind === 'where') { parse(c[2]); into.wheres.push({ src: c[2].trim(), line: t }); }
+    else {
+      const m = c[2].match(/^([A-Za-z_]\w*)\s*=\s*(.+)$/);
+      if (!m) throw new Error(`${kind} 的写法：${kind} 名字 = ${kind === 'pick' ? 'int(-3, 3)' : '表达式'}`);
+      if (RESERVED.has(m[1])) throw new Error(`${m[1]} 是保留的名字，换一个`);
+      if (kind === 'pick') into.picks.push({ name: m[1], ...parsePick(m[2]), line: t });
+      else { parse(m[2]); into.lets.push({ name: m[1], src: m[2].trim(), line: t }); }
+    }
+  } catch (e) {
+    throw new Error(`「${t.slice(0, 60)}」：${e.message}`);
+  }
+  return true;
+}
+
+/** 取到的数写成一行（作答记录、自检的报错用）：a=3，d=1011，v=7 0 1 2 */
+export function pickedText(picked) {
+  const one = (v) => (isQ(v) ? v.toString() : Array.isArray(v) ? (v.some(Array.isArray) ? `[${v.map(one).join('; ')}]` : v.map(one).join(' ')) : v?.digits ?? String(v));
+  return Object.entries(picked || {}).map(([n, v]) => `${n}=${one(v)}`).join('，');
+}
+
 // pick 的右边：int(-3, 3) nonzero / choice(1, 2, 5) / vec(3, -2, 2) / mat(2, 2, -3, 3)
+// 计算机课：bits(4)（一串 0/1，写出来就是 1011）/ seq(8, 0, 5)（8 个数的一串，后面可以加 distinct：不重复）
 function parsePick(rhs) {
   let s = rhs.trim();
-  const nonzero = /\s+nonzero$/i.test(s);
-  if (nonzero) s = s.replace(/\s+nonzero$/i, '');
+  let nonzero = false, distinct = false;
+  for (let m; (m = s.match(/\s+(nonzero|distinct)$/i));) {
+    if (m[1].toLowerCase() === 'nonzero') nonzero = true; else distinct = true;
+    s = s.slice(0, m.index);
+  }
   const m = s.match(/^([a-z]+)\s*\((.*)\)$/i);
-  if (!m || !GENS.includes(m[1].toLowerCase())) throw new Error(`pick 的右边写 int(最小, 最大)、choice(…)、vec(维数, 最小, 最大) 或 mat(行, 列, 最小, 最大)，后面可以加 nonzero`);
+  if (!m || !GENS.includes(m[1].toLowerCase())) throw new Error(`pick 的右边写 int(最小, 最大)、choice(…)、vec(维数, 最小, 最大)、mat(行, 列, 最小, 最大)、bits(位数)、seq(个数, 最小, 最大)、word(词, 词) 或 str(长度, 字母表)，后面可以加 nonzero`);
   const gen = m[1].toLowerCase();
   const args = splitArgs(m[2]);
+  if (distinct && gen !== 'seq') throw new Error('distinct（不重复）只能跟在 seq(…) 后面');
+  // 文字：word(fifo, lru, opt) 挑一个词（算法名、方向）；str(7, ab) 用 a、b 拼一个 7 个字母的串（KMP 的模式串）
+  if (gen === 'word') {
+    if (!args.length || args.some((a) => !a.trim())) throw new Error('word(…) 里写几个词，用逗号隔开，比如 word(fifo, lru, opt)');
+    return { gen, items: args, nonzero };
+  }
+  if (gen === 'str') {
+    const len = Number(args[0]);
+    if (args.length !== 2 || !Number.isInteger(len) || len < 1 || len > 16 || !/^[A-Za-z0-9]{2,8}$/.test(args[1])) throw new Error('str(长度, 字母表)：长度 1 到 16，字母表写 2 到 8 个字母，比如 str(7, ab)');
+    return { gen, nums: [len], chars: args[1], nonzero };
+  }
+  if (gen === 'bits') {
+    const w = Number(args[0]);
+    if (args.length !== 1 || !Number.isInteger(w) || w < 1 || w > 32) throw new Error('bits(位数)：位数写 1 到 32 的整数，比如 bits(4)');
+    return { gen, nums: [w], nonzero };
+  }
+  if (gen === 'seq') {
+    const nums = args.map(Number);
+    if (nums.length !== 3 || !nums.every(Number.isInteger)) throw new Error('seq(个数, 最小, 最大)：都写整数，比如 seq(8, 0, 5)');
+    if (nums[0] < 1 || nums[0] > 20) throw new Error('seq 的个数写 1 到 20');
+    if (nums[2] < nums[1]) throw new Error('seq 的最大值要不小于最小值');
+    if (distinct && nums[2] - nums[1] + 1 < nums[0]) throw new Error(`seq(${nums.join(', ')}) distinct：${nums[1]} 到 ${nums[2]} 只有 ${nums[2] - nums[1] + 1} 个数，取不出 ${nums[0]} 个不重复的`);
+    return { gen, nums, nonzero, distinct };
+  }
   if (gen === 'choice') {
     if (!args.length) throw new Error('choice 里至少写一个值');
     args.forEach((a) => parse(a));
@@ -126,6 +166,27 @@ function draw(p, vars, rand) {
     return int(lo, hi);
   }
   if (p.gen === 'choice') return calcValue(p.items[randInt(0, p.items.length - 1, rand)], vars).value;
+  if (p.gen === 'word') return textValue(p.items[randInt(0, p.items.length - 1, rand)]);
+  if (p.gen === 'str') return textValue(Array.from({ length: p.nums[0] }, () => p.chars[randInt(0, p.chars.length - 1, rand)]).join(''));
+  if (p.gen === 'bits') {
+    // 一位一位取（位数多时 2^w 超过 JS 整数的精度）；写出来就是 0/1 串，不能再算
+    for (;;) {
+      const d = Array.from({ length: p.nums[0] }, () => (rand() < 0.5 ? '0' : '1')).join('');
+      if (!p.nonzero || d.includes('1')) return calcValue(`bin(0b${d}, ${p.nums[0]})`, {}).value;
+    }
+  }
+  if (p.gen === 'seq') {
+    const [len, lo, hi] = p.nums;
+    if (p.distinct) {
+      const pool = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+      for (let i = pool.length - 1; i > 0; i--) { const j = randInt(0, i, rand); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+      return pool.slice(0, len).map((x) => Q.int(x));
+    }
+    for (;;) {
+      const v = Array.from({ length: len }, () => Q.int(randInt(lo, hi, rand)));
+      if (!p.nonzero || v.some((x) => !x.zero)) return v;
+    }
+  }
   if (p.gen === 'vec') {
     // nonzero：向量不能全是 0（每个分量可以是 0）
     for (;;) {
@@ -186,7 +247,7 @@ export function checkTemplate(tpl, { base = {}, rand = Math.random, rounds = 12,
   for (let k = 0; k < rounds && !errors.length; k++) {
     let inst;
     try { inst = instantiate(tpl, { base, rand }); } catch (e) { errors.push(e.message); break; }
-    const at = Object.entries(inst.picked).map(([n, v]) => `${n}=${isQ(v) ? v.toString() : JSON.stringify(v, (kk, x) => (isQ(x) ? x.toString() : x))}`).join('，');
+    const at = pickedText(inst.picked);
     for (const f of ['q', 'hint', 'explain', 'before', 'after']) {
       if (!tpl.fields[f]) continue;
       const r = fillText(tpl.fields[f], inst.vars);

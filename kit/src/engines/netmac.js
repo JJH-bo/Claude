@@ -300,7 +300,9 @@ export const csmaEngine = {
   // 考卷上那张表：每个要算的量一行
   table(input, r) {
     if (!r.vals.length) return null;
-    return { q: '把每个量算出来填进表里（单位见每一行）。', qhtml: '', dir: 'row', head: ['值'], rows: r.vals.map((x) => ({ label: x.label, cells: [{ v: ansText(x.v), num: true }] })) };
+    let intro = '';
+    try { intro = this.quiz(input, r).q.replace(/。[^。]*$/, '。'); } catch { /* 没有能写的数时 quiz 报错：只写表 */ }
+    return { q: `${intro}把每个量算出来填进表里（单位见每一行）。`, qhtml: '', dir: 'row', head: ['值'], rows: r.vals.map((x) => ({ label: x.label, cells: [{ v: ansText(x.v), num: true }] })) };
   },
   // 常见错法：争用期当成 τ、最短帧长写成字节、以为信号相遇就检测到、以为 A 总在 2τ 检测到、k 没封顶、r 的范围多一个、退避按 τ 算
   variants(input) {

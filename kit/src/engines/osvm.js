@@ -457,7 +457,7 @@ export const memEngine = {
   table(input, r) {
     if (input.kind === 'eat') {
       return {
-        q: '分情况写出每种情况的概率和一次访问要多久，再写有效访问时间 EAT。', qhtml: '', dir: 'row', head: ['概率', `用时（${input.unit}）`],
+        q: '分情况写出每种情况的概率和一次访问要多久，再写有效访问时间 EAT。', dir: 'row', head: ['概率', `用时（${input.unit}）`],
         rows: r.cases.map((x) => ({ label: x.name, cells: [{ v: pct(x.p), num: true }, { v: num(x.t), num: true }] })),
         extra: [...(input.rate.cache !== undefined ? [{ label: `取一次数据（${input.unit}）`, v: num(r.D), num: true }] : []), { label: `EAT（${input.unit}）`, v: num(r.eat), num: true }],
       };

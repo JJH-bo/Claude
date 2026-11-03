@@ -304,14 +304,14 @@ export function view(s, input, opts = {}) {
 }
 
 export function quiz(input, r) {
-  return { q: '这个二次型的正惯性指数、负惯性指数各是多少？（空格隔开）', qhtml: '', type: 'seq', answer: `${r.p} ${r.q}` };
+  return { q: '这个二次型的正惯性指数、负惯性指数各是多少？（空格隔开）', qhtml: view(r.steps[0].view, input, { k: 0 }), type: 'seq', answer: `${r.p} ${r.q}` };
 }
 
 export function table(input, r) {
   const n = input.n;
   return {
     q: input.method === 'orth' ? '写出二次型的矩阵；正交变换后标准形的系数（特征值，从小到大）；惯性指数和正定性。' : '写出二次型的矩阵；按 x₁、x₂、… 的顺序配方，写出标准形的系数；惯性指数和正定性。',
-    qhtml: '', dir: 'row',
+    dir: 'row',
     head: Array.from({ length: n }, (_, j) => `第 ${j + 1} 列`),
     rows: [...r.A.map((row, i) => ({ label: `A 的第 ${i + 1} 行`, cells: row.map((x) => ({ v: x.toString(), num: true })) })), { label: '标准形的系数', cells: r.d.map((x) => ({ v: x.toString(), num: true })) }],
     extra: [{ label: '正惯性指数', v: String(r.p), num: true }, { label: '负惯性指数', v: String(r.q), num: true }, { label: '正定 / 半正定 / 负定 / 半负定 / 不定', v: r.kind }],

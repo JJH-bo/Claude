@@ -227,6 +227,7 @@ export function compareFormula(expected, given, { free, scope = {} } = {}) {
   const gAst = typeof given === 'string' ? parse(given) : given;
   const first = { ...scope };
   for (const f of free) first[f.name] = Q.int(f.values.find((v) => v > 1) ?? f.values[0]);
+  for (const [k, v] of Object.entries(first)) if (!freeNames.has(k)) first[k] = atParam(v, Object.fromEntries(free.map((f) => [f.name, Number(first[f.name].n)])));
   // 标准答案里没有 A^n，学生也不能直接写 A^n（那等于没化简）
   if (matrixPowerIn(gAst, freeNames, first) && !matrixPowerIn(eAst, freeNames, first)) {
     const nm = free[0].name;
@@ -236,6 +237,8 @@ export function compareFormula(expected, given, { free, scope = {} } = {}) {
   for (const s of samples(free)) {
     const vars = { ...scope };
     for (const [k, v] of Object.entries(s)) vars[k] = Q.int(v);
+    // 题里含参数算出来的量（let 里 a = param、A 含 a）：自由变量就是这个参数时，代进这一组的值
+    for (const [k, v] of Object.entries(vars)) if (!(k in s)) vars[k] = atParam(v, s);
     let want;
     try { want = calcValue(eAst, vars).value; } catch { continue; } // 标准答案在这一组没定义（比如 n=0 时的负次幂）：跳过
     let got, err = null;
@@ -259,6 +262,13 @@ export function compareFormula(expected, given, { free, scope = {} } = {}) {
   const msg = `${good.length ? `${listTeX(good)} 时对得上；` : ''}${listTeX([b])} 时${why}。`;
   const note = `代值检查：${good.length ? `${list(good)} 对，` : ''}${list(bad, 4)} 不对`;
   return { ok: false, msg, note, checked: rows.length };
+}
+
+// 含参数的多项式（paramcalc.js 算出来、记着参数名 param）在这一组值上的值；别的原样
+function atParam(v, at) {
+  if (Array.isArray(v)) return v.map((x) => atParam(x, at));
+  if (v && typeof v.eval === 'function' && v.param && v.param in at) return v.eval(Q.int(at[v.param]));
+  return v;
 }
 
 // 树里用到的变量名
@@ -296,4 +306,44 @@ export function formulaSpec(answer, freeSpec, scope = {}) {
   if (self.checked < 2) throw new Error(`answer: ${src} 代不进去：只有 ${self.checked} 组值算得出来，检查式子或 formula: 的范围`);
   const names = [...new Set([...freeNames, ...Object.keys(scope).filter((k) => /^[A-Za-z_]\w*$/.test(k))])];
   return { expected, free, scope, names, keys: [...freeNames, ...used], display: shown };
+}
+
+/**
+ * 标准答案是按格写出来的矩阵（[[2^n, n*2^(n-1)], [0, 2^n]]）：拆成每一格的式子 [[…]]；不是这种写法返回 null。
+ * 这时作答框按格给（每格一个式子框），逐格判，指出哪几格不对
+ */
+export function matrixCells(src) {
+  const s = String(src ?? '').trim();
+  if (!/^\[\s*\[/.test(s) || !s.endsWith(']')) return null;
+  const top = splitList(s.slice(1, -1));
+  if (!top || !top.length) return null;
+  const rows = top.map((r) => (r.startsWith('[') && r.endsWith(']') ? splitList(r.slice(1, -1)) : null));
+  if (rows.some((r) => !r || !r.length) || rows.some((r) => r.length !== rows[0].length)) return null;
+  if (rows.length > 4 || rows[0].length > 4) return null;
+  return rows;
+}
+// 按最外层逗号切（括号里的逗号不算）
+function splitList(s) {
+  const out = [];
+  let depth = 0, cur = '';
+  for (const ch of s) {
+    if ('([{'.includes(ch)) depth++;
+    if (')]}'.includes(ch)) depth--;
+    if (depth < 0) return null;
+    if (ch === ',' && depth === 0) { out.push(cur.trim()); cur = ''; } else cur += ch;
+  }
+  if (depth) return null;
+  if (cur.trim()) out.push(cur.trim());
+  return out.some((x) => !x) ? null : out;
+}
+
+/** 逐格比：expected / given 都是 [[式子]]。返回 { ok, wrong: [格的序号（按行数）], first: { r, c, msg } } */
+export function compareCells(expected, given, opts) {
+  const wrong = [];
+  let first = null;
+  expected.forEach((row, r) => row.forEach((e, c) => {
+    const res = compareFormula(e, given[r][c], opts);
+    if (!res.ok) { wrong.push(r * row.length + c); first ??= { r, c, msg: res.msg, powerBan: res.powerBan }; }
+  }));
+  return { ok: !wrong.length, wrong, first };
 }

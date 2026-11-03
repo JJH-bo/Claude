@@ -20,8 +20,10 @@ height: 220
 
 - `width` / `height` 是坐标范围（左上角是原点，向下是 y），图按屏幕缩放。
 - 只能用 `path` `line` `polyline` `polygon` `rect` `circle` `ellipse` `text`（里面可以有 `tspan`）`g`；不写外面的 `<svg>`，不能有 `style=`、`id=`、链接、图片、脚本。
-- 颜色写名字：`class="blue"`，或 `fill="yellow"` / `stroke="pink"`（`yellow` `pink` `blue` `green` `orange` `purple` `red` `white` `gray`，`none`）。样式 class：`dashed` `dotted` `thin` `thick` `arrow`（线的末端画箭头）`fill`（用这个颜色淡淡地填上）`faint` `bold` `small` `big`。默认是粉笔白的线。
+- 颜色写名字：`class="blue"`、`fill="yellow"`；样式 class 有 `dashed` `thick` `arrow` `fill` `faint` `small` 等（见完整写法）。
 - 公式写 `<tex x="…" y="…">A_1</tex>`（KaTeX，盖在图上）。写错（不认的元素、属性、颜色）会报出来要求重写。
+
+- 颜色写名字：`class="blue"`，或 `fill="yellow"` / `stroke="pink"`（`yellow` `pink` `blue` `green` `orange` `purple` `red` `white` `gray`，`none`）。样式 class：`dashed` `dotted` `thin` `thick` `arrow`（线的末端画箭头）`fill`（用这个颜色淡淡地填上）`faint` `bold` `small` `big`。默认是粉笔白的线。
 
 - `<tex>` 可以用 `\calc`，属性 `anchor="start|middle|end"`、`color="pink"`、`size="22"`。
 - 课堂里：`figure target=sk-block highlight 3`（第 3 个元素闪一下，从 1 数）、`board mark target=sk-block label=A_2`（按 `text` / `tex` 的文字找）、`at=[290, 110]`（图上的坐标）。

@@ -240,14 +240,14 @@ export function view(s, input, opts = {}) {
 }
 
 export function quiz(input, r) {
-  return { q: '求这个行列式的值。', qhtml: '', type: 'num', answer: r.value.toString() };
+  return { q: '求这个行列式的值。', qhtml: view(r.steps[0].view, input, { k: 0 }), type: 'num', answer: r.value.toString() };
 }
 
 // 填表：每一步之后 D = 系数 × |…| 的系数
 export function table(input, r) {
   const rows = r.steps.filter((s) => s.view.op).map((s, k) => ({ label: `第 ${k + 1} 步`, cells: [{ v: s.view.coef.toString(), num: true }] }));
   if (!rows.length) return null;
-  return { q: '每做一步，写出 D = 系数 × |新的行列式| 里的系数；最后写出 D。', qhtml: '', dir: 'col', head: ['系数'], rows, extra: [{ label: 'D', v: r.value.toString(), num: true }] };
+  return { q: '每做一步，写出 D = 系数 × |新的行列式| 里的系数；最后写出 D。', dir: 'col', head: ['系数'], rows, extra: [{ label: 'D', v: r.value.toString(), num: true }] };
 }
 
 const mistaken = (input) => !!(input.noSign || input.noScale || input.noCofSign);

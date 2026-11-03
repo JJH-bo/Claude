@@ -1,0 +1,47 @@
+{
+  "unit": "Booth 补码一位乘",
+  "subject": "组成原理",
+  "steps": [
+    {
+      "id": "k1",
+      "seq": 1,
+      "pin": true,
+      "title": "Booth 规则",
+      "md": "乘数末尾补 $y_{n+1}=0$，每一步看 $y_ny_{n+1}$：00、11 加 0；01 加 $[x]_{\\text{补}}$；10 加 $[-x]_{\\text{补}}$。\n部分积、被乘数用双符号位，加完**算术右移**一位。一共加 $n+1$ 次、移 $n$ 次：最后一次只加不移。"
+    },
+    {
+      "id": "s1",
+      "seq": 2,
+      "page": 1,
+      "title": "先写两个编码",
+      "md": "$x=-0.1101$，$y=0.1011$。乘之前先把要加的两个数备好（双符号位）。\n\n```answer\nid: a-xc\ntitle: 写 [x]补\nq: $x=-0.1101$，写出双符号位的 $[x]_{\\text{补}}$。\ntype: fixed\nanswer: 11.0011\nbefore: [x]_{\\text{补}}=\nhint: 先写原码，数值位取反、末位加 1，再把符号位写两遍。\nexplain: $[x]_{\\text{原}}=1.1101$，数值位取反加 1 得 $1.0011$，双符号位 $11.0011$。\n```\n\n```answer\nid: a-nxc\ntitle: 写 [−x]补\nq: $x=-0.1101$，写出双符号位的 $[-x]_{\\text{补}}$。\ntype: fixed\nanswer: 00.1101\nbefore: [-x]_{\\text{补}}=\nhint: $-x$ 是正数。\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "每一步加什么",
+      "md": "每一步页面先问你：看乘数最低两位 $y_ny_{n+1}$，这一次加什么？答了再看它加、再右移。走到最后写出 $[x\\cdot y]_{\\text{补}}$。\n\n```mul\nid: ml-main\ntitle: Booth：x=−0.1101，y=0.1011\nx: -0.1101\ny: 0.1011\nalgo: booth\nask: op, result\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 3,
+      "title": "最后一步",
+      "md": "```quiz\nid: q-last\nq: 这道题 $n=4$。最后一次（看 $y_0y_1$ 的那一次，$y_0$ 是乘数的符号位）加完以后，还要不要右移？\n- [x] 不移：前面已经移了 4 次，乘数的数值位都用完了\n- [ ] 要移：每一次加完都要右移\n- [ ] 看 $y_0y_1$ 是不是 00\nexplain: 加 $n+1$ 次、移 $n$ 次。前 4 次各对应乘数的一位数值位，加完右移；最后这次带上了符号位 $y_0$，只是把符号的修正加进去，加完小数点的位置已经对了，再移就差了一位。\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 3,
+      "md": "换一组数，这次整张表自己填：每次右移以后的部分积和乘数。\n\n```practice\nid: pr-booth-fill\ntitle: 自己填一张表\nuse: mul\nalgo: booth\nmode: fill\ncount: 1\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 4,
+      "title": "练到熟",
+      "md": "页面随机出 $x$、$y$，直接写 $[x\\cdot y]_{\\text{补}}$（先在纸上列表算）。做对 3 题。\n\n```practice\nid: pr-booth\ntitle: Booth 练 3 道\nuse: mul\nalgo: booth\ncount: 3\n```"
+    }
+  ]
+}

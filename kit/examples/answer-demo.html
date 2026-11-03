@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>答案的新写法</title>
+<script src="la-kit.js">
+## 含参数的计算、按格写的 $A^n$
+
+```let
+a = param
+A = [[1, 1, a], [1, a, 1], [a, 1, 1]]
+```
+
+$|A| = \calc{det(A)} = \calc{factor(det(A))}$，所以 $a=1$、$a=-2$ 时要单独讨论。
+
+```answer
+id: q-pow
+q: $B=\begin{bmatrix}2&1\\0&2\end{bmatrix}$，求 $B^n$。
+answer: [[2^n, n*2^(n-1)], [0, 2^n]]
+formula: n
+before: B^n =
+```
+</script>
+<script type="text/markdown">
+---
+subject: 线代
+unit: 答案的新写法
+---
+
+# 答案的新写法
+
+## 引用前面的答案
+
+```answer
+id: q-P
+q: 写一个可逆矩阵 $P$，使 $P^{-1}AP$ 是对角矩阵，$A=\begin{bmatrix}1&2\\2&1\end{bmatrix}$。
+let A = [[1, 2], [2, 1]]
+answer: [[1, 1], [1, -1]]
+check: det(ans) != 0 => P 要可逆; dot(row(inv(ans)*A*ans, 1), [0, 1]) == 0 => P⁻¹AP 不是对角矩阵; dot(row(inv(ans)*A*ans, 2), [1, 0]) == 0 => P⁻¹AP 不是对角矩阵
+before: P =
+```
+
+```answer
+id: q-L
+q: 用你上一题写的 $P$，$P^{-1}AP$ 是什么？
+let A = [[1, 2], [2, 1]]
+answer: inv(ans(q-P))*A*ans(q-P)
+before: P^{-1}AP =
+```
+
+## 含参讨论：数集
+
+```answer
+id: q-set
+q: $a$ 取何值时方程组有唯一解？（$|A|=(a-1)^2(a+2)$）
+type: interval
+answer: a != 1 且 a != -2
+```
+
+## 方程
+
+```answer
+id: q-plane
+q: 写出过点 $(1,0,0)$、$(0,1,0)$、$(0,0,1)$ 的平面方程。
+type: equation
+answer: x + y + z = 1
+```
+
+## 定点数
+
+```answer
+id: q-fix
+q: $x=-0.1011$，写出 $[x]_补$ 的双符号位形式。
+type: fixed
+answer: 11.0101
+```
+
+## 含参数的计算、按格写的 $A^n$
+
+```let
+a = param
+A = [[1, 1, a], [1, a, 1], [a, 1, 1]]
+```
+
+$|A| = \calc{det(A)} = \calc{factor(det(A))}$，所以 $a=1$、$a=-2$ 时要单独讨论。
+
+```answer
+id: q-pow
+q: $B=\begin{bmatrix}2&1\\0&2\end{bmatrix}$，求 $B^n$。
+answer: [[2^n, n*2^(n-1)], [0, 2^n]]
+formula: n
+before: B^n =
+```
+</script>
