@@ -1,24 +1,24 @@
-# 第 1 块板「先看形状」
+# 第 2 块板「形状怎么定」
 
-老师写在板顶的话：对，$(2\times1)(1\times2)$ 是 $2\times2$。现在把顺序反过来，行在前、列在后。
+老师写在板顶的话：这里缺的是一条规则：乘积的形状只看两头，中间那两个相同的数「对掉」。行乘列，对掉以后剩 $1\times1$，就是一个数。
 
-## 先看形状
-$\boldsymbol\alpha$、$\boldsymbol\beta$ 都是 $2\times1$ 的列向量，$\boldsymbol\beta^{\mathrm T}$ 是 $1\times2$ 的行。
+上面那个乘积可以点结果看它怎么来的；下面那题填一个答案。
 
-【选择题 q-shape1】
-  $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$（列在前、行在后）乘出来是什么形状？
-  A. 一个数（$1\times1$）
-  B. $2\times2$ 的矩阵
-  C. $2\times1$ 的列向量
-  D. 乘不了
+## 形状怎么定
+$(m\times \chalk{yellow}{k})(\chalk{yellow}{k}\times n)\;\to\; m\times n$：中间的 $k$ 要相等，结果的形状是两头的 $m\times n$。
 
-## 顺序反过来
-【选择题 q-shape2】
-  $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$（行在前、列在后）乘出来是什么形状？
-  A. 一个数（$1\times1$）
-  B. $2\times2$ 的矩阵
-  C. $1\times2$ 的行向量
-  D. 和 $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$ 一样
+- $\boldsymbol\alpha\boldsymbol\beta^{\mathrm T}$：$(2\times\chalk{yellow}{1})(\chalk{yellow}{1}\times2)\to 2\times2$
+- $\boldsymbol\beta^{\mathrm T}\boldsymbol\alpha$：$(1\times\chalk{yellow}{2})(\chalk{yellow}{2}\times1)\to 1\times1$，一行乘一列，只有一个数
+
+【matrix m-bta】
+  id: m-bta
+  title: βᵀα：点一下结果里的数
+  let R = [[3, 1]]
+  let C = [[1], [2]]
+  product R C name=S
+
+【选择题 q-dot3】
+  换一组 3 维的：$\mathbf u=(2,-1,3)^{\mathrm T}$，$\mathbf v=(1,4,2)^{\mathrm T}$。$\mathbf u^{\mathrm T}\mathbf v$ 等于多少？
 
 # 常驻栏
 ## 这节课的记号
