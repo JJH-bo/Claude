@@ -391,6 +391,8 @@ table.mx.mx-click td { cursor: pointer; }
 .mi-cell:disabled { opacity: 1; -webkit-text-fill-color: currentColor; }
 /* 写序列、写位串的作答框（textinput.js）：一行字，下面回显读懂的样子（一个元素 / 一位一格），判分后标出不对的格子 */
 .ti { display: flex; flex-direction: column; gap: 6px; width: min(420px, 100%); }
+.ti-line { width: min(560px, 100%); min-width: min(560px, 100%); }
+.ti-line .ti-input { font: 500 18px/1 var(--sans); letter-spacing: 0; }
 .ti-input {
   width: 100%; height: 48px; padding: 0 12px;
   border: 0; border-bottom: 2px dashed rgb(var(--chalk-rgb) / 0.45); border-radius: 10px 10px 2px 2px;
@@ -414,6 +416,8 @@ table.mx.mx-click td { cursor: pointer; }
 .ti-sep { color: var(--muted); font-size: 13px; }
 .ti-count { margin-left: 6px; color: var(--muted); font-size: 13px; }
 .ti-err { color: var(--coral); }
+.ti-read { color: var(--muted); }
+.ti-read.is-right { color: var(--green); }
 /* 写式子的作答框（formulainput.js）：一行字，下面实时写成公式 */
 .fi { display: flex; flex-direction: column; gap: 6px; width: min(360px, 100%); }
 .fi-text {

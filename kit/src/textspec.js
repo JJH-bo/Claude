@@ -2,6 +2,7 @@
 import { parseSeqAnswer, checkSeq, radixAnswer, checkRadix, groupDigits } from './textcheck.js';
 import { calcValue, isQ } from './exact.js';
 import { cellOk, normCell, readNumber } from './stepperspec.js';
+import { intervalSpec, equationSpec, fixedSpec, parseNumSet, setText, parseEquations } from './anstypes.js';
 
 /**
  * 文字型答案（type: seq / bin / hex）→ answerWidget 的 spec.text：{ shape, check(写的) → {ok, wrong, msg}, display, tex }。
@@ -31,6 +32,13 @@ export function textAnswerSpec(type, answer, { scope = {}, width } = {}) {
     const ans = radixAnswer(v, base, w);
     const shown = groupDigits(ans.digits);
     return { shape: { kind: 'radix', base, width: ans.width }, check: (g) => checkRadix(g, ans), display: shown, tex: `\\texttt{${shown.replace(/ /g, '\\,')}}${base === 16 ? '\\,\\text{H}' : ''}` };
+  }
+  // 数集（含参讨论）、线性方程（组）、定点数：判法在 anstypes.js
+  if (t === 'interval' || t === 'set') return { shape: { kind: 'line', ph: '写区间或不等式：(-∞, 1) ∪ (2, +∞)、a ≠ 1 且 a ≠ -2、{1, -2}', echo: (v) => `读成：${setText(parseNumSet(v))}` }, ...intervalSpec(answer) };
+  if (t === 'equation' || t === 'eq') return { shape: { kind: 'line', ph: '写方程，几个用 ; 隔开：x + 2y - z = 3', echo: (v) => { const e = parseEquations(v); return `${e.rows.length} 个方程，未知数 ${e.vars.join('、')}`; } }, ...equationSpec(answer) };
+  if (t === 'fixed') {
+    const f = fixedSpec(answer, { scope });
+    return { shape: { kind: 'line', mode: 'decimal', ph: `写 ${f.width} 位，小数点照写：比如 ${f.display.replace(/[01]/g, '0')}` }, ...f };
   }
   return null;
 }

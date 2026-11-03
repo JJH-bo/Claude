@@ -44,3 +44,34 @@ export function checkConditions(cond, given, vars) {
   }
   return { ok: true, msg: '' };
 }
+
+// —— 引用前面那道题学生写的答案：ans(q-P) ——
+// 写在 check: 或 answer: 里（学生选的 P 不同，后面的 P⁻¹AP 照样判对）。表达式里不能有「-」这类字符，
+// 先把 ans(编号) 换成 __ans0、__ans1 这样的变量名，判的时候再把那道题的答案放进去
+const ANS_REF = /\bans\(\s*([A-Za-z0-9_\-.~:@+]+)\s*\)/g;
+export function ansRefs(src) {
+  const refs = [];
+  const out = String(src ?? '').replace(ANS_REF, (m, id) => {
+    let r = refs.find((x) => x.id === id);
+    if (!r) { r = { id, name: `__ans${refs.length}` }; refs.push(r); }
+    return r.name;
+  });
+  return { src: out, refs };
+}
+
+/**
+ * answer: 里引用了前面的答案时，标准答案跟着学生前面写的变：把它变成一条 check（ans == 那个式子）。
+ * 返回 { cond, refs }；answer 和 check 里都没引用就返回 null
+ */
+export function refConditions(answerSrc, checkSrc) {
+  const a = ansRefs(answerSrc);
+  const c = checkSrc ? ansRefs(checkSrc) : { src: '', refs: [] };
+  if (!a.refs.length && !c.refs.length) return null;
+  // 两边编号要一致：合在一起再换一次
+  const both = ansRefs(`${answerSrc}\u0000${checkSrc || ''}`);
+  const [ans2, check2] = both.src.split('\u0000');
+  const cond = [];
+  if (a.refs.length) cond.push({ ...parseConditions(`ans == ${ans2}`)[0], text: 'ans == 答案', msg: '按你前面那一题写的答案算，这里还不对。' });
+  if (check2) cond.push(...parseConditions(check2));
+  return { cond, refs: both.refs, answerSrc: ans2 };
+}

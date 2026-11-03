@@ -14,7 +14,7 @@ import { markDraft } from '../drafts.js';
 import { formulaInput } from '../formulainput.js';
 import { formulaSpec, formulaTeX, compareFormula } from '../formula.js';
 import { textAnswerInput } from '../textinput.js';
-import { parseConditions, checkConditions } from '../anscheck.js';
+import { parseConditions, checkConditions, refConditions } from '../anscheck.js';
 import { textAnswerSpec } from '../textspec.js';
 
 // 通用作答组件：spec = {q, answer, type, before, hint, explain, solution}
@@ -108,9 +108,10 @@ export function answerWidget(body, spec, onDone) {
     }
     attempts++;
     lastTried = input.partial();
+    spec.onGiven?.(given);
     if (first === null) first = input.text();
     if (text) r = text.check(given);
-    else if (spec.cond) r = checkConditions(spec.cond, given, spec.vars || {});
+    else if (spec.cond) r = checkConditions(spec.cond, given, (typeof spec.vars === 'function' ? spec.vars() : spec.vars) || {});
     else if (!formula) r = check(given, spec.answer, spec.type);
     spec.onTry?.({ text: input.text(), ok: r.ok, attempts, work, note: lastNote || undefined });
     if (r.ok) {
@@ -141,6 +142,7 @@ export function answerWidget(body, spec, onDone) {
   });
   btnReveal.addEventListener('click', () => {
     input.fill(formula ? formula.display : text ? text.display : display(spec.answer));
+    if (!formula && !text) spec.onGiven?.(spec.answer);
     show('is-reveal', `<div><strong>答案：</strong>${tex2html(formula ? formulaTeX(formula.expected) : text ? text.tex : valueTeX(spec.answer))}</div>${spec.explain ? mdToHtml(spec.explain) : ''}`);
     finish(false, true);
   });
@@ -155,6 +157,7 @@ export function answerWidget(body, spec, onDone) {
     else if (text) input.fill(value && value !== '（未填完）' ? value : text.display);
     else input.fill(nums ? nums.map((x) => numText(Number(x))) : display(spec.answer));
     input.markAll('is-right');
+    if (!formula && !text) { try { spec.onGiven?.(input.read()); } catch { /* 读不回来就按标准答案 */ } }
     show('is-ok', `<div class="q-verdict">✓ 正确${attempts > 1 ? `（第 ${attempts} 次）` : ''}</div>${spec.explain ? mdToHtml(spec.explain) : ''}`);
     finish(true, false);
   }
@@ -238,10 +241,24 @@ export function answer(el, src) {
   // formula: n —— 答案是含 n 的式子：学生写式子，页面代几组 n 比较
   const formula = fields.formula ? formulaSpec(fields.answer, fields.formula, scope) : null;
   const text = textAnswerSpec(fields.type, fields.answer, { scope, width: fields.width });
-  const value = formula || text ? null : compile(fields.answer)(vars);
+  // ans(编号)：引用前面那道题学生写的答案（没做时按那道题的标准答案）。answer: 里引用了，就按条件判（ans == 那个式子）
+  const refs = !formula && !text ? refConditions(fields.answer, fields.check) : null;
+  const book = (session.answerBook ??= new Map());
+  const refVars = () => {
+    const out = { ...vars };
+    for (const r of refs?.refs || []) {
+      const b = book.get(r.id);
+      if (!b) throw new Error(`ans(${r.id})：这一节前面没有 id 是 ${r.id} 的 answer（引用的那一题要先放、要写 id:）`);
+      out[r.name] = b.given ?? b.std;
+    }
+    return out;
+  };
+  const value = formula || text ? null : compile(refs ? refs.answerSrc : fields.answer)(refs ? refVars() : vars);
+  if (!formula && !text && el.dataset.bid) book.set(el.dataset.bid, { std: value, given: null });
   // check: 按条件判（答案不唯一的：特解、P、Q、可逆变换……）。answer: 是一个对的答案（形状、看答案用），先拿它验一遍条件
   let cond = null;
-  if (fields.check) {
+  if (refs) cond = refs.cond;
+  else if (fields.check) {
     if (formula || text) session.problem(el, 'answer', 'check: 只能用在数、向量、矩阵的答案上');
     else {
       cond = parseConditions(fields.check);
@@ -254,11 +271,15 @@ export function answer(el, src) {
   const body = withCalcScope(scope, () => widget(el, { title, cls: 'answer' }));
   const done = session.gate(el, title);
   const onTry = (t) => session.record({ type: 'answer', liveOnly: true, title, q: plain(fields.q), value: t.text, ok: t.ok, attempts: t.attempts, transcript: t.work || undefined, check: t.note, el });
-  answerWidget(body, { ...fields, answer: value, formula, text, cond, vars, type: (fields.type || '').toLowerCase(), onTry, scope }, (r) => {
+  const onGiven = (g) => { const b = book.get(el.dataset.bid); if (b) b.given = numeric(g); };
+  answerWidget(body, { ...fields, answer: value, formula, text, cond, vars: refs ? refVars : vars, type: (fields.type || '').toLowerCase(), onTry, onGiven, scope }, (r) => {
     session.record({ type: 'answer', final: true, title, q: plain(fields.q), ok: r.ok, attempts: r.attempts, first: r.first, last: r.last, expected: formula ? formula.display : text ? text.display : plainValue(value), revealed: r.revealed, work: r.work || undefined, check: r.note, el });
     done();
   });
 }
+
+// 学生写的（分数、带根号的格子）→ 普通的数，后面的题拿去算
+const numeric = (x) => (Array.isArray(x) ? x.map(numeric) : Number(x));
 
 export const plain = (s) => String(s || '').replace(/\s+/g, ' ').slice(0, 200);
 export const plainValue = (v) => (Array.isArray(v) ? (Array.isArray(v[0]) ? `[${v.map((r) => r.map(numText).join(' ')).join('; ')}]` : `(${v.map(numText).join(', ')})`) : numText(v));
