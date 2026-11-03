@@ -34,13 +34,15 @@ export function createBoardTools({ bv, segs }) {
   function markOp(op, { animate = true } = {}) {
     const done = [];
     const errs = [];
+    const warns = [];
     for (const spec of op.marks || []) {
       const r = placeMark(spec, { animate });
       if (r.ok) done.push({ id: r.id, seg: r.seg, spec: { ...spec, id: undefined } });
       else errs.push(`${markWhere(spec)}：${r.error}`);
+      if (r.warn) warns.push(`${r.id}：${r.warn}`);
     }
     errs.push(...(op.errors || []));
-    return { op: 'mark', id: op.target || '', ok: done.length > 0, marks: done, error: errs.length ? errs.join('；') : undefined };
+    return { op: 'mark', id: op.target || '', ok: done.length > 0, marks: done, error: errs.length ? errs.join('；') : undefined, warn: warns.length ? warns.join('；') : undefined };
   }
 
   // 画一条标注。restore：刷新后重放（不管在不在当前板上）。返回 { ok, id, seg } 或 { ok: false, error }
@@ -75,7 +77,7 @@ export function createBoardTools({ bv, segs }) {
     // 同一个 id 换了地方：原来那条擦掉
     if (prev && prev.host !== host) prev.host?._marks?.remove(id);
     marks.set(id, { id, seg: seg.id, spec, host });
-    return { ok: true, id, seg: seg.id };
+    return { ok: true, id, seg: seg.id, ...(r.warn ? { warn: r.warn } : {}) };
   }
 
   function unmarkOp(op) {

@@ -343,6 +343,17 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
   }
 
   // 教具演示：板书标注、会动的矩阵、页面验算
+  // 标注（docs/mark-plan.md）：照 2026-11-03 真课那块板（一般现在时什么时候加 -s）。「测试:标注旧」是那节课里 Claude 的标法
+  // （把文字塞进公式起名字、一项一个圈），对照用；「测试:标注」是现在该怎么标
+  if (!isSystem && /测试\s*[:：]?\s*标注/.test(said)) {
+    const n = nextSeq(turns, memo);
+    const old = /标注\s*旧/.test(said);
+    // 「测试:标注圈」：一组要背的画一个大圈；「测试:标注全」：别的画法（✓ ✗、着重号、双下划线、划掉、箭头、跨行的圈）
+    if (/标注\s*全/.test(said)) return { kind: 'marks', text: join(pic + '（模拟老师）先判断下面几句对不对。', board(`new id=b${n} title="判断对错"`, sJudgeBody()), ...sJudgeMarks(n)) };
+    const ring = /标注\s*圈/.test(said);
+    return { kind: 'marks', text: join(pic + '（模拟老师）粉色的是要背的。圈好以后，做最下面那道题。', board(`new id=b${n} title="什么时候加 -s"`, sRuleBody(old)), ...sRuleMarks(n, old, ring)) };
+  }
+
   if (!isSystem && /测试\s*[:：]?\s*教具/.test(said)) {
     const n = nextSeq(turns, memo);
     return {
@@ -473,6 +484,71 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
 
 const F3 = '```';
 const F4 = '````';
+// 「测试:标注」那块板。old：照真课里 Claude 的写法，把要圈的文字塞进公式、起名字
+function sRuleBody(old) {
+  const t = (name, x) => (old ? `$\\hl{${name}}{\\text{${x}}}$` : x);
+  return [
+    '**这块板回答：一般现在时里，谓语什么时候写成 does（动词加 -s），什么时候用原形 do。**',
+    '',
+    old ? '标法：粉色圈 = 要背的；蓝字 = 要理解的关键说明。' : '标法：=={yellow}涂黄的== 是关键说明，==涂粉的== 和粉色括号里的要背。',
+    '',
+    `${F3}key`,
+    '重点 1：规则 + 哪些主语算第三人称单数（书页 021）',
+    '',
+    `**规则**：主语是第三人称单数时，谓语动词加 -s；${t('ex', 'be 动词除外。')}`,
+    '',
+    old ? '**第三人称单数，书上列的是完整清单，只有这四类：**' : '**第三人称单数，书上列的是完整清单，=={pink}只有这四类==：**',
+    '',
+    `1. ${t('p1', 'he / she / it')}`,
+    `2. ${t('p2', '不定代词')}：everyone、something、nobody 等`,
+    `3. ${t('p3', '不可数名词')}`,
+    `4. ${t('p4', '可数名词单数')}（单个的人名、地名也算）`,
+    F3,
+    '',
+    `${F3}quiz`,
+    'id: q-s1',
+    'q: Everyone in my class ___ English every day.',
+    '- [ ] study',
+    '- [x] studies',
+    F3,
+  ].join('\n');
+}
+function sRuleMarks(n, old, ring = false) {
+  if (old) return [board(`mark target=b${n} color=pink`, 'term=ex note="例外"\nterm=p1\nterm=p2\nterm=p3\nterm=p4')];
+  return [
+    board(`mark target=b${n} li=1-4 ${ring ? '' : 'style=brace '}color=pink note="要背：只有这四类"`),
+    board(`mark target=b${n} text="be 动词除外" style=circle color=red note="例外"`),
+    board(`mark target=b${n} text="谓语动词加 -s" style=highlight`),
+    board(`mark target=b${n} text="everyone、something、nobody" style=wave color=blue`),
+  ];
+}
+
+function sJudgeBody() {
+  return [
+    '下面四句，哪句的谓语写对了？',
+    '',
+    '1. He work in a bank.',
+    '2. She works in a bank.',
+    '3. Everyone like this song.',
+    '4. The news are good.',
+    '',
+    '**判断的顺序**：先找主语，再看主语是不是第三人称单数，最后看谓语有没有加 -s。主语离谓语远的时候（中间夹着定语、从句），先把中间的部分划掉再判断，不然很容易被中间那个名词带跑。',
+    '',
+    'The boy with two dogs walks to school.',
+  ].join('\n');
+}
+function sJudgeMarks(n) {
+  return [
+    board(`mark target=b${n}`, 'text="He work in a bank." cross\ntext="She works in a bank." tick\ntext="Everyone like this song." cross note="everyone 是单数"\ntext="The news are good." cross note="news 不可数"'),
+    board(`mark target=b${n} text="哪句的谓语写对了" style=dots color=pink`),
+    board(`mark target=b${n} text="主语离谓语远的时候…先把中间的部分划掉再判断" style=circle color=yellow`),
+    board(`mark target=b${n} text="with two dogs" style=strike color=red`),
+    board(`mark target=b${n} text="The boy" to="walks" color=green note="主语 → 谓语"`),
+    board(`mark target=b${n} text="不然很容易被中间那个名词带跑" style=double color=blue`),
+    board(`mark target=b${n} phrase="to school" color=purple`),
+  ];
+}
+
 const fence = (lang, body) => `${F3}${lang}\n${body.trim()}\n${F3}`;
 // board 块外层一律 4 个反引号，里面组件的 3 个反引号不会把它提前关掉
 const board = (cmd, body = '') => `${F4}board ${cmd}\n${body.trim() ? `${body.trim()}\n` : ''}${F4}`;

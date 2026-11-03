@@ -14,6 +14,7 @@
 - 攻学习台的上限（学得会、学得牢：信心标定、按证据算掌握、页面自己跑的练习和混练、教学尺子、课堂计划块、学生逐行推导）和进度：`docs/learning-plan.md`
 - **复习和复现分两条线**（会不会做归复现组：原题不算复现通过、首页「今天复现」不分科先挑 3 组开一节复现课；记不记得归记忆点 `recall`：一条一条排期、首页「要记的」先写再看答案自己点）和进度：`docs/review-plan.md`
 - **课后的数据处理到对我有用**（删课；挂着没下课的课先算暂时的报告、试出来的选择题、按课算掌握、页面结论按新规则重算；下课后一次调用把每道题归到知识点、弱点出现几次、这节课的三行）和进度：`docs/data-plan.md`
+- **板书标注做到老师的水平**（任何文字都能圈、一组一个大圈或大括号、不压字、新画法、`=={yellow}…==` 换颜色）：`docs/mark-plan.md`
 - **黑板不像对话框**（预案 `board react`：学生作答后页面当场接、不调用；拍子：一轮一拍一拍地播；固定画面的板为什么不做）和进度：`docs/board-plan.md`
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
@@ -40,7 +41,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - `live-demo.html?dev`：实时黑板，右上角开发面板扮演对话里的 Claude
   - `408-demo.html`：计算机四门课的全部演示组件
   - `desk-demo.html?dev`：学习台（记忆库、在学习台里上课；「测试:记忆」见下文「学习台和记忆库」）
-  - `class-demo.html?dev`：课堂模式，模拟老师按剧本回放（不调用 Claude）；剧本里故意有一段写错的组件（`circle` 那行），控制台报「看不懂这一行」是正常的。在输入框里打暗号看教具：「测试:教具」（`let` 块 + `matrix` 的乘积 + 逐行 `mark` + `\calc`）、「测试:幂」（滑块和 `figure play` 让矩阵动起来）、「测试:指图」（图上的 `label=` / `at=` 标注）、「测试:出题」（`practice` 的自定义题型）、「测试:公式」（写含 n 的式子）、「测试:示意图」（`sketch`）、「测试:推导」（`derive` + `figure play step`）、「测试:原图」（`image`，本地用一张模拟的讲义图）、「测试:排序」（演示组件 `sort` + `figure play step` + `mark`）、「测试:预案」（`board react` + `add … hold`：答错、答对都由页面接，开发面板里调用次数不涨）、「测试:拍子」（一轮分四拍，点「下一拍」、「‹」、快捷「继续」）
+  - `class-demo.html?dev`：课堂模式，模拟老师按剧本回放（不调用 Claude）；剧本里故意有一段写错的组件（`circle` 那行），控制台报「看不懂这一行」是正常的。在输入框里打暗号看教具：「测试:教具」（`let` 块 + `matrix` 的乘积 + 逐行 `mark` + `\calc`）、「测试:幂」（滑块和 `figure play` 让矩阵动起来）、「测试:指图」（图上的 `label=` / `at=` 标注）、「测试:出题」（`practice` 的自定义题型）、「测试:公式」（写含 n 的式子）、「测试:示意图」（`sketch`）、「测试:推导」（`derive` + `figure play step`）、「测试:原图」（`image`，本地用一张模拟的讲义图）、「测试:排序」（演示组件 `sort` + `figure play step` + `mark`）、「测试:预案」（`board react` + `add … hold`：答错、答对都由页面接，开发面板里调用次数不涨）、「测试:拍子」（一轮分四拍，点「下一拍」、「‹」、快捷「继续」）、「测试:标注」「测试:标注圈」「测试:标注全」（板书标注的各种画法，「测试:标注旧」是改之前真课里的标法；先打一句别的话）
     - `la-demo.html`：线代的过程组件（elim、det、eig、schmidt、quad、frames）
     - `practice-demo.html`：演示组件当练习题（`practice use:`）；`answer-demo.html`：答案的新写法（`ans()`、数集、方程、定点数、含参数、按格的 Aⁿ）
 - iPad 尺寸：竖屏 820×1180，横屏 1180×820。云端会话里可以用预装的 Playwright + Chromium 截图检查。
@@ -64,7 +65,7 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - `session.js`：全局状态（关卡、作答记录、图形注册 `session.scenes`、写法错误 `session.problems`）。
 - 图形：`scene.js`（描述式交互图）、`graph.js`（函数图）、`space.js`（三维）、`expr.js`（表达式求值；向量是列向量，`a'` 是行）、`link.js`（steps 和图的联动）、`mods.js`（命令行末尾的修饰）。
 - 精确计算：`exact.js`（BigInt 分数；`\calc{…}` 的展开、`let` 块的解析、`calcValue`）。`render.js` 的 `tex2html` 展开 `\calc`，并带两个 KaTeX 宏 `\hl{名字}{…}`、`\chalk{颜色}{…}`（都展开成 `\htmlData`，`trust` 只放行它）。`let` 块（`blocks/letblock.js`）定义整节课的量（`session.vars`）；`renderLesson` 先把一段里的 `let` 块算一遍，正文的 `\calc` 才用得到。
-- 板书标注：`markspec.js`（写法解析）、`markdraw.js`（手绘的圈 / 框 / 箭头，旁注放哪：躲开正文、离远了连线），都是纯函数；`marks.js`（DOM：一个宿主一层 SVG，按 spec 找到公式里的 `\hl` 项、矩阵的行列、steps 的步、图上的东西，尺寸变了、图 `change` 了跟着重新摆）。在板上执行 mark / unmark / figure（找目标、只动当前板和常驻栏、板上现有的标注）是 `class/boardtools.js`，课堂和实时黑板共用。`tokens.js` 是指令行分词（协议、标注、matrix 共用）。
+- 板书标注（`docs/mark-plan.md`）：`markspec.js`（写法解析；`text="板上的字"`、`li=1-4` / `para=` / `tr=`、`to=` 箭头；画法 circle / box / brace / underline / double / wave / dots / highlight / strike / tick / cross / arrow，`ENCLOSE_STYLES` 把一组东西合成一个形状）、`textfind.js`（在画好的字里找一段字：不管空格、大小写、全角半角，「…」隔开头尾）、`markdraw.js`（手绘的形状：宽的是圆角长圈 `loopPath`、方的一小块是椭圆、跨行半句沿着字圈 `lassoPath`、大括号、拱形箭头 `arcPath`；留白按四周离别的字多远 `roomAround` / `padsFor`；旁注放哪：躲开正文、离远了连线），都是纯函数；`marks.js`（DOM：一个宿主一层 SVG，荧光笔另有字下面的一层 `.mk-under`；按 spec 找到板上的字、列表的几条、公式里的 `\hl` 项、矩阵的行列、steps 的步、图上的东西，尺寸变了、图 `change` 了跟着重新摆）。写板时就标的重点：`==要背的==` 粉色、`=={yellow}…==` 换颜色（`render.js` 的 `forgive`）。在板上执行 mark / unmark / figure（找目标、只动当前板和常驻栏、板上现有的标注）是 `class/boardtools.js`，课堂和实时黑板共用。`tokens.js` 是指令行分词（协议、标注、matrix 共用）。
 - 会动的矩阵：`matrixspec.js`（写法、精确求值、哪些格子变了 / 哪个数飞到哪，纯函数）+ `blocks/matrix.js`（画面、闪烁和飞行动画、滑块、点乘积里的数；接 `figureControls`，课堂里能 `figure set / play / highlight` 和 `board mark`）。
 - 判分：`check.js`、`mathinput.js`；`anscheck.js`（`answer` 的 `check:` 按条件判、格子里的根号 `1/√2`、引用前面的答案 `ans(编号)`（`ansRefs` / `refConditions`；学生写的值记在 `session.answerBook`），纯函数）；`anstypes.js`（`type: interval` 数集、`equation` 线性方程（组）、`fixed` 定点数，纯函数，`textspec.js` 接上，输入框是 `textinput.js` 的 `line`）；精确分数和行化简：`linalg.js`。
 - 含参数的精确计算：`let` 里 `a = param`（`exact.js` 的 `Sym`），算到参数时 `exact.js` 交给 `paramcalc.js`（`useSymbolic`，按多项式算：行列式、矩阵乘法、迹、`factor`；`render.js` import 它）。`formula:` 的矩阵答案按格给式子框：`formula.js` 的 `matrixCells` / `compareCells` + `formulainput.js` 的 `formulaGrid`；写法要求 `form: kA / factored`（`checkForm`，值对了再看），`formula: -` 是没有变量的式子作答。

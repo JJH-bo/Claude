@@ -23,3 +23,15 @@ test('粗体贴着中文标点也认；代码里不动；普通粗体照旧', ()
   assert.equal(r('**例外**（书上没写）'), '<strong>例外</strong>（书上没写）');
   assert.equal(r('`**判断：**x` 代码'), '<code>**判断：**x</code> 代码');
 });
+
+test('==要背== 粉色、=={yellow}关键== 换颜色：写板时就涂荧光笔，里面能有公式、加粗；不配对、===、贴着空格的不算', () => {
+  assert.equal(mdToHtml('规则：==谓语动词加 -s==。', { inline: true }), '规则：<mark class="lk-bei">谓语动词加 -s</mark>。');
+  assert.match(mdToHtml('=={yellow}关键说明==', { inline: true }), /<mark class="hl-mark hl-yellow">关键说明<\/mark>/);
+  assert.match(mdToHtml('=={蓝}要理解==', { inline: true }), /hl-mark hl-blue">要理解</);
+  assert.match(mdToHtml('=={pink}只有这四类==', { inline: true }), /<mark class="lk-bei">只有这四类<\/mark>/);
+  assert.match(mdToHtml('=={yellow}**be** 除外 $x^2$==', { inline: true }), /<mark class="hl-mark hl-yellow"><strong>be<\/strong> 除外 <span class="katex/);
+  assert.doesNotMatch(mdToHtml('a == b', { inline: true }), /<mark/);
+  assert.doesNotMatch(mdToHtml('只有开头==没有结尾', { inline: true }), /<mark/);
+  assert.doesNotMatch(mdToHtml('$a==b$', { inline: true }), /<mark/);
+  assert.doesNotMatch(mdToHtml('x === y === z', { inline: true }), /<mark/);
+});

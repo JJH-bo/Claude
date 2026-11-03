@@ -64,7 +64,7 @@ test('parseMarkSpec：写错了说清楚哪里错', () => {
   assert.match(err('target=b5 row'), /row 后面要写序号/);
   assert.match(err('target=b5 row=0'), /从 1 数/);
   assert.match(err('target=b5 entry=2'), /两个从 1 数的序号/);
-  assert.match(err('target=b5 style=wavy'), /style 只认/);
+  assert.match(err('target=b5 style=zigzag'), /style 只认/);
   assert.match(err('target=b5 color=teal'), /color 只认/);
   assert.match(err('target=b5 side=middle'), /side 只认/);
   assert.match(err('target=b5 foo=1'), /看不懂「foo=」/);
@@ -86,11 +86,11 @@ test('parseMarkSpec：matrix 组件里的 mark', () => {
 });
 
 test('parseMarkBlock：开头那行给 target 和颜色，块里一行一条', () => {
-  const r = parseMarkBlock('target=b5 color=pink', 'term=mid note="一个数"\nterm=rest blue\n\n# 说明行不算\nrow 9 style=wavy');
+  const r = parseMarkBlock('target=b5 color=pink', 'term=mid note="一个数"\nterm=rest blue\n\n# 说明行不算\nrow 9 style=zigzag');
   assert.equal(r.marks.length, 2);
   assert.deepEqual(r.marks.map((m) => [m.target, m.sel.name, m.color]), [['b5', 'mid', 'pink'], ['b5', 'rest', 'blue']]);
   assert.equal(r.errors.length, 1);
-  assert.match(r.errors[0], /^第 3 行「row 9 style=wavy」：style 只认/);
+  assert.match(r.errors[0], /^第 3 行「row 9 style=zigzag」：style 只认/);
   // 开头那行自己也指了地方：它也算一条
   const both = parseMarkBlock('target=b5 term=a', 'term=b');
   assert.deepEqual(both.marks.map((m) => m.sel.name), ['a', 'b']);
@@ -99,7 +99,7 @@ test('parseMarkBlock：开头那行给 target 和颜色，块里一行一条', (
   // 各行自己写 target
   assert.deepEqual(parseMarkBlock('', 'target=b5 term=a\ntarget=fig-1 at=[1, 2]').marks.map((m) => m.target), ['b5', 'fig-1']);
   assert.match(parseMarkBlock('', 'term=a').errors[0], /缺少 target/);
-  assert.ok(parseMarkBlock('target=b5 wavy', '').error);
+  assert.ok(parseMarkBlock('target=b5 zigzag', '').error);
 });
 
 test('parseUnmark：id、target、all，可以写好几个', () => {
@@ -120,7 +120,7 @@ test('markText：给课堂 Claude 看的一行', () => {
 
 test('协议：mark / unmark 指令', () => {
   assert.deepEqual(parseCommand('mark target=b5 term=mid'), { op: 'mark', head: 'target=b5 term=mid', target: 'b5' });
-  assert.match(parseCommand('mark target=b5 wavy').error, /看不懂「wavy」/);
+  assert.match(parseCommand('mark target=b5 zigzag').error, /看不懂「zigzag」/);
   assert.deepEqual(parseCommand('unmark m1'), { op: 'unmark', ids: ['m1'], targets: [], all: false });
   assert.ok(parseCommand('unmark').error);
 
@@ -188,4 +188,105 @@ test('英语句子里的词：word= / words= / phrase= / blank=（docs/english-p
   assert.match(wordSpan({ kind: 'phrase', text: 'who lives' }, w).error, /出现了 2 次.*#2/);
   assert.match(wordSpan({ kind: 'phrase', text: 'that' }, w).error, /没有「that」/);
   assert.match(wordSpan({ kind: 'word', k: 99 }, w).error, /一共 12 个词/);
+});
+
+test('新写法：text= 板上的字、li= / para= / tr= 一段、to= 箭头指过去；新画法和默认颜色', () => {
+  const t = spec('target=b5 text="be 动词除外" color=red note="例外"');
+  assert.deepEqual(t.sel, { kind: 'text', text: 'be 动词除外', n: 0 });
+  assert.equal(t.style, 'circle', '几个字默认圈');
+  assert.equal(t.color, 'red');
+  assert.equal(spec('target=b5 text="例外#2"').sel.n, 2);
+  assert.equal(spec('target=b5 text="主语是第三人称单数时，谓语动词加 -s，be 动词除外"').style, 'underline', '长的一句默认划线');
+  assert.deepEqual(spec('target=b5 li=1-4 style=brace note="要背"').sel, { kind: 'li', a: 1, b: 4 });
+  assert.equal(spec('target=b5 li=1-4').style, 'circle', '一组列表默认一个大圈');
+  assert.deepEqual(spec('target=b5 li=3').sel, { kind: 'li', a: 3, b: 3 });
+  assert.deepEqual(spec('target=b5 p=2').sel, { kind: 'para', a: 2, b: 2 });
+  assert.deepEqual(spec('target=b5 tr=2-3').sel, { kind: 'tr', a: 2, b: 3 });
+  assert.match(err('target=b5 li=4-1'), /li 后面写第几个或者一段/);
+  assert.match(err('target=b5 text=""'), /text 后面写板上的字/);
+  // 中文的画法名、新画法
+  assert.equal(spec('target=b5 text="x" 波浪线').style, 'wave');
+  assert.equal(spec('target=b5 text="x" style=大括号').style, 'brace');
+  assert.equal(spec('target=b5 text="x" 着重号').style, 'dots');
+  assert.equal(spec('target=b5 text="x" style=double').style, 'double');
+  // ✓ 默认绿、✗ 默认红；写了颜色用写的；块里开头那行的颜色沿用
+  assert.equal(spec('target=b5 text="He works." tick').color, 'green');
+  assert.equal(spec('target=b5 text="He work." cross').color, 'red');
+  assert.equal(spec('target=b5 text="He work." cross yellow').color, 'yellow');
+  const blk = parseMarkBlock('target=b5 color=pink', 'text="a" tick\ntext="b"');
+  assert.deepEqual(blk.marks.map((m) => m.color), ['pink', 'pink']);
+  // to=：从这里画箭头指到那里
+  const a = spec('target=b5 text="主语" to="谓语" note="管着"');
+  assert.equal(a.style, 'arrow');
+  assert.deepEqual(a.to, { text: '谓语', n: 0 });
+  assert.match(err('target=b5 text="主语" to="谓语" style=circle'), /to= 是画一个箭头/);
+  assert.match(markText('m4', spec('target=b5 li=1-4 style=brace color=pink note="要背"')), /^m4：b5 里第 1–4 条（大括号，pink）「要背」$/);
+  assert.match(markText('m5', spec('target=b5 text="He work." cross')), /^m5：b5 里「He work\.」（✗）$/);
+});
+
+test('找字：不管空格、大小写、全角半角；…隔开头尾；跨好几个文字节点；第几次', async () => {
+  const { findText, pickHit } = await import('../kit/src/textfind.js');
+  const nodes = ['规则：主语是第三人称单数时，谓语动词加 -s；', 'be', ' 动词除外。'];
+  const [h] = findText(nodes, 'be 动词除外');
+  assert.deepEqual(h, { from: [1, 0], to: [2, 5] });
+  assert.equal(findText(nodes, 'BE动词除外').length, 1, '空格、大小写不管');
+  assert.equal(findText(nodes, '加 -s;').length, 1, '全角分号和半角一样');
+  assert.equal(findText(nodes, '主语是 （ 第三人称').length, 0);
+  const g = findText(nodes, '主语是…除外');
+  assert.deepEqual(g[0].from, [0, 3]);
+  assert.deepEqual(g[0].to, [2, 5]);
+  assert.equal(findText(['he / she / it'], 'he/she/it').length, 1);
+  const two = findText(['例外：a', '还有一个例外'], '例外');
+  assert.equal(two.length, 2);
+  assert.equal(pickHit(two, 0, '例外').hit, two[0]);
+  assert.match(pickHit(two, 0, '例外').warn, /出现了 2 次.*#2/);
+  assert.equal(pickHit(two, 2, '例外').hit, two[1]);
+  assert.match(pickHit(two, 3, '例外').error, /只出现了 2 次/);
+  assert.match(pickHit([], 0, '例外').error, /这里没有「例外」/);
+  assert.equal(findText(['ＡＢＣ'], 'abc').length, 1, '全角字母');
+  // 尾巴离得太远不算
+  assert.equal(findText([`头${'x'.repeat(500)}尾`], '头…尾').length, 0);
+});
+
+test('画法的几何：四周空多少、留白不压到别的字、圈包住要圈的、跨行半句沿着字圈、大括号、拱形箭头', async () => {
+  const { roomAround, padsFor, shapeFor, lassoPath, arcPath, sameLine, rng } = await import('../kit/src/markdraw.js');
+  const line = { x: 100, y: 100, w: 120, h: 20 };
+  // 上一行的字框和这一行叠了一个像素：仍算上一行（按中心分）；同一行左边挨着的字；自己的字不算
+  const obs = [{ x: 0, y: 72, w: 400, h: 29 }, { x: 40, y: 100, w: 58, h: 20 }, { x: 110, y: 100, w: 50, h: 20 }, { x: 0, y: 140, w: 400, h: 20 }];
+  const room = roomAround(line, obs);
+  assert.deepEqual(room, { top: 0, bottom: 20, left: 2, right: 40 });
+  // 留白：空隙的一半，最少 1.5、最多 want
+  const p = padsFor(room);
+  assert.equal(p.top, 1.5);
+  assert.equal(p.bottom, 6);
+  assert.equal(p.left, 1.5);
+  assert.equal(p.right, 8);
+  // 圈（圆角长圈）把要圈的四个角都包住；bbox 比它大
+  const pathPts = (d) => [...d.matchAll(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g)].map((m) => [+m[1], +m[2]]);
+  const c = shapeFor('circle', { box: line, room: {} }, 's1');
+  const pts = pathPts(c.strokes[0]);
+  const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+  assert.ok(Math.min(...xs) < line.x && Math.max(...xs) > line.x + line.w && Math.min(...ys) < line.y && Math.max(...ys) > line.y + line.h);
+  assert.ok(Math.min(...xs) > line.x - 20, '宽的一行字不会像椭圆那样往两边多出一大截');
+  // 跨两行、第一行从中间开始：沿着字圈（lasso），不是整段一个大圈
+  const two = shapeFor('circle', { box: { x: 0, y: 0, w: 400, h: 50 }, lines: [{ x: 250, y: 0, w: 150, h: 20 }, { x: 0, y: 30, w: 180, h: 20 }], room: {} }, 's2');
+  const tp = pathPts(two.strokes[0]);
+  assert.ok(!tp.some(([px, py]) => px < 100 && py < 15), '第一行左边没圈进去');
+  assert.match(lassoPath([{ x: 0, y: 0, w: 50, h: 20 }, { x: 0, y: 22, w: 30, h: 20 }], rng('x')), /^M/);
+  // 大括号在右边，旁注挨着括号尖
+  const br = shapeFor('brace', { box: { x: 20, y: 0, w: 200, h: 120 } }, 's3');
+  assert.ok(br.bbox.x >= 220 && br.tip[0] > 225 && Math.abs(br.tip[1] - 60) < 3);
+  const bl = shapeFor('brace', { box: { x: 80, y: 0, w: 200, h: 120 }, side: 'left' }, 's3');
+  assert.ok(bl.bbox.x + bl.bbox.w <= 80 && bl.tip[0] < 70);
+  // 荧光笔是涂色（画在字下面那层），着重号一个字一个点，✓ 写在句子后面
+  assert.equal(shapeFor('highlight', { box: line }, 'h').fills.length, 1);
+  assert.equal(shapeFor('dots', { box: line, chars: [{ x: 100, w: 20 }, { x: 120, w: 20 }, { x: 140, w: 20 }] }, 'd').dots.length, 3);
+  assert.ok(shapeFor('tick', { box: line }, 't').bbox.x >= line.x + line.w);
+  assert.equal(shapeFor('double', { box: line }, 'dd').strokes.length, 2);
+  // 同一行两处的箭头：上面挤就往下拱
+  const a = { x: 0, y: 100, w: 60, h: 20 }, b = { x: 190, y: 100, w: 50, h: 20 };
+  assert.ok(sameLine(a, b));
+  assert.equal(arcPath(a, b, rng('a'), { top: 10, bottom: 40 }).down, true);
+  assert.equal(arcPath(a, b, rng('a'), { top: 40, bottom: 40 }).down, false);
+  assert.ok(!sameLine(a, { x: 0, y: 200, w: 40, h: 20 }));
 });

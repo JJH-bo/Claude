@@ -9,6 +9,8 @@ import './paramcalc.js'; // 含参数的 \calc（let 里写 a = param）：exact
 import { MARK_COLORS } from './markspec.js';
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false, typographer: false });
+const HL_COLORS = { yellow: 'yellow', pink: 'pink', blue: 'blue', green: 'green', red: 'red', 黄: 'yellow', 粉: 'pink', 蓝: 'blue', 绿: 'green', 红: 'red' };
+
 
 const MATH_RE = /(`+)[\s\S]*?\1|\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?!\s)((?:\\.|[^$\\\n])+?)(?<!\s)\$/g;
 
@@ -63,7 +65,11 @@ function forgive(text, store) {
     });
     // 要背的（docs/english-plan.md 第 7 批）：==……== 和写在公式外面的 \bei{……} 画成粉色荧光笔的底（在字底下，不压字）
     t = t.replace(/\\bei\{([^{}\n]{1,300})\}/g, (m, body) => raw(`<mark class="lk-bei">${md.renderInline(body)}</mark>`));
-    t = t.replace(/(^|[^=])==(?=[^\s=])([^=\n]{1,300}?)(?<=[^\s=])==(?!=)/g, (m, pre, body) => `${pre}${raw(`<mark class="lk-bei">${md.renderInline(body)}</mark>`)}`);
+    // =={yellow}……==：换一种颜色的荧光笔（关键说明、结论；docs/mark-plan.md），不写颜色就是要背的粉色
+    t = t.replace(/(^|[^=])==(?:\{(yellow|pink|blue|green|red|黄|粉|蓝|绿|红)\})?(?=[^\s=])([^=\n]{1,300}?)(?<=[^\s=])==(?!=)/g, (m, pre, c, body) => {
+      const color = HL_COLORS[c] || 'pink';
+      return `${pre}${raw(`<mark class="${color === 'pink' ? 'lk-bei' : `hl-mark hl-${color}`}">${md.renderInline(body)}</mark>`)}`;
+    });
     t = t.replace(/(^|[^*])\*\*(?=\S)([^*\n]{1,200}?)\*\*(?!\*)/g, (m, pre, body, at, all) => {
       const after = all[at + m.length] || '';
       const before = pre || '';

@@ -1551,6 +1551,7 @@ export async function renderClass(root, meta, desk = null) {
     for (const o of boardOps) {
       if (o.op === 'mark' || o.op === 'unmark') {
         if (o.error) notes.push(o.ok ? `指令 ${o.op} 有的没执行：${o.error}` : `指令 ${o.op}${o.id ? ` ${o.id}` : ''} 没执行：${o.error}`);
+        if (o.warn) notes.push(`指令 mark 提醒：${o.warn}`);
         continue;
       }
       if (!o.ok && !['add', 'new', 'replace', 'pin'].includes(o.op)) notes.push(`指令 ${o.op}${o.action ? ' ' + o.action : ''} ${o.id || ''} 没执行：${o.error}`);

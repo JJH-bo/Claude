@@ -180,8 +180,8 @@ test('黑板指令说明：protocol.js 能把文档里的例子都解析出来',
   assert.deepEqual(ops[4].assigns, { x: '[1, 1]' });
   assert.equal(ops[6].index, 4);
   // mark：开头那行自己是一条；块里一行一条，沿用开头那行的 target
-  assert.deepEqual(ops[7].marks.map((m) => [m.target, m.sel.kind, m.sel.name, m.note]), [['b5', 'term', 'mid', '1×1：一个数']]);
-  assert.deepEqual(ops[8].marks.map((m) => [m.target, m.sel.i, m.color]), [['m-b6', 1, 'yellow'], ['m-b6', 2, 'pink'], ['m-b6', 3, 'yellow']]);
+  assert.deepEqual(ops[7].marks.map((m) => [m.target, m.sel.kind, m.sel.a, m.sel.b, m.style, m.color, m.note]), [['b5', 'li', 1, 4, 'brace', 'pink', '要背']]);
+  assert.deepEqual(ops[8].marks.map((m) => [m.target, m.sel.kind, m.sel.text, m.style, m.color]), [['b5', 'text', 'be 动词除外', 'circle', 'red'], ['b5', 'text', '谓语动词加 -s', 'highlight', 'yellow']]);
   assert.equal(ops[8].errors, undefined);
   assert.deepEqual([ops[9].op, ops[9].id, ops[9].title], ['pin', 'k1', '这节课的记号']);
   assert.deepEqual([ops[10].op, ops[10].id], ['unpin', 'k1']);
@@ -653,7 +653,7 @@ test('组件手册：页面手写板关着的时候，手册写明暂时关掉�
 
 test('说明的版本号：开头写着，构建时打进 la-kit.js', async () => {
   const { docVersion } = await import('../kit/build-docs.js');
-  assert.match(docVersion(readFileSync(new URL('../CLAUDE-PROJECT.md', import.meta.url), 'utf8')), /^\d{4}-\d{2}-\d{2}[a-z]{0,2}$/);
+  assert.match(docVersion(readFileSync(new URL('../CLAUDE-PROJECT.md', import.meta.url), 'utf8')), /^\d{4}-\d{2}-\d{2}[a-z]*$/);
   assert.equal(docVersion('# 标题\n\n> **版本：2026-10-12b**　组件库'), '2026-10-12b');
   assert.throws(() => docVersion('# 没有版本号'), /版本/);
   // 同一天第二次发布加字母，按字符串比较也是更新的

@@ -2,12 +2,23 @@
 //   target=b5 term=mid note="一个数"          公式里 \hl{mid}{…} 那一项，圈出来、旁边写字
 //   target=m1 row 2 note="×2" color=pink       matrix 组件的第 2 行，框起来
 //   target=fig-1 at=[1, 2] style=arrow note="Ax 在这"
-// 解析成 { target, id, sel: { kind, … }, style, color, note, side, of, from, until }
+//   target=b5 text="be 动词除外" color=red note="例外"   板上的任何一段字（中文也行）
+//   target=b5 li=1-4 style=brace note="要背"            列表的第 1–4 条，右边一个大括号
+// 解析成 { target, id, sel: { kind, … }, style, color, note, side, of, from, until, to }
 import { tokenize } from './tokens.js';
 
-export const MARK_STYLES = ['circle', 'box', 'underline', 'highlight', 'strike', 'arrow'];
+// circle 圈（宽的、几行的是一个圆角长圈）、box 框、brace 旁边一个大括号（一组要背的）、underline 下划线、double 双下划线、
+// wave 波浪线、dots 着重号（每个字下面一个点）、highlight 荧光笔（涂在字下面）、strike 划掉、tick ✓、cross ✗、arrow 箭头
+export const MARK_STYLES = ['circle', 'box', 'brace', 'underline', 'double', 'wave', 'dots', 'highlight', 'strike', 'tick', 'cross', 'arrow'];
+// 把一组东西合起来包住的画法（几行字、几条列表合成一个形状）；别的画法一行画一笔
+export const ENCLOSE_STYLES = ['circle', 'box', 'brace'];
 export const MARK_COLORS = ['yellow', 'pink', 'blue', 'green', 'orange', 'purple', 'red', 'white'];
-const STYLE_ALIAS = { 圈: 'circle', 框: 'box', 下划线: 'underline', 涂: 'highlight', 划掉: 'strike', 箭头: 'arrow', cancel: 'strike', ring: 'circle', oval: 'circle', rect: 'box', square: 'box', hl: 'highlight' };
+const STYLE_ALIAS = {
+  圈: 'circle', 框: 'box', 下划线: 'underline', 涂: 'highlight', 荧光笔: 'highlight', 划掉: 'strike', 箭头: 'arrow', 大括号: 'brace', 括号: 'brace', 双下划线: 'double', 波浪线: 'wave', 着重号: 'dots', 勾: 'tick', 对: 'tick', 叉: 'cross', 错: 'cross',
+  cancel: 'strike', ring: 'circle', oval: 'circle', loop: 'circle', rect: 'box', square: 'box', hl: 'highlight', marker: 'highlight', bracket: 'brace', curly: 'brace', wavy: 'wave', squiggle: 'wave', dot: 'dots', check: 'tick', ok: 'tick', x: 'cross', wrong: 'cross',
+};
+// 不写颜色时：✓ 绿、✗ 红，别的黄
+const STYLE_COLOR = { tick: 'green', cross: 'red' };
 const COLOR_ALIAS = { gold: 'yellow', lav: 'purple', violet: 'purple', coral: 'red', 黄: 'yellow', 粉: 'pink', 蓝: 'blue', 绿: 'green', 橙: 'orange', 紫: 'purple', 红: 'red', 白: 'white' };
 const SIDES = { right: 'right', left: 'left', above: 'above', below: 'below', top: 'above', bottom: 'below', 右: 'right', 左: 'left', 上: 'above', 下: 'below' };
 // 要跟数字的选择：row 2、entry 2,3
@@ -17,15 +28,27 @@ const DIAG = new Set(['diag', 'diagonal', '对角线', '主对角线']);
 const NAME_RE = /^[A-Za-z0-9_-]{1,40}$/;
 const ID_RE = /^[A-Za-z0-9_\-.~:@+]{1,64}$/;
 const validId = (id) => ID_RE.test(id) && id !== '.' && id !== '..';
-const SEL_LIST = 'term=名字、row=2、col=3、diag、entry=2,3、block=1,2、step=2、label=Ax、item=4、at=[1, 2]、word=3、words=4-7、phrase="who lives"、blank=2、part=2-4';
+const SEL_LIST = 'text="板上的字"、li=1-4、para=2、tr=2、term=名字、row=2、col=3、diag、entry=2,3、block=1,2、step=2、label=Ax、item=4、at=[1, 2]、word=3、words=4-7、phrase="who lives"、blank=2、part=2-4';
+// 列表的第几条、第几段、表格（Markdown 写的，不是矩阵）的第几行：写一个数或者一段 1-4
+const RANGE_SEL = { li: 'li', para: 'para', p: 'para', tr: 'tr' };
 // 矩阵的部位（matrix 组件里只能标这些）
 export const MATRIX_SELS = ['row', 'col', 'diag', 'entry', 'block', 'all'];
 export const MAX_NOTE = 80;
 
 // 每种「标哪里」不写 style 时的画法
-export function defaultStyle(kind) {
+// text= 短的（几个字）圈，长的划线；一组列表、几段话一个大圈
+export function defaultStyle(kind, sel = {}) {
   if (kind === 'words' || kind === 'phrase') return 'underline';
+  if (kind === 'text') return [...String(sel.text ?? '').replace(/\s+/g, '')].length <= 12 ? 'circle' : 'underline';
+  if (kind === 'li' || kind === 'para') return 'circle';
   return ['term', 'entry', 'at', 'label', 'item', 'word'].includes(kind) ? 'circle' : 'box';
+}
+
+// text="…#2"：第几次出现（# 后面的数）
+function textSel(v, what = 'text') {
+  const m = /^([\s\S]*?)(?:#(\d+))?$/.exec(v);
+  if (!m[1].trim()) throw new Error(`${what} 后面写板上的字，比如 ${what}="be 动词除外"（出现几次时 ${what}="例外#2"）`);
+  return { text: m[1].trim(), n: Number(m[2] || 0) };
 }
 
 function nums(s) {
@@ -38,6 +61,7 @@ function nums(s) {
 function readMark(src, inherit = {}, component = false) {
   const spec = {};
   for (const k of ['target', 'color', 'style', 'side', 'of']) if (inherit[k] !== undefined && !(component && k === 'target')) spec[k] = inherit[k];
+  if (inherit.colorSet) spec.colorSet = true;
   let pending = null; // 等着后面跟数字的选择（row、entry……）
   const setSel = (kind, val) => {
     if (spec.sel) throw new Error(`一条标注只能标一处（已经有 ${spec.sel.kind}），要标好几处就写好几行`);
@@ -84,11 +108,18 @@ function readMark(src, inherit = {}, component = false) {
         setSel('phrase', { text: m[1].trim(), n: Number(m[2] || 0) });
       }
       else if (k === 'at') { if (!/^\[.*\]$/.test(v)) throw new Error('at 后面写图里的坐标，比如 at=[1, 2]'); setSel('at', { expr: v }); }
+      else if (k === 'text') setSel('text', textSel(v));
+      else if (k === 'to') spec.to = textSel(v, 'to');
+      else if (RANGE_SEL[k]) {
+        const m = /^(\d+)(?:\s*[-–~～到]\s*(\d+))?$/.exec(v);
+        if (!m || !(+m[1] >= 1) || (m[2] && +m[2] < +m[1])) throw new Error(`${k} 后面写第几个或者一段，比如 ${k}=2、${k}=1-4`);
+        setSel(RANGE_SEL[k], { a: +m[1], b: +(m[2] || m[1]) });
+      }
       else if (NUM_SEL[k]) fillNum(NUM_SEL[k], v);
       else if (k === 'diag') setSel('diag', {});
       else if (k === 'style') { const s = STYLE_ALIAS[v] || v.toLowerCase(); if (!MARK_STYLES.includes(s)) throw new Error(`style 只认 ${MARK_STYLES.join(' / ')}`); spec.style = s; }
-      else if (k === 'color' || k === 'colour') { const c = COLOR_ALIAS[v] || COLOR_ALIAS[v.toLowerCase()] || v.toLowerCase(); if (!MARK_COLORS.includes(c)) throw new Error(`color 只认 ${MARK_COLORS.join(' / ')}`); spec.color = c; }
-      else if (k === 'note' || k === 'text') spec.note = v;
+      else if (k === 'color' || k === 'colour') { const c = COLOR_ALIAS[v] || COLOR_ALIAS[v.toLowerCase()] || v.toLowerCase(); if (!MARK_COLORS.includes(c)) throw new Error(`color 只认 ${MARK_COLORS.join(' / ')}`); spec.color = c; spec.colorSet = true; }
+      else if (k === 'note') spec.note = v;
       else if (k === 'side') { const s = SIDES[v.toLowerCase()] || SIDES[v]; if (!s) throw new Error('side 只认 right / left / above / below'); spec.side = s; }
       else if (k === 'from' || k === 'until') { if (!/^\d+$/.test(v)) throw new Error(`${k} 后面写第几步（数字）`); spec[k] = Number(v); }
       else throw new Error(`看不懂「${k}=」：标哪里用 ${SEL_LIST}；画法用 style=，颜色 color=，旁注 note=`);
@@ -98,7 +129,7 @@ function readMark(src, inherit = {}, component = false) {
     const low = w.toLowerCase();
     if (t.quoted) { if (spec.note === undefined) { spec.note = w; continue; } throw new Error(`多了一段引号里的字「${w.slice(0, 20)}」：旁注写成 note="…"`); }
     if (MARK_STYLES.includes(low) || STYLE_ALIAS[w] || STYLE_ALIAS[low]) spec.style = STYLE_ALIAS[w] || STYLE_ALIAS[low] || low;
-    else if (MARK_COLORS.includes(low) || COLOR_ALIAS[w] || COLOR_ALIAS[low]) spec.color = COLOR_ALIAS[w] || COLOR_ALIAS[low] || low;
+    else if (MARK_COLORS.includes(low) || COLOR_ALIAS[w] || COLOR_ALIAS[low]) { spec.color = COLOR_ALIAS[w] || COLOR_ALIAS[low] || low; spec.colorSet = true; }
     else if (DIAG.has(low)) setSel('diag', {});
     else if (NUM_SEL[low]) pending = NUM_SEL[low];
     else if (/^(row|col|column|entry|cell|block|step|item|word|blank)\d/.test(low)) fillNum(NUM_SEL[low.match(/^[a-z]+/)[0]], low.replace(/^[a-z]+/, ''));
@@ -119,8 +150,11 @@ function finishMark(raw, component = false) {
   if (spec.id !== undefined && !validId(spec.id)) throw new Error(`标注的 id「${spec.id}」只能用字母、数字和 _ - . ~ : @ +`);
   if (!component && !spec.target) throw new Error('mark 缺少 target（段的 id，或者组件的 id:），比如 mark target=b5 term=mid');
   if (!component && !validId(spec.target)) throw new Error(`target「${spec.target}」不合法`);
-  spec.color ||= 'yellow';
-  spec.style ||= defaultStyle(spec.sel.kind);
+  if (component && spec.to) throw new Error('matrix 组件里的 mark 不能写 to=');
+  spec.style ||= spec.to ? 'arrow' : defaultStyle(spec.sel.kind, spec.sel);
+  if (spec.to && spec.style !== 'arrow') throw new Error('to= 是画一个箭头从这里指到那里：不写 style，或者写 style=arrow');
+  if (!spec.colorSet) spec.color = STYLE_COLOR[spec.style] || spec.color || 'yellow';
+  delete spec.colorSet;
   if (spec.note !== undefined) {
     spec.note = String(spec.note).trim();
     if (!spec.note) delete spec.note;
@@ -173,7 +207,7 @@ export function parseMarkBlock(headSrc, body) {
   if (!lines.length || head.sel || head.note !== undefined) {
     try { marks.push(finishMark(head)); } catch (e) { errors.push(lines.length ? `开头那行：${e.message}` : e.message); }
   }
-  const inherit = { target: head.target, color: head.color, style: head.style, side: head.side, of: head.of };
+  const inherit = { target: head.target, color: head.color, style: head.style, side: head.side, of: head.of, colorSet: head.colorSet };
   lines.forEach((line, k) => {
     try { marks.push(finishMark(readMark(line, inherit))); } catch (e) { errors.push(`第 ${k + 1} 行「${line.slice(0, 30)}」：${e.message}`); }
   });
@@ -218,9 +252,13 @@ const SEL_TEXT = {
   words: (s) => `第 ${s.a}–${s.b} 个词`,
   phrase: (s) => `「${s.text}」${s.n ? `（第 ${s.n} 次）` : ''}`,
   blank: (s) => `第 ${s.k} 个空`,
+  text: (s) => `「${s.text}」${s.n ? `（第 ${s.n} 次）` : ''}`,
+  li: (s) => (s.a === s.b ? `第 ${s.a} 条` : `第 ${s.a}–${s.b} 条`),
+  para: (s) => (s.a === s.b ? `第 ${s.a} 段` : `第 ${s.a}–${s.b} 段`),
+  tr: (s) => (s.a === s.b ? `表格第 ${s.a} 行` : `表格第 ${s.a}–${s.b} 行`),
   part: (s) => (s.a === s.b ? `第 ${s.a} 部分` : `第 ${s.a}–${s.b} 部分`),
 };
-const STYLE_TEXT = { circle: '圈', box: '框', underline: '下划线', highlight: '涂色', strike: '划掉', arrow: '箭头' };
+const STYLE_TEXT = { circle: '圈', box: '框', brace: '大括号', underline: '下划线', double: '双下划线', wave: '波浪线', dots: '着重号', highlight: '荧光笔', strike: '划掉', tick: '✓', cross: '✗', arrow: '箭头' };
 
 /** 标在哪（不带 id 和画法）：「b5 的 \hl{mid}」「m1 里 A 的第 2 行」 */
 export function markWhere(spec) {
@@ -234,5 +272,6 @@ export function markWhere(spec) {
 /** 一条标注的中文说明（黑板现状里列给课堂 Claude 看）：m1：b5 里\hl{mid}（圈）「一个数」 */
 export function markText(id, spec) {
   if (!spec?.sel) return String(id);
-  return `${id}：${markWhere(spec)}（${STYLE_TEXT[spec.style] || spec.style}${spec.color && spec.color !== 'yellow' ? `，${spec.color}` : ''}）${spec.note ? `「${spec.note}」` : ''}`;
+  const to = spec.to ? ` → 「${spec.to.text}」` : '';
+  return `${id}：${markWhere(spec)}${to}（${STYLE_TEXT[spec.style] || spec.style}${spec.color && spec.color !== (STYLE_COLOR[spec.style] || 'yellow') ? `，${spec.color}` : ''}）${spec.note ? `「${spec.note}」` : ''}`;
 }

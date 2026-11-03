@@ -461,3 +461,7 @@
 :root[data-theme="ink"] .cb-pill::before { border: 0.5px solid rgb(var(--chalk-rgb) / 0.14); border-radius: 26px; filter: none; }
 :root[data-theme="ink"] .cb-pill { background: rgb(251 250 246 / 0.9); }
 :root[data-theme="ink"] .cb-send { background: var(--chalk); color: var(--accent-ink); }
+
+/* 荧光笔（board mark 的 highlight、==涂色==）：深色黑板上淡了发灰发褐，涂浓一点；浅色纸上浓了压字，淡一点 */
+:root { --mk-fill-a: .46; --hl-a: .44; }
+:root:is([data-theme="paper"], [data-theme="white"], [data-theme="celadon"], [data-theme="ink"]) { --mk-fill-a: .32; --hl-a: .3; }
