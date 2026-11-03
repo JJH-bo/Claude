@@ -325,13 +325,16 @@ export async function renderDesk(root, meta) {
     const opens = mine.sessions.filter((x) => x.status === 'open').sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
     const open = opens.find((x) => kindOf(x) === 'class');
     // 上一节（这一科下了课的最近一节）：课后报告的要点、花了多少
-    const last = mine.sessions.filter((x) => x.status === 'closed').sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0))[0];
+    // 练一练、课前热身不算一节课：不然做完热身，「上一节」就成了那节练习，「下次先测」也跟着没了
+    const last = mine.sessions.filter((x) => x.status === 'closed' && kindOf(x) !== 'drill').sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0))[0];
     // 上一节：日期 + 报告那一行（做了几题、对了几题）；花了多少额度在「以前的课」里看，首页不放
     const lastLine = last ? String(last.report?.line || '') : '';
     // 上一节没稳的知识点（归过类才有）：这节开头先测
     const lastNext = last?.skills ? lessonLines(last.skills, pointCatalog(data.sessions, data.mastery)).next : [];
     // 课前热身（journey.js）：上一节没稳的点在题库里有原题，开一节练习先做几道
-    const warm = warmupDrills(data, last, lastNext);
+    // 上一节以后已经开过热身（做完或还开着）就不再出按钮：还开着的在下面「没下课的」那一行接着做
+    const warmed = last && mine.sessions.some((x) => x.warmup && (x.startedAt || 0) > (last.endedAt || 0));
+    const warm = warmed ? [] : warmupDrills(data, last, lastNext);
     const main = pack.main;
     const block = main?.block || mine.position.find((d) => d.id === positionId(space))?.block || '';
     // 等我确认的改动单；上一节还没整理完（它的整理单里还有没点的）
