@@ -492,4 +492,4 @@
 :root[data-theme="ink"] .dk-deck { background: linear-gradient(160deg, rgb(var(--pink-rgb) / 0.08), rgb(var(--pink-rgb) / 0.03)), var(--panel);
   box-shadow: inset 0 0 0 0.5px rgb(var(--pink-rgb) / 0.3), 0 7px 0 -4px var(--panel), 0 7px 0 -3.5px rgb(var(--pink-rgb) / 0.22), 0 13px 0 -8px var(--panel), 0 13px 0 -7.5px rgb(var(--pink-rgb) / 0.14); }
 :root[data-theme="ink"] .dk-gl, :root[data-theme="ink"] .dk-look-btn:not([aria-pressed="true"]) { box-shadow: var(--field-edge); }
-:root[data-theme="ink"] .la-lesson .dk-title::before { background: rgb(var(--yellow-rgb)); border-radius: 5px; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.22), inset 0 0 0 3px rgb(var(--yellow-rgb)); }
+:root[data-theme="ink"] .la-lesson .dk-title::before { border-radius: 5px; }

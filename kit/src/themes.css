@@ -351,11 +351,11 @@
    最安静的一种，字以外几乎没有东西抢眼 —— */
 :root[data-theme="ink"] {
   --chalk-rgb: 30 30 30;
-  --yellow-rgb: 178 72 40;
-  --blue-rgb: 52 82 118;
-  --pink-rgb: 150 60 86;
-  --green-rgb: 56 108 86;
-  --coral-rgb: 196 40 52;
+  --yellow-rgb: 166 116 34;   /* 赭黄（藤黄、赭石）：重点、结果——最常用的那个颜色，不能是红的 */
+  --blue-rgb: 44 84 128;      /* 花青：要理解的说明、定义 */
+  --pink-rgb: 146 74 116;     /* 藕荷（紫一点的胭脂）：要背的，和朱砂分得开 */
+  --green-rgb: 46 112 90;     /* 石绿：对、例题 */
+  --coral-rgb: 182 58 40;     /* 朱砂：错、例外、易错——整个水墨里唯一的红 */
   --shade-rgb: 40 34 26;
   --well-k: 0.5;
   --glow-rgb: 40 34 26;
@@ -365,8 +365,8 @@
   --bar-rgb: 243 240 233;
   --halo-rgb: 245 242 236;
   --muted: #7d776d;
-  --orange: #a8582a;
-  --lav: #5e4f8a;
+  --orange: #9a6a3c;
+  --lav: #5f5896;
   --body: rgb(var(--chalk-rgb) / 0.86);
   --wood: #d6d0c4;
   --wood-hi: #e2ddd2;
@@ -374,9 +374,9 @@
   --flash: #f2c14e;
   --sel-ink: #111;
   --ink-white: #1e1e1e;
-  --ink-yellow: #b24828;
-  --ink-pink: #963c56;
-  --ink-blue: #345276;
+  --ink-yellow: #a67422;
+  --ink-pink: #924a74;
+  --ink-blue: #2c5480;
   --accent-ink: #fbf8f2;
   --grp-ink: #1e1e1e;
   --g1: #d8e0ea; --g2: #ecd9de; --g3: #d8e6dd; --g4: #e1dcec; --g5: #f1e2cf; --g6: #eedcd0;
@@ -432,8 +432,8 @@
    板的标题、组件标题、图上的标注用毛笔楷书；按钮、选项、提示框是圆角的白卡，一道很细的边，不画粉笔框；
    选中是一层淡墨，对是松绿，错是朱红；步骤的序号是一枚小小的墨点 */
 :root[data-theme="ink"] {
-  /* 字母和数字用公式的字体（KaTeX 自带的斜体和正体，和板上的公式一样），汉字是毛笔楷书 */
-  --hand: "KaTeX_Math", "KaTeX_Main", "Ma Shan Zheng", "Kaiti SC", "STKaiti", "KaiTi", serif;
+  /* 黑板上的标题和学习台一样用思源宋体（2026-11-03 我说毛笔字不如外面学习台的字好看） */
+  --hand: "Noto Serif SC", "Songti SC", "STSong", serif;
   --card-frame-a: 0.12;
   --btn-frame-a: 0.2;
 }
@@ -473,3 +473,11 @@
 :root[data-theme="ink"] .callout-sub { font-family: var(--sans); }
 :root[data-theme="ink"] .class-page-body.is-canvas .callout { border-left: 0; padding: 16px 20px; border-radius: 16px; background: #fbfaf6; box-shadow: inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.1), 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); }
 :root[data-theme="ink"] .class-page-body.is-canvas .callout-key, :root[data-theme="ink"] .class-page-body.is-canvas .callout-theorem { box-shadow: inset 0 0 0 0.5px rgb(var(--yellow-rgb) / 0.3), 0 1px 2px rgb(var(--shade-rgb) / 0.04), 0 10px 26px -18px rgb(var(--shade-rgb) / 0.25); }
+
+/* 水墨的黑板标题：宋体要有分量（手写体那几处写的是 400，宋体 400 太细） */
+:root[data-theme="ink"] :is(.la-lesson h1, .la-lesson h2, .class-board-title, .class-page-title, .class-sheet-h, .class-pin .stage-body > h2) { font-weight: 700; letter-spacing: 0.02em; }
+:root[data-theme="ink"] :is(.la-lesson h3, .w-title, .callout-title .co-zh, .st-t, .steps .w-title) { font-weight: 600; }
+:root[data-theme="ink"] .callout-title { font-size: 21px; }
+/* 朱砂只留给印和日期（还有错、例外） */
+:root[data-theme="ink"] .la-lesson .dk-title::before { background: rgb(var(--coral-rgb)); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.22), inset 0 0 0 3px rgb(var(--coral-rgb)); }
+:root[data-theme="ink"] .dk-date { color: rgb(var(--coral-rgb)); }
