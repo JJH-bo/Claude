@@ -8,6 +8,7 @@ import { widget, mdToHtml, escapeHtml } from './common.js';
 import {
   ROLES, matchText, textHint, parseCloze, tokenizeSentence, findWrong, parseAlts, parseBrackets, judgeSpans, spanText, spansHint, parseRoles, parseDrill, joinWords,
   parseAnswer, diagnose, parseDecoys, parseSteps, parseChunk, judgeChunks, chunkHint, chunksOf, parseLink, judgeLinks, linkHint, regradePrompt, parseRegrade,
+  parsePoints, judgeTranslation, translationHint,
 } from '../entext.js';
 import { getAI } from '../ai.js';
 
@@ -667,4 +668,67 @@ export function drill(el, src) {
   });
   body.querySelector('.dr-next').addEventListener('click', () => { if (k < items.length - 1) { k++; show(); } });
   show();
+}
+
+/* ---------------- translate：翻译，页面按要点判（docs/english-plan.md 第 7 批） ----------------
+ * 以前翻译只能用 conjecture 写，页面判不了，课后报告里全是「没判」，掌握、弱点都用不上。现在老师写下这句的要点，
+ * 页面查译文里有没有；没译出来的只说是哪几个英文词，不给中文答案。通不通顺照旧由课堂 Claude 看（作答原样发给它）。
+ */
+export function translate(el, src) {
+  const lines = String(src).split('\n');
+  // 要点行（- … = …）先挑出来，不然会被当成上一个字段的续行
+  const pointRe = /^\s*[-*]\s+.+[=＝]/;
+  const { fields } = parseFields(lines.filter((l) => !pointRe.test(l)).join('\n'));
+  const text = String(fields.src || fields.text || fields.q || '').trim();
+  if (!text) throw new Error('translate 要写 src:（要翻译的英文句子）');
+  const spec = parsePoints(lines.filter((l) => pointRe.test(l)), fields.order);
+  if (spec.problems.length) throw new Error(spec.problems.join('；'));
+  const title = fields.title || '翻译';
+  const n = spec.points.length;
+  const body = widget(el, { title, cls: 'en-translate' });
+  body.innerHTML = `
+    ${fields.q && fields.src ? `<div class="w-q">${mdToHtml(fields.q)}</div>` : ''}
+    <div class="en-text tr-src">${inline(text)}</div>
+    <textarea class="tr-in" rows="3" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(fields.placeholder || '写出完整的中文译文')}" aria-label="写译文"></textarea>
+    <div class="ans-actions"><button type="button" class="btn btn-primary en-check">检查</button><button type="button" class="btn en-show" hidden>看参考译文</button></div>
+    <div class="q-feedback" hidden></div>`;
+  const fb = body.querySelector('.q-feedback');
+  const input = body.querySelector('.tr-in');
+  const done = session.gate(el, title);
+  let attempts = 0, closed = false, tried = '';
+  markDraft(body, () => { const v = input.value.trim(); return !closed && v && v !== tried ? `译文写着：${short(v, 300)}` : ''; });
+  const ref = fields.answer ? `<div class="tr-ref"><span class="muted">参考译文：</span>${inline(fields.answer)}</div>` : '';
+  const settle = (ok, revealed = false) => {
+    closed = true;
+    input.readOnly = true;
+    body.querySelector('.en-check').hidden = true;
+    body.querySelector('.en-show').hidden = true;
+    session.record({ type: 'translate', final: true, title, q: short(text, 200), ok, attempts, revealed: revealed || undefined, value: input.value.trim(), text: input.value.trim(), expected: fields.answer ? short(fields.answer, 200) : undefined, el });
+    done();
+  };
+  const check = () => {
+    if (closed) return;
+    const r = judgeTranslation(input.value, spec);
+    if (r.empty) { fb.hidden = false; fb.className = 'q-feedback is-bad'; fb.innerHTML = verdict(false, '先写出译文。'); return; }
+    attempts++;
+    tried = input.value.trim();
+    const hint = translationHint(r, n);
+    input.classList.toggle('is-right', r.ok);
+    input.classList.toggle('is-wrong', !r.ok);
+    session.record({ type: 'translate', liveOnly: true, title, q: short(text, 200), value: tried, text: tried, ok: r.ok, attempts, detail: r.ok ? `要点 ${n} / ${n} 都译出来了` : hint, misread: r.misread || undefined, el });
+    fb.hidden = false;
+    fb.className = `q-feedback ${r.ok ? 'is-ok' : 'is-bad'}`;
+    fb.innerHTML = r.ok
+      ? `<div class="q-verdict">✓ 要点都译出来了</div><div class="muted">通不通顺、像不像中文，老师会看。</div>${ref}${fields.explain ? mdToHtml(fields.explain) : ''}`
+      : verdict(false, hint);
+    if (r.ok) settle(true);
+    else if (attempts >= 2) body.querySelector('.en-show').hidden = false;
+  };
+  body.querySelector('.en-check').addEventListener('click', check);
+  body.querySelector('.en-show').addEventListener('click', () => {
+    fb.hidden = false;
+    fb.className = 'q-feedback is-reveal';
+    fb.innerHTML = `${ref || '<div class="muted">老师没写参考译文。</div>'}<div class="muted">要点：${spec.points.map((p) => `${escapeHtml(p.label)} → ${escapeHtml(p.alts[0])}`).join('；')}</div>${fields.explain ? mdToHtml(fields.explain) : ''}`;
+    settle(false, true);
+  });
 }

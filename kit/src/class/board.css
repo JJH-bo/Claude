@@ -134,6 +134,8 @@
 /* 重点、提示这类框：版面里也不框起来，左边一道粉笔线表示「这是要记住的」 */
 .class-page-body.is-canvas .callout { background: none; box-shadow: none; border-radius: 0; padding: 2px 0 2px 16px; border-left: 3px solid rgb(var(--yellow-rgb) / 0.6); }
 .class-page-body.is-canvas .callout::before { display: none; }
+/* 要背的一整块：版面里照样一圈粉色的框（「直接全部一个大圈」），框在字外面留着空，不压字 */
+.class-page-body.is-canvas .callout-remember { border: 2px solid rgb(var(--pink-rgb) / 0.7); border-radius: 18px 24px 16px 22px; padding: 10px 16px 12px; background: rgb(var(--pink-rgb) / 0.06); }
 .class-page-body.is-canvas .block { margin: 6px 0; }
 /* 段的标题和段里组件的标题常常是一回事：留段的（粉笔字的板书标题），组件的不再写一遍 */
 .class-page-body.is-canvas .stage-body > h2 + .block .w-title { display: none; }

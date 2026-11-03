@@ -4,7 +4,7 @@
 import { mdToHtml } from '../render.js';
 import { ASK_KINDS } from './ask.js';
 
-const SKIP = 'input, textarea, select, button, a, label, svg, canvas, [contenteditable="true"], [contenteditable=""], .keypad, .cv-zoom, .class-beats, .ask-menu, .ask-note, .mk-layer, [data-scene], .q-opt, .st-choices, .w-actions';
+const SKIP = 'input, textarea, select, button, a, label, svg, canvas, [contenteditable="true"], [contenteditable=""], .keypad, .cv-zoom, .class-beats, .ask-menu, .ask-note, .mk-layer, [data-scene], .q-opt, .st-choices, .w-actions, .lk-gloss, .lk-glossbox';
 // 能指的东西，从小到大：公式里起了名字的项、公式、表格的一行、列表的一条、一段话、标题；steps 的一步单独认
 const ANCHOR = '[data-lkmark], .katex-display, tr, li, p, h2, h3';
 

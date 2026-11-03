@@ -10,6 +10,8 @@ const CALLOUTS = {
   warning: '易错 Watch Out',
   example: '例题 Example',
   intuition: '直觉 Intuition',
+  // 要背的一整块（清单、例外、固定搭配）：一个粉色的大框圈住，不用一项一项去圈（2026-11-03 我说的）
+  remember: '要背 Memorize',
 };
 
 // 开头几行可以写 `title: ...`（自定义标题）和 `id: ...`（组件 id，课堂和实时黑板里用），顺序不限，都不显示成正文

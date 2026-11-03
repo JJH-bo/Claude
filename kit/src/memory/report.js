@@ -220,6 +220,9 @@ export function buildReport({ session = {}, evidence = [], manual = [], observat
     slips: sl.map((s) => ({ id: s.id, text: cut(s.text, 160) })),
     usage: usageOf(turns),
     verify: session.verify || null,
+    // 点开看过意思的生词（gloss）：学生不认识的词
+    words: evs.filter((e) => e.src === 'event' && e.kind === 'gloss').map((e) => (e.detail && typeof e.detail === 'object' ? e.detail : e)).filter((d) => d.word)
+      .filter((d, i, all) => all.findIndex((x) => String(x.word).toLowerCase() === String(d.word).toLowerCase()) === i).slice(0, 60).map((d) => ({ word: cut(d.word, 60), gloss: cut(d.gloss, 80) })),
     // 这节课的一页：记号、重点框、做错又改对的、还没拿下的（页面自己拼，不调用 Claude）
     sheet: lessonSheet({ steps, items }),
     at: now,
@@ -270,6 +273,7 @@ export function reportText(r, { max = 8 * 1024 } = {}) {
   const tail = [];
   if (r.drafts?.length) tail.push(`- 没交的草稿：${r.drafts.map((d) => `${d.comp || ''}「${cut(d.text, 40)}」（${d.id}）`).join('；')}`);
   if (r.says?.length) tail.push(`- 学生说的话：${r.says.filter((s) => s.text).slice(-12).map((s) => `「${cut(s.text, 60)}」（${s.id}）`).join('；')}`);
+  if (r.words?.length) tail.push(`- 学生点开看过意思的生词（不认识的）：${r.words.map((w) => w.word).join('、')}（页面下课后收进「要记的」）`);
   if (r.manual?.length) tail.push(`- 学习台外面补记的：${r.manual.map((m) => `「${cut(m.text, 60)}」${m.verdict ? ` ${m.verdict}` : ''}（${m.id}）`).join('；')}`);
   const size = (xs) => new TextEncoder().encode(xs.join('\n')).length;
   let kept = items;
