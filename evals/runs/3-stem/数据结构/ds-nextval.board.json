@@ -1,0 +1,67 @@
+{
+  "unit": "KMP · next 和 nextval",
+  "subject": "数据结构",
+  "steps": [
+    {
+      "id": "k1",
+      "seq": 1,
+      "pin": true,
+      "title": "next（王道）",
+      "md": "模式串从 1 数。$\\text{next}[1]=0$；$j\\ge 2$ 时，$\\text{next}[j]$ = $P_1\\cdots P_{j-1}$ 最长相等前后缀的长度 $+1$。\n在 $P_j$ 失配：主串指针不动，$j$ 退到 $\\text{next}[j]$。"
+    },
+    {
+      "id": "s1",
+      "seq": 2,
+      "page": 1,
+      "title": "一格一格求 next",
+      "md": "模式串 `abaabcac`。每走到一格，先自己数：前面那一段的前缀和后缀最长有几位相等，再加 1，填进去再看页面画的前后缀。\n\n```kmp\nid: k-next\ntitle: 求 next\npattern: abaabcac\nshow: next\nask: next\n```"
+    },
+    {
+      "id": "s2",
+      "seq": 3,
+      "page": 2,
+      "title": "退回去还是错",
+      "md": "next 用起来有个浪费。走一遍这次匹配，每次失配先猜 $j$ 退到几：看看退完以后比的是不是同一个字母。\n\n```kmp\nid: k-waste\ntitle: 主串 aaabaaaab\ntext: aaabaaaab\npattern: aaaab\nask: slide\n```"
+    },
+    {
+      "id": "s3",
+      "seq": 4,
+      "page": 2,
+      "md": "```quiz\nid: q-same\nq: 回到 `abaabcac`：在 $P_3$ 失配，$j$ 退到 $\\text{next}[3]$，也就是 $P_1$。$P_1$ 和 $P_3$ 都是 a。这一次比较会怎样？\n- [ ] 可能匹配上，得比一次才知道\n- [x] 一定还是失配\n- [ ] 一定匹配上\nexplain: 刚才失配，说明主串这个字符不是 $P_3$（a）；$P_1$ 也是 a，再比一定还不等，白比一次。所以不如直接再往前退。\n```"
+    },
+    {
+      "id": "s4",
+      "seq": 5,
+      "page": 3,
+      "title": "nextval：再往前找",
+      "md": "next 已经有了。每一格先比一比 $P_j$ 和 $P_{\\text{next}[j]}$ 是不是同一个字母，再填 nextval。\n\n```kmp\nid: k-nv\ntitle: 求 nextval\npattern: abaabcac\nshow: nextval\nask: nextval\n```"
+    },
+    {
+      "id": "s5",
+      "seq": 6,
+      "page": 3,
+      "md": "```conjecture\nid: cj-nv\ntitle: 一句话说规则\nq: $\\text{nextval}[j]$ 什么时候和 $\\text{next}[j]$ 不一样？不一样时等于什么？一句话。\nrubric: 要点 (1) $P_j = P_{\\text{next}[j]}$ 时要再往前找；(2) 这时 $\\text{nextval}[j]=\\text{nextval}[\\text{next}[j]]$（不是 $\\text{next}[\\text{next}[j]]$，也不是直接写 0）。只说出 (1) 算部分正确。\nanswer: $P_j=P_{\\text{next}[j]}$ 时，$\\text{nextval}[j]=\\text{nextval}[\\text{next}[j]]$；不相等时 $\\text{nextval}[j]=\\text{next}[j]$。\nplaceholder: 当……时，nextval[j] = ……\n```"
+    },
+    {
+      "id": "k2",
+      "seq": 7,
+      "pin": true,
+      "title": "nextval",
+      "md": "$\\text{nextval}[1]=0$；$P_j=P_{\\text{next}[j]}$ 时 $\\text{nextval}[j]=\\text{nextval}[\\text{next}[j]]$，否则 $=\\text{next}[j]$。"
+    },
+    {
+      "id": "s6",
+      "seq": 8,
+      "page": 4,
+      "title": "一个人填完整张表",
+      "md": "换一个串，这次不看过程：每个 $j$ 的 next 和 nextval 都自己填，页面逐格批，只标出第一处错。可以先在草稿纸上写。\n\n```kmp\nid: k-fill\ntitle: ababaaab\npattern: ababaaab\nshow: nextval\nmode: fill\n```"
+    },
+    {
+      "id": "s7",
+      "seq": 9,
+      "page": 5,
+      "title": "换串练到熟",
+      "md": "页面每一题随机换一个 8 位的模式串，填出 next 和 nextval。做对 3 题。\n\n```practice\nid: pr-kmp\ntitle: 换串练到熟\nuse: kmp\ncount: 3\npick s = str(8, ab)\npattern: \\calc{s}\nshow: nextval\nmode: fill\n```"
+    }
+  ]
+}
