@@ -96,8 +96,9 @@ export function stepOf(a) {
 export function classify(a, trig) {
   if (!a || typeof a !== 'object') return null;
   const type = typeOf(a);
-  if (a.source === 'page') return null;
+  // 'later' 的（拖一拖、揭开中间一步、点开预写的「为什么」）不用老师，跟着下一条走
   if (trig === 'later') return { kind: 'passive' };
+  if (a.source === 'page') return null;
   if (type === 'sure') return null; // 答对了却没把握：红线 5，老师要马上知道
   const step = stepOf(a);
   if (a.source === 'event' && type === 'reveal') return { kind: 'done', step };

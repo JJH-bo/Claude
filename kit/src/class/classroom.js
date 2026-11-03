@@ -44,6 +44,8 @@ import { planLocal, markFired, reactNote, armedText, rebuildRules, dropForSeg } 
 import { beatPlan, shouldPlay, DEFERRED_OPS } from './beats.js';
 import { ENGINES } from '../engines/registry.js';
 import { bandsOf, layoutText } from './canvas.js';
+import { askMessage, matchWhy, spotText, whyShownText } from './ask.js';
+import { createAskHere } from './askhere.js';
 
 export const MODEL = 'claude-opus-5-5';
 // 学生明确要求：讲课只能是 Opus 5.5、effort high；modelTier 只是平台要求的退路（退路的输出会被丢弃）
@@ -174,6 +176,7 @@ export async function renderClass(root, meta, desk = null) {
   let opTurn = { seq: 0, by: '' }; // 正在执行的这一轮（预案记它是哪一轮、谁写的）
   // 拍子（beats.js）：正在播的这一轮。{ page, n（几拍）, max（播到第几拍）, segs: 拍 → [段 id], deferred: [{ b, op }], told（这一轮的记录）}
   let beat = null;
+  const whys = new Map(); // 预写的「为什么」（board why）：段 id / 组件 id → [{ where, text }]
 
   // 察觉卡住的开关（学生在「⋯」里可以开；记在这台设备上）。每提醒一次就是一整轮调用，默认关（docs/desk-plan.md 第 7 节）。
   // 本地试用带 ?stuck=秒数 时自动开
@@ -200,6 +203,14 @@ export async function renderClass(root, meta, desk = null) {
     onHome: desk?.onHome || null,
   });
   bv.attachBar(bar);
+  // 点着问（askhere.js）：点板上一行、一个公式、steps 的一步，问「为什么 / 没看懂 / 举个例子」；预写的「为什么」页面当场显示
+  const askHere = readOnly ? null : createAskHere({
+    board,
+    onAsk: (spot, kind) => { if (teacher.available) enqueueStudent(askMessage(spot, kind), [], true); },
+    onWhy: (spot) => matchWhy(whys, spot),
+    onOther: (spot) => { bar.prefill(`[指着问] ${spotText(spot)}——`); bar.focus(); },
+    onShown: (spot) => { const a = { source: 'page', type: 'why', text: whyShownText(spot) }; trigs.set(a, 'later'); queue.actions.push(a); lastActive = Date.now(); },
+  });
   if (readOnly) {
     bar.setEnabled(false);
     bar.setStatus('notice', '这是以前的课：只能翻看。作答不会记下来，也不调用 Claude。');
@@ -318,6 +329,8 @@ export async function renderClass(root, meta, desk = null) {
       tu.docs.map((d) => d.data()).filter((t) => Number.isFinite(t?.seq)).sort((a, b) => a.seq - b.seq).forEach((t) => { history.push(t); turnSeq = Math.max(turnSeq, t.seq); });
       // 还没用掉的预案（组件还在黑板上的）
       for (const [k, r] of rebuildRules(history)) reacts.set(k, r);
+      // 预写的「为什么」：按先后放回去（后写的盖掉先写的）
+      for (const t of history) if (t.role === 'claude' && !t.discarded) for (const o of t.boardOps || []) if (o?.op === 'why' && o.ok) whys.set(o.target, o.items || []);
       // 黑板现状里的作答结果：作答记录 + 揭开 / 拖动（按时间重放，规则和上课时一样）
       const recs = [
         ...an.map((r) => ({ source: 'record', ...r, type: r.kind, answer: r.kind === 'conjecture' ? r.text : undefined })),
@@ -853,6 +866,13 @@ export async function renderClass(root, meta, desk = null) {
       // 版面：藏着时不占地方，揭开时放回它写的 at=（被别的段长过去占了，就放到最近的空处）
       saveSeg(seg);
       return { op: 'show', id: op.id, ok: true, page: seg.page || undefined };
+    }
+    // 预写的「为什么」：学生点着问「为什么」时页面当场显示（ask.js）
+    if (op.op === 'why') {
+      if (!segs.has(op.target) && !liveBlockIds().has(op.target)) return { op: 'why', target: op.target, ok: false, error: `黑板上没有 ${op.target}（写段的 id 或组件的 id:）` };
+      if (op.errors?.length) notes.push(`why ${op.target} 里有 ${op.errors.length} 行没读懂：\n${op.errors.map((e) => `  - ${e}`).join('\n')}`);
+      whys.set(op.target, op.items);
+      return { op: 'why', target: op.target, ok: true, items: op.items };
     }
     // 预案：学生在这个组件上作答以后页面当场接的话（react.js）
     if (op.op === 'react') {
@@ -1465,6 +1485,7 @@ export async function renderClass(root, meta, desk = null) {
     }
     const told = addTurn({ role: 'claude', text: res.text, boardOps, page: bv.cur || undefined, talkPage, modelApplied: res.modelApplied, truncated: !!res.truncated, tools: toolCalls.length ? toolCalls : undefined, cost });
     if (beat) { beat.told = told; focusBeat(pages.get(beat.page), 0, { scroll: false }); }
+    askHere?.clearAsked();
     if (turnMemos.length) runMemo(turnMemos.splice(0), told.seq, talkPage || bv.cur);
     // Claude 又说了话：重新计「停了多久」
     nudged = false;

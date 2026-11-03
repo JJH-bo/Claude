@@ -7,6 +7,7 @@ import { tokenize, unquote } from '../tokens.js';
 import { parseMarkHead, parseMarkBlock, parseUnmark } from '../markspec.js';
 import { parseMemoLines } from '../memory/memo.js';
 import { parseReact } from './react.js';
+import { parseWhy } from './ask.js';
 import { parseCols, parseCol } from './canvas.js';
 
 // ```board add id=b7 title="…"：行首最多 3 个空格，` 或 ~ 至少 3 个，可有空格，然后是 board 和指令
@@ -148,7 +149,7 @@ const tidy = (s) => s.replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
 // move：版面模式里把一段挪到别的栏（col=），不重画
 export const SEGMENT_OPS = ['new', 'add', 'replace', 'hide', 'show', 'move', 'pin', 'unpin'];
 const NO_TITLE = new Set(['hide', 'show', 'move', 'unpin']);
-const OP_LIST = 'new / add / replace / hide / show / move / layout / pin / unpin / figure / mark / unmark / react / memo / plan';
+const OP_LIST = 'new / add / replace / hide / show / move / layout / pin / unpin / figure / mark / unmark / react / why / memo / plan';
 
 /**
  * 解析 board 后面那一行：
@@ -180,6 +181,11 @@ export function parseCommand(header) {
     const c = parseCols(m2[1]);
     return c.error ? { error: c.error } : { op: 'layout', cols: c };
   }
+  // 预写的「为什么」（ask.js）：学生点着问「为什么」时页面当场显示，一行一条写在块里
+  if (name === 'why') {
+    const r = parseWhy(m[2], 'all: x');
+    return r.error ? { error: r.error } : { op: 'why', head: m[2].trim(), target: r.target };
+  }
   // 预案（react.js）：学生作答以后页面当场接的话，一行一条写在块里
   if (name === 'react') {
     const r = parseReact(m[2]);
@@ -201,6 +207,7 @@ export function blockCommand(header, body = '') {
   if (op.op === 'memo') return memoOp(body);
   if (op.op === 'plan') return planOp(body);
   if (op.op === 'react') return parseReact(op.head, body);
+  if (op.op === 'why') return parseWhy(op.head, body);
   return op.op === 'mark' ? markOp(op, body) : op;
 }
 

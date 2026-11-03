@@ -345,3 +345,19 @@ body.class-docked .class-more:not(.in-bar) { right: calc(var(--cb-r, 20px) + 8px
 .class-seg.no-anim { animation: none !important; }
 /* 版面：带 ⤢ 的段右上角留出按钮的地方，字不压在按钮底下 */
 .class-page-body.is-canvas .class-seg:has(> .cv-zoom) { padding-right: 44px; }
+
+/* 点着问（askhere.js）：点板上一处，旁边一排小钮；点过的那一处亮一下；预写的「为什么」写在那一行下面 */
+.ask-menu {
+  position: absolute; z-index: 40; display: flex; gap: 6px; padding: 6px; border-radius: 14px;
+  background: rgb(var(--board-3-rgb) / 0.97); box-shadow: 0 10px 30px rgb(var(--shade-rgb) / 0.45), inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.18);
+  font: 15px/1 var(--sans); animation: talkIn .18s ease both;
+}
+.ask-menu button {
+  min-width: 44px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; font: inherit; color: var(--chalk);
+  background: rgb(var(--chalk-rgb) / 0.06); cursor: pointer;
+}
+.ask-menu button:first-child { color: var(--yellow); background: rgb(var(--yellow-rgb) / 0.12); }
+.is-pointed, .is-asked { box-shadow: inset 3px 0 0 rgb(var(--yellow-rgb) / 0.75); background: linear-gradient(to right, rgb(var(--yellow-rgb) / 0.08), transparent 60%); transition: box-shadow .3s ease, background .3s ease; }
+.ask-note { margin: 6px 0 10px; padding: 4px 0 4px 14px; border-left: 3px solid rgb(var(--blue-rgb) / 0.6); color: var(--chalk); font-size: 16px; animation: talkIn .25s ease both; }
+.ask-note-body p { margin: 0 0 6px; }
+.ask-more { min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgb(var(--chalk-rgb) / 0.06); color: rgb(var(--chalk-rgb) / 0.75); font: 14px/1 var(--sans); cursor: pointer; }
