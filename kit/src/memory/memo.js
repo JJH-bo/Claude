@@ -51,6 +51,14 @@ export const RULE_CATS = ['红线', '掌握', '检验', '来源', '讲解', '细
 // 每一类在用的最多几条（弱点、复现组按科，偏好、规则全科共用）：到了上限新的不收，下课整理时先合并。
 // 2026-11-03 量的真数据：弱点 数学 20 / 408 11 / 英语 3，复现组 12 / 6 / 2，偏好 27，规则 68（docs/autonomy-plan.md）
 export const CAPS = { weaknesses: 20, reviews: 12, profile: 30, rules: 70, lessons: LESSONS_MAX };
+// 一节课里每一种新加的最多几条（2026-11-03 我说：别一丁点小事都记、别反复累加）。11/2 那节课记了 27 条观察（多是把作答复述一遍，
+// 页面本来就自动记了每一次作答）、27 条失误、同一个毛病 5 道错题。到了就不收，告诉它挑要紧的、并进已有的
+export const SESSION_CAPS = { note: 3, propose: 2, slip: 3, error: 5, todo: 5, pref: 3, rule: 3, weakness: 3, review: 2 };
+// 列表字段最多几项（欠账、复现组的题）：新的放后面，最老的挤掉，不越堆越长
+export const LIST_CAPS = { debts: 5, first: 3, content: 6 };
+// 和已有的一条比「像不像」：守则、失误、观察、待办、错题这类句子长，0.3 就算同一件事
+const ALIKE = 0.3;
+
 // 还在用的（没合并、没关、没作废、没退役）
 const LIVE = { weaknesses: ['active'], reviews: ['active', 'paused'], profile: ['active'], rules: ['active'], lessons: ['active'] };
 /** coll 里这一科（共用的几类不分科）还在用的几条 */
@@ -270,6 +278,17 @@ export function planEntry(entry, ctx = {}) {
   const base = { kind, tier: spec.tier, coll: spec.coll, basis, reason, label: spec.label };
   const enumOk = (coll, field, v) => v === undefined || COLLECTIONS[coll].enums?.[field]?.includes(v);
   const sid = ctx.session || null;
+  // 这节课已经新加了几条这一种（applyMemo 里同一块先写的也算：它们已经进了手上的副本）
+  if (sid && SESSION_CAPS[kind] && !a.id) {
+    const mine = { note: () => get('observations').filter((o) => o.session === sid && o.kind === 'note'), propose: () => get('observations').filter((o) => o.session === sid && o.kind === 'proposal'),
+      todo: () => get('observations').filter((o) => o.session === sid && o.kind === 'todo'), slip: () => get('slips').filter((x) => x.session === sid), error: () => get('errors').filter((x) => x.session === sid && !x.corrects),
+      pref: () => get('profile').filter((x) => String(x.source || '').includes(sid)), rule: () => get('rules').filter((x) => String(x.source || '').includes(sid)),
+      weakness: () => get('weaknesses').filter((x) => x.session === sid), review: () => get('reviews').filter((x) => x.session === sid) }[kind];
+    const n = mine ? mine().length : 0;
+    if (n >= SESSION_CAPS[kind]) return { error: `这节课已经记了 ${n} 条${spec.label}（一节课最多 ${SESSION_CAPS[kind]} 条）：只记下一节课会因为它做得不一样的；同一件事并进已有的那条` };
+  }
+  // 和已有的一条说的是同一件事：不另记
+  const alike = (text, docs, field = 'text') => { const t = String(text || ''); if (t.length < 6) return null; const hit = docs.map((d) => ({ d, s: similarity(t, d[field]) })).sort((x, y) => y.s - x.s)[0]; return hit && hit.s >= ALIKE ? hit.d : null; };
 
   switch (kind) {
     case 'pref': {
@@ -305,6 +324,8 @@ export function planEntry(entry, ctx = {}) {
     case 'todo': {
       // 课上被问到教案以外的内容：不现场查教材补讲（会多跑轮），记下来下次备课补
       if (!a.text) return { error: '待办要写 text（学生问了什么、要补什么）' };
+      const dupT = alike(a.text, get('observations').filter((o) => o.kind === 'todo' && o.status !== 'done' && !o.void));
+      if (dupT) return { error: `已经有一条一样的待办（${cut(dupT.text, 30)}），不另记` };
       return { ...base, op: 'add', target: `ob-${newId()}`, data: { kind: 'todo', text: cut(a.text, 600), status: 'open', session: sid, block: a.block || ctx.block || null, at: Date.now(), by: 'class' } };
     }
     case 'rule': {
@@ -341,6 +362,15 @@ export function planEntry(entry, ctx = {}) {
     case 'slip': {
       if (!a.text) return { error: '失误要写 text' };
       if (layoutOnly(a.text)) return { error: '板放不下页面量得出来，会自动分成几屏，不用记成失误（讲法、出题、判分上的失误照记）' };
+      {
+        const space = spaceOfId(ctx.block || '') || '';
+        const l = alike(`${a.text} ${a.lesson || ''}`, activeLessons(get('lessons'), space).map((x) => ({ ...x, t: `${x.text} ${x.why || ''}` })), 't');
+        if (l) return { error: `这是守则 ${l.id}（${cut(l.text, 30)}）说的事：写 lesson id=${l.id} again="这次怎么犯的"，不另记失误` };
+        const gone = voidedIds(mem);
+        const absorbed = absorbedSlips(get('lessons'));
+        const s = alike(a.text, sharedFor(get('slips'), space).filter((x) => !x.corrects && !gone.has(`slips/${x.id}`) && !absorbed.has(String(x.id))));
+        if (s) return { error: `和 ${s.id}（${cut(s.text, 30)}）是同一件事，已经记过了：下课时归纳进守则` };
+      }
       return { ...base, op: 'add', target: nextSlipId(get('slips'), sid, date), data: { by: 'class', date, text: cut(a.text, 1000), ...(a.lesson ? { lesson: cut(a.lesson, 500) } : {}), session: sid, ...(basis.length ? { basis } : {}) } };
     }
     case 'lesson': {
@@ -391,6 +421,9 @@ export function planEntry(entry, ctx = {}) {
     case 'note':
     case 'propose': {
       if (!a.text) return { error: `${spec.label}要写 text` };
+      // 观察只记以后用得上的：作答本身页面已经记了（每一次作答、对错、用时），不复述
+      const dup = alike(a.text, get('observations').filter((o) => (o.session === sid || o.block === ctx.block) && ['note', 'proposal'].includes(o.kind) && !o.void));
+      if (dup) return { error: `和已经记的一条观察（${cut(dup.text, 30)}）说的是同一件事，不另记` };
       return { ...base, op: 'add', target: `ob-${newId()}`, data: { kind: kind === 'propose' ? 'proposal' : 'note', text: cut(a.text, 2000), about: (a.about || []).slice(0, 20), session: sid, block: ctx.block || null, at: Date.now(), by: 'class', ...(basis.length ? { basis } : {}) } };
     }
     case 'error': {
@@ -405,6 +438,11 @@ export function planEntry(entry, ctx = {}) {
       if (id && find('errors', id)) return { error: `错题 ${id} 已经有了：错题只增不改，换一个新编号，或者不写 id` };
       if (a.weakness && !find('weaknesses', a.weakness)) return { error: `weakness=${a.weakness} 在弱点表里没有` };
       if (block && get('curriculum').length && !find('curriculum', block)) return { error: `block=${block} 在课程地图里没有` };
+      // 同一个毛病一节课只记一道代表性的：这个弱点这节课已经挂了一道错题，就去改弱点（又犯了 → level=L0），不再加
+      if (a.weakness && sid) {
+        const same = get('errors').find((x) => x.session === sid && !x.corrects && x.weakness === a.weakness);
+        if (same) return { error: `${a.weakness} 这节课已经记了一道错题（${same.id}）：同一个毛病只记一道，又犯了就改弱点（weakness id=${a.weakness} level=L0），不再加错题` };
+      }
       // 同一道题（同一个组件的同一步）已经记过、没作废：不另记一条
       const evs = ctx.evidence || [];
       const keyOf = (eid) => { const e = evs.find((x) => x.id === eid); return e && e.comp ? `${e.comp}|${e.step ?? ''}` : ''; };
@@ -413,6 +451,12 @@ export function planEntry(entry, ctx = {}) {
         const gone = voidedIds(mem);
         const dup = get('errors').find((x) => !x.corrects && !gone.has(`errors/${x.id}`) && (x.evidence || []).some((eid) => keys.has(keyOf(eid))));
         if (dup) return { error: `这道题已经记过 ${dup.id}：同一道题不另记；又错了说明弱点没修好，改弱点（weakness id=… level=L0 errors=${dup.id}）` };
+      }
+      {
+        const gone = voidedIds(mem);
+        const solved = resolvedErrors(mem);
+        const dupE = alike(`${q} ${a.cause}`, get('errors').filter((x) => !x.corrects && !gone.has(`errors/${x.id}`) && !solved.has(String(x.id)) && (!block || x.block === block)).map((x) => ({ ...x, t: `${x.q || ''} ${x.cause || ''}` })), 't');
+        if (dupE) return { error: `和错题 ${dupE.id}（${cut(dupE.cause || dupE.q, 30)}）是同一道题、同一个错：不另记；又错了就改弱点` };
       }
       id ||= nextErrorId(get('errors'), block);
       return { ...base, op: 'add', target: id, data: { source: cut(a.source || `课堂 ${sid || ''}`, 120), q: cut(q, 800), mine: cut(mine, 400), step: cut(a.step, 200), cause: cut(a.cause, 300), ...(a.weakness ? { weakness: a.weakness } : {}), ...(block ? { block } : {}), evidence: basis.filter((x) => x.startsWith('ev-')), date, session: sid } };
@@ -452,7 +496,7 @@ export function planEntry(entry, ctx = {}) {
         if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.title, 40)}）是同一个弱点：改那一条（weakness id=${near.d.id} level=… errors=…），不新加` };
         if (live.length >= CAPS.weaknesses) return { error: `这一科的弱点已经有 ${live.length} 条（最多 ${CAPS.weaknesses}）：先把重复的并掉（weakness id=… status=merged into=…）、修好的关掉，再加新的` };
       }
-      return { ...base, op: 'add', target: nextWeaknessId(get('weaknesses')), data: { title: cut(a.title, 120), scope: a.scope, level: a.level, last: date, errors: errs, blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], status: 'active', basis, ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
+      return { ...base, op: 'add', target: nextWeaknessId(get('weaknesses')), data: { title: cut(a.title, 120), scope: a.scope, level: a.level, last: date, errors: errs, blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], status: 'active', basis, ...(sid ? { session: sid } : {}), ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
     }
     case 'review': {
       const old = a.id ? find('reviews', a.id) : null;
@@ -472,7 +516,11 @@ export function planEntry(entry, ctx = {}) {
           return { error: 'status 只能写 merged（并进别的一组，写 into=）或 done（停掉，写 why=）；暂停由学生在页面上点' };
         }
         const patch = {};
-        if (a.add) patch.content = [...(Array.isArray(old.content) ? old.content : old.content ? [String(old.content)] : []), cut(a.add, 300)];
+        if (a.add) {
+          const was = Array.isArray(old.content) ? old.content : old.content ? [String(old.content)] : [];
+          if (was.some((c) => similarity(c, a.add) >= ALIKE)) return { error: `${old.id} 里已经有一样的题了，不另加` };
+          patch.content = [...was, cut(a.add, 300)].slice(-LIST_CAPS.content);
+        }
         if (a.result) {
           const passed = /^(过|通过|pass|ok|对)$/i.test(a.result);
           if (!passed && !/^(没过|不过|fail|没通过|错)$/i.test(a.result)) return { error: 'result 写「过」或「没过」' };
@@ -497,7 +545,7 @@ export function planEntry(entry, ctx = {}) {
       }
       for (const w of a.weaknesses || []) if (!find('weaknesses', w)) return { error: `weaknesses 里的 ${w} 在弱点表里没有` };
       // 新的一组：从明天开始（档位 1 天，last 是今天）
-      return { ...base, op: 'add', target: nextReviewId(get('reviews')), data: { title: cut(a.title, 120), ...(a.family ? { family: cut(a.family, 120) } : {}), content: a.content ? [cut(a.content, 300)] : [], weaknesses: a.weaknesses || [], blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], tier: 1, last: date, status: 'active', ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
+      return { ...base, op: 'add', target: nextReviewId(get('reviews')), data: { title: cut(a.title, 120), ...(a.family ? { family: cut(a.family, 120) } : {}), content: a.content ? [cut(a.content, 300)] : [], weaknesses: a.weaknesses || [], blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], tier: 1, last: date, status: 'active', ...(sid ? { session: sid } : {}), ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
     }
     case 'position': {
       // 每科一条「下一节从哪接」：按这节课的块是哪一科
@@ -509,8 +557,9 @@ export function planEntry(entry, ctx = {}) {
         if (get('curriculum').length && !find('curriculum', a.block)) return { error: `block=${a.block} 在课程地图里没有` };
         patch.block = a.block;
       }
-      if (a.debts) patch.debts = a.debts.map((x) => cut(x, 200));
-      if (a.first) patch.first = a.first.map((x) => cut(x, 200));
+      // 欠账、先收的题：整张换掉（不是往上加），最多几条；写得越长越没人看
+      if (a.debts) patch.debts = a.debts.map((x) => cut(x, 80)).slice(0, LIST_CAPS.debts);
+      if (a.first) patch.first = a.first.map((x) => cut(x, 120)).slice(0, LIST_CAPS.first);
       if (!Object.keys(patch).length) return { error: 'position 要写 next（下一节从哪接），可以加 block、debts、first' };
       if (old) {
         for (const k of Object.keys(patch)) if (same(old[k], patch[k])) delete patch[k];

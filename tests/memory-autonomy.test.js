@@ -156,3 +156,31 @@ test('待确认分批：同一批凑够三条合成一组；给我看的标题�
   assert.equal(pendingTitle(w), '弱点：W19 level → L0');
   assert.equal(pendingTitle(err(1, 'c'), () => ''), '错题：把内积当外积');
 });
+
+test('别一丁点小事都记、别反复累加：一节课每种有上限，同一件事不另记，列表不越堆越长', async () => {
+  const { SESSION_CAPS, LIST_CAPS } = await import('../kit/src/memory/memo.js');
+  let mem = sampleMemory(TODAY);
+  // 同一个毛病一节课只记一道错题
+  ({ mem } = write(mem, 'error q="求 A² 的形状" mine="3×3" step=a cause="把内积当外积" weakness=W19 basis=say'));
+  assert.match(run('error q="另一道：αβᵀ 是几行几列" mine="数" step=b cause="又把外积当数" weakness=W19 basis=say', mem).error, /同一个毛病只记一道/);
+  // 失误和已有的一条说的是同一件事
+  ({ mem } = write(mem, 'slip text="出题前没先把要用到的规则讲完，学生撞墙后才补"'));
+  assert.match(run('slip text="出题前没把规则讲完，学生撞墙了才补"', mem).error, /已经记过了|守则/);
+  // 观察一节课最多 3 条，和已经记的一样的不收
+  ({ mem } = write(mem, 'note text="形状判断要停很久，先数行列再判断"'));
+  assert.match(run('note text="形状判断停很久，先数行列"', mem).error, /同一件事/);
+  for (const t of ['换括号那一步总要提示', '图看懂了但写不出式子']) ({ mem } = write(mem, `note text="${t}"`));
+  assert.match(run('note text="完全不同的第四条观察内容在这里"', mem).error, new RegExp(`最多 ${SESSION_CAPS.note} 条`));
+  // 待办一样的不收
+  ({ mem } = write(mem, 'todo text="学生问了相似对角化的几何意义"'));
+  assert.match(run('todo text="学生问相似对角化的几何意义是什么"', mem).error, /一样的待办/);
+  // 欠账整张换掉、最多 5 条、每条截短
+  const pos = run(`position next="x" debts="${Array.from({ length: 8 }, (_, i) => `第 ${i} 条欠账${'很长'.repeat(60)}`).join('；')}"`, mem);
+  assert.equal(pos.patch.debts.length, LIST_CAPS.debts);
+  assert.ok(pos.patch.debts.every((d) => d.length <= 80));
+  // 复现组的题：一样的不加，最多 6 道
+  const r3 = mem.reviews.find((r) => r.id === 'R3');
+  r3.content = Array.from({ length: 6 }, (_, i) => `旧题 ${i}：${'子丑寅卯'.repeat(i + 1)}`);
+  assert.match(run(`review id=R3 add="${r3.content[2]}" basis=say`, mem).error, /一样的题/);
+  assert.equal(run('review id=R3 add="新的一道：秩一矩阵的 n 次方" basis=say', mem).patch.content.length, LIST_CAPS.content);
+});

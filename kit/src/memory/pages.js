@@ -182,7 +182,7 @@ export function createPages(host, { getData, db, ops, goto }) {
         <div class="mm-acts"><button type="button" class="btn btn-primary" data-goto="${r.status === 'open' ? esc(sid) : `view/${esc(sid)}`}">${r.status === 'open' ? (r.kind === 'class' ? '接着上课' : '进去') : r.kind === 'unit' ? '翻看这个单元' : '翻看这节课的黑板'}</button></div>
         ${sum ? `<div class="dk-memo-sub" role="heading" aria-level="3">下课小结</div><div class="dk-summary">${mdToHtml(sum.text || '')}</div>` : ''}
         ${rep ? reportHtml(rep) : rep === false ? '<p class="muted">这节课还没有课后报告（下课以后才有；回首页会补写）。</p>' : '<p class="muted">正在读课后报告…</p>'}
-        ${obs.filter((o) => o.kind !== 'summary').length ? `<div class="dk-memo-sub" role="heading" aria-level="3">课堂里的 Claude 的观察和提议</div><ul class="dk-log">${obs.filter((o) => o.kind !== 'summary').map((o) => `<li>${o.kind === 'proposal' ? '<b>提议</b> ' : ''}${inline(o.text)}</li>`).join('')}</ul>` : ''}
+        ${obs.filter((o) => o.kind !== 'summary').length ? `<details class="dk-soft"><summary>老师当堂的笔记（${obs.filter((o) => o.kind !== 'summary').length} 条）</summary><ul class="dk-log">${obs.filter((o) => o.kind !== 'summary').map((o) => `<li>${o.kind === 'proposal' ? '<b>提议</b> ' : ''}${inline(o.text)}</li>`).join('')}</ul></details>` : ''}
       </section>`;
   }
 

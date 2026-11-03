@@ -89,7 +89,9 @@ test('板放不下的失误不收（页面会自动分屏）；讲法上的照�
   assert.ok(layoutOnly('b21 超出一屏（约 617）：一句目的 + 一个带长题面和长解析的 parse 就放不下'));
   assert.ok(!layoutOnly('k1 划块规则没写名词\'s 也算前置修饰，学生把 the 21st century\'s culture machine 拆成了两块；b22 又超出一屏'));
   assert.match(plan('slip text="b8 超出一屏（约 915）"').error, /自动分成几屏/);
-  assert.ok(!plan('slip text="没讲划块就出题，学生做错了才补规则"').error);
+  // 和已有的守则说的是同一件事：不另记失误，改写成「又犯一次」（2026-11-03：别反复累加）
+  assert.match(plan('slip text="没讲划块就出题，学生做错了才补规则"').error, /守则 T-1.*again|已经记过了/);
+  assert.ok(!plan('slip text="判分时把学生写对的被动语态判成错，没看清助动词"').error);
   assert.ok(similarity('一块板只讲一个概念', '一块板只讲一个概念。') > 0.9);
 });
 
