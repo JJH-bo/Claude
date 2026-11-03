@@ -64,7 +64,8 @@
  "tries": {
   "q-shape1": 1,
   "q-shape2": 1,
-  "q-dot3": 2
+  "q-dot3": 2,
+  "q-a11": 1
  },
  "results": {
   "q-shape1": [
@@ -116,6 +117,19 @@
     "ok": true,
     "attempts": 2,
     "final": true
+   }
+  ],
+  "q-a11": [
+   {
+    "source": "record",
+    "block": "q-a11",
+    "step": "b4",
+    "type": "answer",
+    "title": "按矩阵乘法乘",
+    "q": "按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix}$ 等于多少？",
+    "value": "[[5],[10]]",
+    "ok": true,
+    "attempts": 1
    }
   ]
  },
@@ -227,6 +241,11 @@
    "role": "claude",
    "seq": 9,
    "text": "你的感觉没错：严格说它是一个 $1\\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。\n\n````board new id=b4 title=\"[5] 和 5 一样吗\"\n常驻栏里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=[\\,\\calc{b'*a}\\,]$，一个 $1\\times1$ 矩阵。\n\n```answer\nid: q-a11\ntitle: 按矩阵乘法乘\nq: 按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix}$ 等于多少？\nanswer: (b'*a)*a\nbefore: \\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}\\calc{b'*a}\\end{bmatrix} =\nhint: 结果是 $2\\times1$：第 $i$ 行 = 左边第 $i$ 行的那个数 × 右边那一列的那个数。\nexplain: 第 1 行 $1\\cdot\\calc{b'*a}$，第 2 行 $2\\cdot\\calc{b'*a}$。\n```\n````\n\n算完以后，拿结果和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 比一比。\n"
+  },
+  {
+   "role": "student",
+   "seq": 10,
+   "text": "2×1 乘 1×1，中间都是1，结果 2×1：[5, 10] 的列。\n[作答] b4 里的 answer q-a11「按矩阵乘法乘」：填了 [[5],[10]]（对，第 1 次）\n[动作] b4 里的组件 q-a11：学生标了「有把握」"
   }
  ],
  "turns": [
@@ -360,8 +379,26 @@
    "notes": [],
    "plan": false,
    "view": "# 第 3 块板「[5] 和 5 一样吗」\n\n老师写在板顶的话：你的感觉没错：严格说它是一个 $1\\times1$ 的矩阵 $[4]$。要看的是它和数 $4$ 用起来有没有区别，自己乘一次看看。\n\n算完以后，拿结果和 $\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$ 比一比。\n\n## [5] 和 5 一样吗\n常驻栏里 $\\boldsymbol\\beta^{\\mathrm T}\\boldsymbol\\alpha=[\\,5\\,]$，一个 $1\\times1$ 矩阵。\n\n【作答题 q-a11】按矩阵乘法乘\n  按矩阵乘法规则算 $(2\\times1)(1\\times1)$：$\\begin{bmatrix}1\\\\2\\end{bmatrix}\\begin{bmatrix}5\\end{bmatrix}$ 等于多少？\n  （写出答案）\n\n# 常驻栏\n## 这节课的记号\n$\\boldsymbol\\alpha=(1,2)^{\\mathrm T}$，$\\boldsymbol\\beta=(3,1)^{\\mathrm T}$，都是 $2\\times1$ 的列向量\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 10,
+   "role": "student",
+   "say": "2×1 乘 1×1，中间都是1，结果 2×1：[5, 10] 的列。",
+   "acts": [
+    {
+     "comp": "q-a11",
+     "ok": true,
+     "type": "answer"
+    },
+    {
+     "comp": "q-a11",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "2×1 乘 1×1，中间都是1，结果 2×1：[5, 10] 的列。\n[作答] b4 里的 answer q-a11「按矩阵乘法乘」：填了 [[5],[10]]（对，第 1 次）\n[动作] b4 里的组件 q-a11：学生标了「有把握」"
   }
  ],
- "seq": 9,
+ "seq": 10,
  "pendingNotes": []
 }
