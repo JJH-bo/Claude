@@ -132,7 +132,8 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
   - `memops.js`：数据库这一层（课堂和首页共用）：`applyMemo`、`confirm`（自动编号被占了就换下一个）、`reject`、`undo`、`me`。确认只由 `memoview.js` 里我点的按钮调用。
   - `memoview.js`：改动单的画面（板顶那句话下面的一行小字、小结板上的整理单、首页的「待确认」）：确认 / 改 / 不要 / 撤销，点依据看那次作答原文。`classroom.js` 的 `decoratePage`（`boardview.js` 的 `decorate` 钩子）挂上去，板记着 `memo`（改动单 id，存进 `class_pages`）。
   - 下课：`desk.makeReport` 先算一份报告，`report.js` 的 `reportText` 放进 `closingPrompt({ report })`，小结和整理单同一次写；小结正文是 memo 块以外的文字。
-  - 首页：「待确认」「我改记忆」两张卡；等确认的三条以上有「全部确认」。
+  - 首页只放上课要用的：上课、今天（到期的复现组先列三组，其余收起）、练一练（题库空时不出现）、待确认、补记（收起）；「我改记忆」「备份」「自检」「记忆库」在「管理」页（`#manage`）。
+  - 待确认：同一批的（开发那边整理的、页面算的掌握、同一节课提的）三条以上合成一组（`memo.js` 的 `groupPending`），「全部确认 / 全部不要 / 一条条看」；给我看的标题把编号换成名字（`pendingTitle(pd, nameOf)`，发给课堂 Claude 的照旧写编号）。
   - 待办 `todo`（`observations` 的 `kind: todo`）：课上被问到教案以外的内容，记下来；备课时 `plan.js` 的 `openTodos` 带上，补上了的写进教案 `todos`（课堂看得到），编号记进 `meta/todos` 的 `done`。
 - 教学守则（`docs/teach-plan.md`）：`lessons`（`T-…`，状态类）是失误归纳出来的「下次照着做」。上课时又犯写 `lesson id=… again=…`（不另记失误），只说板放不下的失误不收（`layoutOnly`）；下课时 `closingPrompt({ slips })`（`slipsToFold`：这一科还没归纳的失误全文）要它全部并进守则（改写、合并 `status=retired into=…`）；一科最多 `LESSONS_MAX` 条、几乎照抄的新守则不收（`similarity`）。`digest.js`：守则紧跟规则全文带，已归纳的失误（`absorbedSlips`）不再带。首页「我改记忆」能改、能不要（`meChange` 的 `lesson` / `lesson-retire`）。
 - 给我看的页面和第 4 批（desk-plan 第 3、4 批）：
@@ -164,6 +165,8 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - 注释、界面文字、提交说明都用中文；注释写「为什么」，密度和现有代码一致。
 - 能写成纯函数的逻辑放在不碰 DOM 的模块里，用 `node --test` 测；DOM 行为靠浏览器里实际操作验证。
 - 界面以 iPad 为准：触控目标至少 44px，输入框字号 16px（防止聚焦放大），注意软键盘、横竖屏、Apple Pencil。
+- **不用 `window.confirm` / `alert` / `prompt`**：claude.ai 的沙箱不让它们弹出来，直接当「取消」，按钮点了像没反应（2026-11-03「直接下课」就这样坏过）。要问一句用 `kit/src/dialog.js` 的 `ask` / `choose`（页面里自己画的框）；`tests/no-modals.test.js` 守着。浏览器里验证时照沙箱把 `window.confirm` 换成 `() => false`。
+- 给我看的页面少放编号（W19、L2-07、L2.1.4、c-2026…）：换成标题；长列表先列几条、其余收起。
 
 ## 发布：学习台是唯一的 artifact（`docs/hub-plan.md`）
 

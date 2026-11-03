@@ -106,6 +106,9 @@
 .mm-pop { margin-top: 8px; }
 .mm-head { margin: 14px 0 8px; font: 600 17px/1.3 var(--sans); color: var(--yellow); }
 .mm-items { display: grid; gap: 8px; }
+.mm-group { padding: 10px 12px; border-radius: 12px; border: 1px solid rgb(var(--yellow-rgb) / 0.45); background: rgb(var(--glow-rgb) / 0.03); font: 14.5px/1.5 var(--sans); color: var(--body); }
+.mm-group .mm-badge { background: rgb(var(--yellow-rgb) / 0.16); color: var(--yellow); }
+.mm-gitems { margin-top: 10px; }
 .mm-item { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--faint); background: rgb(var(--glow-rgb) / 0.03); font: 14.5px/1.5 var(--sans); color: var(--body); }
 .mm-item.is-open { border-color: rgb(var(--yellow-rgb) / 0.45); }
 .mm-item.is-rejected, .mm-item.is-undone { opacity: 0.6; }
@@ -241,6 +244,8 @@
 /* 首页「上课」卡里的备课 */
 .dk-prep { width: 100%; margin: 6px 0; padding: 10px 0; border-top: 1px dashed var(--faint); display: grid; gap: 6px; }
 .dk-prep .dk-mrow { align-items: flex-end; }
+.dk-prep .dk-mrow > .mm-f { min-width: 9em; }
+.dk-prep .dk-mrow > .mm-f:first-child { flex: 1 1 100% !important; }
 .dk-prep .btn { min-height: 44px; }
 .dk-prep-msg { font-size: 14px; }
 .dk-next { width: 100%; }
@@ -254,3 +259,21 @@
 .dr-done .dk-row em.dr-ok { color: var(--ok); }
 .dr-done .dk-row em.dr-bad { color: var(--bad); }
 .dr-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+/* —— 首页瘦身（2026-11-03）：管理类的卡片挪到「管理」页，首页只放上课要用的 —— */
+.dk-manage { display: grid; gap: 16px; max-width: 860px; }
+.dk-fold > summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; min-height: 44px; cursor: pointer; list-style: none; }
+.dk-fold > summary::-webkit-details-marker { display: none; }
+.dk-fold > summary .dk-h { margin: 0; }
+.dk-fold > summary::after { content: '展开'; margin-left: auto; color: var(--yellow); font: 14px/1.3 var(--sans); }
+.dk-fold[open] > summary::after { content: '收起'; }
+.dk-mine-sec > summary { color: var(--chalk); font: 600 15.5px/1.4 var(--sans); }
+.dk-mine-sec + .dk-mine-sec { border-top: 1px solid var(--faint); }
+.dk-mine-note { margin: 12px 0 0; }
+.dk-pdone-box { margin-top: 8px; }
+.dk-due > .dk-sub { margin: 0 0 4px; }
+
+.dk-err.is-short { padding: 0; }
+.dk-err-row { display: flex; align-items: baseline; gap: 10px; width: 100%; min-height: 44px; padding: 10px 0; border: 0; background: transparent; color: var(--body); font: 15px/1.5 var(--sans); text-align: left; cursor: pointer; }
+.dk-err-row > span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.dk-prep .dk-prep-pages { width: 100%; min-height: 44px; box-sizing: border-box; padding: 0 10px; border-radius: 10px; border: 1px solid var(--faint); background: rgb(var(--glow-rgb) / 0.04); color: var(--chalk); font: 16px/1.3 var(--sans); }

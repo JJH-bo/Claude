@@ -625,6 +625,12 @@ body.has-keypad .tutor-fab { display: none; }
   font: 500 15.5px/1.4 var(--sans); opacity: 0; pointer-events: none; transition: all .25s; max-width: calc(100vw - 32px); box-shadow: 0 8px 24px rgb(var(--shade-rgb) / 0.35);
 }
 #la-toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* 页面里自己画的确认框（dialog.js）：claude.ai 的沙箱不让 window.confirm 弹出来 */
+.la-dialog-back { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgb(var(--shade-rgb) / 0.45); }
+.la-dialog { width: min(440px, 100%); background: var(--board-2); color: var(--chalk); border: 1.5px solid var(--faint); border-radius: 16px; padding: 20px 20px 16px; box-shadow: 0 12px 40px rgb(var(--shade-rgb) / 0.4); }
+.la-dialog-text { margin: 0 0 16px; font: 400 16px/1.6 var(--sans); white-space: pre-line; }
+.la-dialog-acts { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+.la-dialog-acts .btn { min-height: 44px; min-width: 88px; }
 .lint { padding: 14px 18px; margin: 14px 0 22px; font-size: 15px; border-radius: 14px; background: rgb(var(--coral-rgb) / 0.07); --frame: rgb(var(--coral-rgb) / 0.8); }
 .lint-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--coral); }
 .lint-head strong { font: 700 16px/1.3 var(--sans); }

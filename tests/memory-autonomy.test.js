@@ -139,3 +139,19 @@ test('从备份恢复：默认只补缺的，覆盖要明说', () => {
   assert.equal(restorePlan(file, { have, overwrite: true }).writes.length, keep.writes.length + 2);
   assert.throws(() => restorePlan({ format: 'x' }), /不是学习台的备份/);
 });
+
+test('待确认分批：同一批凑够三条合成一组；给我看的标题不写编号', async () => {
+  const { groupPending, pendingTitle } = await import('../kit/src/memory/memo.js');
+  const rule = (i) => ({ id: `pd-r${i}`, kind: 'rule', by: 'chat', status: 'open', op: 'update', target: `rule-${i}`, patch: { text: `第 ${i} 条` } });
+  const err = (i, s) => ({ id: `pd-e${i}`, kind: 'error', by: 'class', session: s, status: 'open', op: 'add', target: `L2-0${i}`, data: { cause: '把内积当外积' } });
+  const g = groupPending([rule(1), err(1, 'c-20261027-1'), rule(2), rule(3), err(2, 'c-20261028-1')]);
+  assert.deepEqual(g.map((x) => [x.label, x.items.length]), [['整理规则', 3], ['', 1], ['', 1]]);
+  const g2 = groupPending([1, 2, 3].map((i) => err(i, 'c-20261027-1')));
+  assert.equal(g2[0].label, '10 月 27 日那节课提的');
+  // 编号换成名字；不给 nameOf（发给课堂 Claude 的）照旧写编号
+  const w = { id: 'pd-w', kind: 'weakness', label: '弱点', op: 'update', target: 'W19', patch: { level: 'L0', last: '2026-11-03' } };
+  const names = { W19: '内积和外积分不清' };
+  assert.equal(pendingTitle(w, (c, id) => names[id] || ''), '弱点：「内积和外积分不清」 证据级 → L0');
+  assert.equal(pendingTitle(w), '弱点：W19 level → L0');
+  assert.equal(pendingTitle(err(1, 'c'), () => ''), '错题：把内积当外积');
+});

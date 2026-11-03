@@ -697,24 +697,56 @@ export function resolvedErrors(mem = {}) {
 
 /* ---------------- 给人看 ---------------- */
 
-/** 一张改动单一句话：「错题 L2-08：把 βᵀα 当矩阵」 */
-export function pendingTitle(pd) {
+/**
+ * 一张改动单一句话：「错题 L2-08：把 βᵀα 当矩阵」。nameOf(coll, id)：给我看时把编号换成名字（弱点、复现组、守则、偏好的标题），
+ * 不给就照旧写编号（发给课堂里的 Claude 的那份要编号）
+ */
+export function pendingTitle(pd, nameOf = null) {
   const d = pd.data || {}, p = pd.patch || {};
+  const nm = (coll, id) => { const t = nameOf ? nameOf(coll, id) : ''; return t ? `「${cut(t, 24)}」` : String(id ?? ''); };
+  const me = () => nm(pd.coll, pd.target);
+  const FIELD = { level: '证据级', scope: '影响面', status: '状态', errors: '挂的错题', blocks: '相关的块', title: '标题' };
   const what = {
-    pref: () => (p.status === 'merged' ? `${pd.target} 并进 ${p.into}` : p.status === 'void' ? `${pd.target} 不用了` : `${d.topic ? `［${d.topic}］` : ''}${d.text || p.text || ''}`),
+    pref: () => (p.status === 'merged' ? `${me()} 并进 ${nm('profile', p.into)}` : p.status === 'void' ? `${me()} 不用了` : `${d.topic ? `［${d.topic}］` : ''}${d.text || p.text || ''}`),
     todo: () => d.text,
-    rule: () => (pd.op === 'add' ? `［${d.cat || ''}］${d.text}` : p.status === 'void' ? `${pd.target} 作废：${p.note || ''}` : `${pd.target} 改成：${p.text || Object.entries(p).map(([k, v]) => `${k}=${v}`).join(' ')}`),
+    rule: () => (pd.op === 'add' ? `［${d.cat || ''}］${d.text}` : p.status === 'void' ? `作废一条：${p.note || ''}` : p.text ? `改成：${p.text}` : p.space ? `只给${{ math: '数学', cs: '408', en: '英语' }[p.space] || p.space}的课` : '改了'),
     slip: () => d.text,
-    lesson: () => (pd.op === 'add' ? d.text : p.status === 'retired' ? `${pd.target} ${p.into ? `并进 ${p.into}` : '不用了'}` : p.text ? `${pd.target} 改写：${p.text}` : p.recent ? `${pd.target} 又犯一次：${String(p.recent.at(-1)).slice(6)}` : `${pd.target} 归纳了 ${(p.slips || []).length} 条失误`),
+    lesson: () => (pd.op === 'add' ? d.text : p.status === 'retired' ? `${me()} ${p.into ? `并进 ${nm('lessons', p.into)}` : '不用了'}` : p.text ? `改写：${p.text}` : p.recent ? `${me()} 又犯一次：${String(p.recent.at(-1)).slice(6)}` : `${me()} 归纳了 ${(p.slips || []).length} 条失误`),
     note: () => d.text,
     propose: () => d.text,
-    error: () => (d.resolved ? `${d.corrects} 已解决` : `${pd.target}：${d.cause || d.q || ''}`),
-    weakness: () => (pd.op === 'add' ? `${pd.target} ${d.title}（${d.scope}，${d.level}）` : p.status === 'merged' ? `${pd.target} 并进 ${p.into}` : `${pd.target} ${Object.entries(p).filter(([k]) => k !== 'last').map(([k, v]) => `${k} → ${Array.isArray(v) ? v.join('、') : v}`).join('，')}`),
-    review: () => (pd.op === 'add' ? `${pd.target} ${d.title}` : `${pd.target} ${p.status ? ({ paused: '暂停', merged: `并进 ${p.into}`, done: `停掉：${p.why || ''}` }[p.status] || '恢复') : p.result ? `${p.result}，下次 ${p.tier} 天后` : p.content ? `加题：${p.content.at(-1)}` : '改了'}`),
-    position: () => p.next || d.next || (p.block ? `学到 ${p.block}` : '改了'),
-    mastery: () => { const st = p.state || d.state; const t = p.tier ?? d.tier; return `${pd.target} → ${st}${st === '复现通过' && t ? `（第 ${t} 天那档）` : ''}`; },
+    error: () => (d.resolved ? `${nameOf ? '一道错题' : d.corrects} 已解决` : `${nameOf ? '' : `${pd.target}：`}${d.cause || d.q || ''}`),
+    weakness: () => (pd.op === 'add' ? `${nameOf ? '' : `${pd.target} `}${d.title}（${d.scope}，${d.level}）` : p.status === 'merged' ? `${me()} 并进 ${nm('weaknesses', p.into)}` : `${me()} ${Object.entries(p).filter(([k]) => k !== 'last' && !(nameOf && k === 'errors')).map(([k, v]) => `${nameOf ? FIELD[k] || k : k} → ${Array.isArray(v) ? (nameOf && k === 'blocks' ? v.map((b) => nm('curriculum', b)).join('、') : v.join('、')) : v}`).join('，') || (nameOf && p.errors ? '多挂了一道错题' : '')}`),
+    review: () => (pd.op === 'add' ? `${nameOf ? '' : `${pd.target} `}${d.title}` : `${me()} ${p.status ? ({ paused: '暂停', merged: `并进 ${nm('reviews', p.into)}`, done: `停掉：${p.why || ''}` }[p.status] || '恢复') : p.result ? `${p.result}，下次 ${p.tier} 天后` : p.content ? `加题：${p.content.at(-1)}` : '改了'}`),
+    position: () => p.next || d.next || (p.block ? `学到 ${nm('curriculum', p.block)}` : '改了'),
+    mastery: () => { const st = p.state || d.state; const t = p.tier ?? d.tier; return `${nm('curriculum', String(pd.target).split('#')[0])}${String(pd.target).includes('#') ? ` ${String(pd.target).split('#')[1]}` : ''} → ${st}${st === '复现通过' && t ? `（第 ${t} 天那档）` : ''}`; },
   }[pd.kind];
-  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${pd.op === 'update' && !['weakness', 'review', 'lesson', 'mastery', 'rule', 'pref'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
+  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${!nameOf && pd.op === 'update' && !['weakness', 'review', 'lesson', 'mastery', 'rule', 'pref'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
+}
+
+/**
+ * 等确认的改动单分批：同一次来的（开发那边整理的一批、页面算的掌握、同一节课提的）凑够 min 条就合成一组，
+ * 首页「待确认」一组一行，「全部确认 / 全部不要」一次点完，不用一条条翻（2026-11-03 一次整理规则 33 条，首页长得翻不完）。
+ * 返回 [{ key, label, items }]，单独的那几条 label 是空的、items 只有一条；顺序照原来的
+ */
+export function groupPending(pds = [], { min = 3 } = {}) {
+  const keyOf = (p) => (p.by === 'chat' ? 'chat' : p.by === 'page' ? `page|${p.kind}` : p.by === 'me' ? 'me' : `class|${p.session || ''}`);
+  const buckets = new Map();
+  for (const p of pds) { const k = keyOf(p); if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(p); }
+  const out = [];
+  const seen = new Set();
+  for (const p of pds) {
+    const k = keyOf(p);
+    const list = buckets.get(k);
+    if (list.length < min) { out.push({ key: p.id, label: '', items: [p] }); continue; }
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const sess = /^class\|c-(\d{4})(\d{2})(\d{2})/.exec(k);
+    const label = k === 'chat' ? (list.every((x) => x.kind === 'rule') ? '整理规则' : '开发那边整理的')
+      : k.startsWith('page|') ? (p.kind === 'mastery' ? '页面按证据算的掌握' : '页面算的')
+      : sess ? `${Number(sess[2])} 月 ${Number(sess[3])} 日那节课提的` : '课堂里提的';
+    out.push({ key: k, label, items: list });
+  }
+  return out;
 }
 
 /** 这一轮记了什么（板顶那句话下面的小字）：「记下了：偏好 1 条；待你确认：错题 1 条」 */

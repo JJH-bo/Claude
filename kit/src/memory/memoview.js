@@ -2,9 +2,10 @@
 // 下课小结那块板上的整理单、学习台首页的「待确认」。每一条：说的什么、为什么、依据（点开看那次作答原文）、
 // 等确认的「确认 / 改 / 不要」，写进去了的「撤销」（UNDO_DAYS 天内）。
 // 确认、不要、撤销只在这里由我点按钮触发（memops.js），课堂里的 Claude 的输出碰不到。
+import { ask } from '../dialog.js';
 import { escapeHtml } from '../render.js';
 import { toast } from '../record.js';
-import { pendingTitle, memoLine, canUndo } from './memo.js';
+import { pendingTitle, memoLine, canUndo, groupPending } from './memo.js';
 import { UNDO_DAYS } from './schema.js';
 
 const TIER_TEXT = { direct: '已记下', confirm: '等你确认', me: '你改的' };
@@ -17,10 +18,11 @@ const cut = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); r
  * db：学习台的数据库；ops：memops.js 的 createMemOps。返回 { attach(el, ids(), mode), refresh() }。
  * mode：line（板顶下的一行小字，点开是列表）/ list（整张列出来：小结板上的整理单、首页）
  */
-export function createMemoView({ db, ops }) {
+export function createMemoView({ db, ops, nameOf = null }) {
   const docs = new Map();
   const spots = new Set();
   let ready = false;
+  const unfolded = new Set(); // 点开看了的那几组
   db.collection('pending').onSnapshot((snap) => {
     docs.clear();
     for (const d of snap.docs) docs.set(d.id, { id: d.id, ...d.data() });
@@ -57,18 +59,28 @@ export function createMemoView({ db, ops }) {
     s.el.hidden = false;
     const editing = s.el.querySelector('.mm-edit:not([hidden])')?.closest('.mm-item')?.dataset.id;
     const shown = new Set([...s.el.querySelectorAll('.mm-evbox:not([hidden])')].map((b) => b.closest('.mm-item')?.dataset.id));
-    const items = `<div class="mm-items">${pds.map((p) => item(p)).join('')}</div>`;
+    // 首页、整理单：同一批等确认的合成一组，默认收起（groupPending）；写进去了的照旧一条条
+    const items = mode === 'line' ? `<div class="mm-items">${pds.map((p) => item(p)).join('')}</div>`
+      : `<div class="mm-items">${groupPending(pds).map((g) => (g.items.length > 1 && g.items.every((p) => p.status === 'open') ? group(g) : g.items.map((p) => item(p)).join(''))).join('')}</div>`;
     if (mode === 'line') {
       s.el.innerHTML = `<button type="button" class="mm-toggle" aria-expanded="${s.open}">${escapeHtml(memoLine(pds))}<span class="mm-chev" aria-hidden="true">${s.open ? '收起' : '点开'}</span></button><div class="mm-pop"${s.open ? '' : ' hidden'}>${items}</div>`;
     } else {
-      // 等确认的多了（比如一次整理规则）：一个按钮全部确认，不用一条条点
-      const open = pds.filter((p) => p.status === 'open').length;
-      const all = open >= 3 ? `<div class="mm-acts mm-all"><button type="button" class="btn btn-sm mm-okall">全部确认（${open} 条）</button></div>` : '';
-      s.el.innerHTML = `${title ? `<div class="mm-head" role="heading" aria-level="3">${escapeHtml(title)}</div>` : ''}${all}${items}`;
+      s.el.innerHTML = `${title ? `<div class="mm-head" role="heading" aria-level="3">${escapeHtml(title)}</div>` : ''}${items}`;
     }
     // 重画以后，正在改的、点开了证据的照旧开着
     if (editing) openEdit(s.el.querySelector(`.mm-item[data-id="${CSS.escape(editing)}"]`));
     for (const id of shown) showEvidence(s.el.querySelector(`.mm-item[data-id="${CSS.escape(id)}"]`), false);
+  }
+
+  function group(g) {
+    const isOpen = unfolded.has(g.key);
+    const why = g.items.find((p) => p.reason)?.reason || '';
+    return `<div class="mm-group" data-group="${escapeHtml(g.key)}">
+      <div class="mm-top"><span class="mm-badge">等你确认</span><span class="mm-title">${escapeHtml(g.label)}（${g.items.length} 条）</span></div>
+      ${why ? `<p class="mm-why">${escapeHtml(cut(why.replace(/^[^：]*：/, ''), 80))}${g.items.length > 1 ? ' 等' : ''}</p>` : ''}
+      <div class="mm-acts"><button type="button" class="btn btn-sm btn-primary mm-gok">全部确认</button><button type="button" class="btn btn-sm mm-gno">全部不要</button><button type="button" class="btn btn-sm mm-gshow" aria-expanded="${isOpen}">${isOpen ? '收起' : '一条条看'}</button></div>
+      ${isOpen ? `<div class="mm-items mm-gitems">${g.items.map((p) => item(p)).join('')}</div>` : ''}
+    </div>`;
   }
 
   function item(p) {
@@ -79,9 +91,9 @@ export function createMemoView({ db, ops }) {
       : p.status === 'done' && canUndo(p) ? `<button type="button" class="btn btn-sm mm-undo" title="${UNDO_DAYS} 天内能撤">撤销</button>` : '';
     const basis = (p.basis || []).slice(0, 8);
     return `<div class="mm-item is-${escapeHtml(p.status)} tier-${escapeHtml(tier)}" data-id="${escapeHtml(p.id)}">
-      <div class="mm-top"><span class="mm-badge">${escapeHtml(badge)}</span><span class="mm-title">${escapeHtml(pendingTitle(p))}</span></div>
+      <div class="mm-top"><span class="mm-badge">${escapeHtml(badge)}</span><span class="mm-title">${escapeHtml(pendingTitle(p, nameOf))}</span></div>
       ${p.reason ? `<p class="mm-why">${escapeHtml(cut(p.reason, 200))}</p>` : ''}
-      ${basis.length ? `<div class="mm-basis"><span class="muted">依据</span>${basis.map((b) => `<button type="button" class="mm-ev" data-ev="${escapeHtml(b)}">${escapeHtml(b)}</button>`).join('')}</div><div class="mm-evbox" hidden></div>` : ''}
+      ${basis.length ? `<div class="mm-basis"><span class="muted">依据</span>${basis.map((b, i) => `<button type="button" class="mm-ev" data-ev="${escapeHtml(b)}" title="${escapeHtml(b)}">${basis.length > 1 ? `第 ${i + 1} 条` : '看原文'}</button>`).join('')}</div><div class="mm-evbox" hidden></div>` : ''}
       ${acts ? `<div class="mm-acts">${acts}</div>` : ''}
       <form class="mm-edit" hidden></form>
     </div>`;
@@ -91,13 +103,20 @@ export function createMemoView({ db, ops }) {
     const t = e.target.closest('button');
     if (!t) return;
     if (t.classList.contains('mm-toggle')) { s.open = !s.open; paint(s); return; }
-    if (t.classList.contains('mm-okall')) {
-      const open = list(s).filter((p) => p.status === 'open');
-      if (!confirm(`这 ${open.length} 条都确认写进记忆库？写进去的 ${UNDO_DAYS} 天内还能一条条撤销。`)) return;
-      t.disabled = true;
+    const gEl = t.closest('.mm-group');
+    if (gEl && !t.closest('.mm-item')) {
+      const key = gEl.dataset.group;
+      const g = groupPending(list(s)).find((x) => x.key === key);
+      if (!g) return;
+      if (t.classList.contains('mm-gshow')) { if (unfolded.has(key)) unfolded.delete(key); else unfolded.add(key); paint(s); return; }
+      const yes = t.classList.contains('mm-gok');
+      if (!yes && !t.classList.contains('mm-gno')) return;
+      const n = g.items.length;
+      if (!await ask(yes ? `「${g.label}」这 ${n} 条都写进记忆库？${UNDO_DAYS} 天内还能一条条撤销。` : `「${g.label}」这 ${n} 条都不要？（留着记录，不写进记忆库）`, { ok: yes ? '全部确认' : '全部不要', danger: !yes })) return;
+      gEl.querySelectorAll('button').forEach((b) => { b.disabled = true; });
       let ok = 0;
-      for (const pd of open) { try { await ops.confirm(pd); ok++; } catch (err) { toast(`${cut(pendingTitle(pd), 30)} 没成：${err?.message || err}`); } }
-      toast(`写进去了 ${ok} 条`);
+      for (const pd of g.items) { try { await (yes ? ops.confirm(pd) : ops.reject(pd)); ok++; } catch (err) { toast(`有一条没成：${err?.message || err}`); } }
+      toast(yes ? `写进去了 ${ok} 条` : `不要了 ${ok} 条`);
       return;
     }
     const box = t.closest('.mm-item');
@@ -108,7 +127,7 @@ export function createMemoView({ db, ops }) {
     if (t.classList.contains('mm-edit-cancel')) { box.querySelector('.mm-edit').hidden = true; return; }
     const act = t.classList.contains('mm-ok') ? 'confirm' : t.classList.contains('mm-no') ? 'reject' : t.classList.contains('mm-undo') ? 'undo' : t.classList.contains('mm-edit-save') ? 'save' : '';
     if (!act) return;
-    if (act === 'undo' && !confirm(`撤销「${cut(pendingTitle(pd), 40)}」？`)) return;
+    if (act === 'undo' && !await ask(`撤销「${cut(pendingTitle(pd, nameOf), 40)}」？`, { ok: '撤销' })) return;
     box.querySelectorAll('button').forEach((b) => { b.disabled = true; });
     try {
       if (act === 'confirm') await ops.confirm(pd);

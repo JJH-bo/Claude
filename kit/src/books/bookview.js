@@ -1,5 +1,6 @@
 // 学习台的「教材」页（#books、#books/B1）：导入资料（PDF、截图、Word 文稿、PowerPoint 讲义）、看转写进度、
 // 一条条对着原页图核对、改字、重转某几页、挂到课程地图（plan.js）。数据在 books/…（importer.js 写）。
+import { ask } from '../dialog.js';
 import { mdToHtml, escapeHtml } from '../render.js';
 import { toast } from '../record.js';
 import { assetUrl } from '../live/store.js';
@@ -211,7 +212,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
       else if (b.matches('.bk-save')) { const text = host.querySelector('.bk-edit').value; editing = null; await patch(bookId, id, () => ({ text, fixed: true, checked: true })); }
       else if (b.matches('.bk-redo')) {
         const c = chunksCache.get(bookId)?.find((x) => x.id === id);
-        if (c?.fixed && !confirm('这一条你改过字，重新转写会盖掉改的。接着重转？')) return;
+        if (c?.fixed && !await ask('这一条你改过字，重新转写会盖掉改的。接着重转？', { ok: '重转' })) return;
         if (c?.fixed) await patch(bookId, id, () => ({ fixed: false }));
         const im = await getImporter();
         run(() => im.transcribe(bookId, { pages: c.pages, force: true }));
@@ -267,7 +268,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
 
   async function removeBook(id) {
     const b = books.find((x) => x.id === id);
-    if (!b || !confirm(`删掉 ${id}「${b.title || ''}」？条目、转写结果都删掉（原页图也删）。课程地图里挂着它的条目编号会失效。`)) return;
+    if (!b || !await ask(`删掉「${b.title || id}」？条目、转写结果都删掉（原页图也删）。课程地图里挂着它的条目会失效。`, { ok: '删掉', danger: true })) return;
     const [chunks, pages] = await Promise.all([db.collection(`books/${id}/chunks`).get().then(docsOf), db.collection(`books/${id}/pages`).get().then(docsOf)]);
     for (const c of chunks) await db.doc(`books/${id}/chunks/${c.id}`).delete().catch(() => {});
     for (const p of pages) {

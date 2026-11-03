@@ -7,6 +7,7 @@
 // docs/desk-plan.md 第 1 批（记录能力）：下课时页面算课后报告（report.js）写进 sessions/{编号}/report/main；首页「补记」
 // 学习台外面做的；「备份和用量」导出整个记忆库（backup.js）、看 assets 用了多少。
 // 课程地图、弱点表、以前的课的页面（desk-plan 第 3 批）后面做。
+import { ask, choose } from '../dialog.js';
 import { mdToHtml, escapeHtml } from '../render.js';
 import { session } from '../session.js';
 import { toast } from '../record.js';
@@ -17,7 +18,6 @@ import { sessionId, isSessionId, scopeDb, manualEvidence, SESSION_SCOPED, SESSIO
 import { buildReport, reportLine } from './report.js';
 import { backupFile, backupName, restorePlan, BOARD_COLLECTIONS, SESSION_EXTRA } from './backup.js';
 import { createManualForm } from './manual.js';
-import { usageText } from '../class/usage.js';
 import { createMemOps } from './memops.js';
 import { createMemoView } from './memoview.js';
 import { resolvedErrors, voidedIds, activeLessons } from './memo.js';
@@ -57,6 +57,9 @@ export const classHash = () => { const h = decodeURIComponent(String(location.ha
 const deskUrl = () => { const r = String(document.referrer || ''); return /^https:\/\/claude\.ai\/(?:code\/)?artifact\//.test(r) ? r.split('#')[0] : ''; };
 /** #view/c-20261027-1：只读翻看以前那节课的黑板 */
 export const viewHash = () => { const h = decodeURIComponent(String(location.hash || '').slice(1)); return h.startsWith('view/') && isSessionId(h.slice(5)) ? h.slice(5) : ''; };
+// 给我看的改动单：编号换成名字（弱点、复现组、守则、偏好、课程地图的标题）
+const nameIn = (get) => (coll, id) => { const d = (get()?.[coll] || []).find((x) => String(x.id) === String(id)); return d ? String(d.title || d.text || '') : ''; };
+
 // 首页以外的页面（pages.js），换页不刷新
 const PAGES = { map: '课程地图', books: '教材', weak: '弱点表', errors: '错题本', classes: '以前的课', stats: '统计' };
 const goto = (hash) => { location.hash = hash; location.reload(); };
@@ -75,7 +78,7 @@ export async function renderDesk(root, meta) {
       <div class="dk-brand"><h1 class="dk-title">学习台</h1><span class="dk-unit">${mdToHtml(String(unit), { inline: true })}</span></div>
       <div class="dk-spaces" role="tablist" aria-label="科目">${SPACE_KEYS.map((k) => `<button type="button" role="tab" class="dk-space" data-space="${k}">${SPACES[k].label}</button>`).join('')}</div>
     </header>
-    <nav class="dk-nav" aria-label="学习台的页面"><a href="#">首页</a>${Object.entries(PAGES).map(([k, v]) => `<a href="#${k}">${v}</a>`).join('')}</nav>
+    <nav class="dk-nav" aria-label="学习台的页面"><a href="#">首页</a>${Object.entries(PAGES).map(([k, v]) => `<a href="#${k}">${v}</a>`).join('')}<a href="#manage">管理</a></nav>
     <p class="dk-status muted">正在连接记忆库…</p>
     <div class="dk-pages" hidden></div>
     <div class="dk-bookpage" hidden></div>
@@ -84,15 +87,17 @@ export async function renderDesk(root, meta) {
     <section class="dk-card dk-class" hidden><h2 class="dk-h">上课</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-today" hidden><h2 class="dk-h">今天</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-drill" hidden><h2 class="dk-h">练一练</h2><p class="dk-sub muted">页面从以前课上的题里挑几道，不同块混着做，页面判分，不调用 Claude。</p><div class="dk-body"></div></section>
-    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">课堂里的 Claude 定的规则、页面按证据算的掌握和练习后的复现结果：点「确认」才写进记忆库。错题、弱点、复现组、下一节它直接写，在「最近写进去的」里看，7 天内能撤销。</p><div class="dk-popen"></div><div class="dk-memo-sub" role="heading" aria-level="3">最近写进去的</div><div class="dk-pdone"></div></section>
-    <section class="dk-card dk-manual" hidden><h2 class="dk-h">补记</h2><p class="dk-sub muted">在学习台外面做的（纸上、Notability、对话里）：写一句、贴张截图，下一节课的课后报告会列出来。</p><div class="dk-body"></div><div class="dk-mlist"></div></section>
     </div>
     <div class="dk-col dk-col-side">
-    <section class="dk-card dk-mine" hidden><h2 class="dk-h">我改记忆</h2><div class="dk-body"></div></section>
-    <section class="dk-card dk-check" hidden><h2 class="dk-h">自检</h2><div class="dk-body"></div></section>
-    <section class="dk-card dk-colls" hidden><h2 class="dk-h">记忆库</h2><div class="dk-body"></div></section>
-    <section class="dk-card dk-backup" hidden><h2 class="dk-h">备份和用量</h2><div class="dk-body"></div></section>
+    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">规则和掌握要你点了才写进记忆。别的课堂里的 Claude 直接写，不对就在「最近写进去的」里撤销（7 天内）。</p><div class="dk-popen"></div><details class="dk-soft dk-pdone-box"><summary>最近写进去的</summary><div class="dk-pdone"></div></details></section>
+    <section class="dk-card dk-manual" hidden><details class="dk-fold"><summary><h2 class="dk-h">补记</h2><span class="muted">在学习台外面做的题，写一句或贴张图</span></summary><div class="dk-body"></div><div class="dk-mlist"></div></details></section>
     </div>
+    </div>
+    <div class="dk-manage" hidden>
+    <section class="dk-card dk-mine" hidden><h2 class="dk-h">我改记忆</h2><div class="dk-body"></div></section>
+    <section class="dk-card dk-backup" hidden><h2 class="dk-h">备份</h2><div class="dk-body"></div></section>
+    <section class="dk-card dk-check" hidden><h2 class="dk-h">自检</h2><div class="dk-body"></div></section>
+    <section class="dk-card dk-colls" hidden><details class="dk-fold"><summary><h2 class="dk-h">记忆库</h2><span class="muted">每一类有几条、谁写</span></summary><div class="dk-body"></div></details></section>
     </div>
     <footer class="dk-foot">组件库 ${escapeHtml(VERSION)}</footer>`;
   const $ = (s) => root.querySelector(s);
@@ -234,11 +239,14 @@ export async function renderDesk(root, meta) {
     const due = dues.filter((d) => d.days <= 0);
     const soon = dues.filter((d) => d.days > 0).slice(0, 3);
     const elsewhere = SPACE_KEYS.filter((k) => k !== space).map((k) => [k, dueList(filterSpace(data, k).reviews, today).filter((d) => d.days <= 0).length]).filter(([, n]) => n);
-    $('.dk-today .dk-body').innerHTML = !total ? '<p class="muted">记忆库还是空的。回对话里让 Claude 把记忆搬进来（说明书第七节「迁移」）。</p>' : `
-      <div class="dk-due">${due.length ? due.map((d) => `<div class="dk-row ${d.days < 0 ? 'is-over' : 'is-today'}"><b>${escapeHtml(d.id)}</b><span>${inline(d.title)}</span><em>${d.days < 0 ? `过期 ${-d.days} 天` : '今天'}</em><button type="button" class="btn btn-sm dk-review" data-rid="${escapeHtml(d.id)}">开复现课</button></div>`).join('') : '<p class="muted">今天没有到期的复现组。</p>'}
-        ${soon.length ? `<p class="dk-soon muted">接下来：${soon.map((d) => `${escapeHtml(d.id)}（${escapeHtml(d.due.slice(5))}）`).join('、')}</p>` : ''}
+    // 到期的复现组：先列最该做的三组（今天到期的、过期最久的），其余收起来——一下列十几组只会让人不想点
+    const dueRow = (d) => `<div class="dk-row ${d.days < 0 ? 'is-over' : 'is-today'}"><span>${inline(d.title)}</span><em>${d.days < 0 ? `过期 ${-d.days} 天` : '今天'}</em><button type="button" class="btn btn-sm dk-review" data-rid="${escapeHtml(d.id)}">开复现课</button></div>`;
+    const DUE_SHOW = 3;
+    $('.dk-today .dk-body').innerHTML = !total ? '<p class="muted">记忆库还是空的。</p>' : `
+      <div class="dk-due">${due.length ? `<p class="dk-sub muted">该复习的（${due.length} 组）</p>${due.slice(0, DUE_SHOW).map(dueRow).join('')}${due.length > DUE_SHOW ? `<details class="dk-soft"><summary>还有 ${due.length - DUE_SHOW} 组</summary>${due.slice(DUE_SHOW).map(dueRow).join('')}</details>` : ''}` : '<p class="muted">今天没有要复习的。</p>'}
+        ${soon.length ? `<p class="dk-soon muted">接下来：${soon.map((d) => `${inline(d.title)}（${escapeHtml(d.due.slice(5).replace('-', '/'))}）`).join('、')}</p>` : ''}
         ${elsewhere.length ? `<p class="dk-soon">别的科也有到期的：${elsewhere.map(([k, n]) => `<button type="button" class="btn btn-sm dk-space-go" data-space="${k}">${SPACES[k].label} ${n} 组</button>`).join(' ')}</p>` : ''}</div>
-      ${pos ? `<div class="dk-pos"><div><span class="dk-k">下一节</span>${inline(pos.next)}</div>${pos.block ? `<div><span class="dk-k">学到</span>${escapeHtml(pos.block)}${blockTitle(pos.block)}</div>` : ''}${listOf(pos.debts).length ? `<div><span class="dk-k">欠账</span>${listOf(pos.debts).map((x) => inline(x)).join('；')}</div>` : ''}</div>` : ''}`;
+      ${pos ? `<div class="dk-pos"><div><span class="dk-k">下一节</span>${inline(pos.next)}</div>${pos.block ? `<div><span class="dk-k">学到</span>${blockTitle(pos.block) || escapeHtml(pos.block)}</div>` : ''}${listOf(pos.debts).length ? `<div><span class="dk-k">欠账</span>${listOf(pos.debts).map((x) => inline(x)).join('；')}</div>` : ''}</div>` : ''}`;
     // 自检
     const hard = res.problems.filter((p) => !p.soft);
     const soft = res.problems.filter((p) => p.soft);
@@ -270,7 +278,8 @@ export async function renderDesk(root, meta) {
     const open = opens.find((x) => kindOf(x) === 'class');
     // 上一节（这一科下了课的最近一节）：课后报告的要点、花了多少
     const last = mine.sessions.filter((x) => x.status === 'closed').sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0))[0];
-    const lastLine = last ? [last.report?.line || '', usageText(last.usage)].filter(Boolean).join('；') : '';
+    // 上一节：日期 + 报告那一行（做了几题、对了几题）；花了多少额度在「以前的课」里看，首页不放
+    const lastLine = last ? String(last.report?.line || '') : '';
     const main = pack.main;
     const block = main?.block || mine.position.find((d) => d.id === positionId(space))?.block || '';
     // 等我确认的改动单；上一节还没整理完（它的整理单里还有没点的）
@@ -279,9 +288,9 @@ export async function renderDesk(root, meta) {
     const blocksHere = mine.curriculum.filter((b) => (b.level || (String(b.id).replace(/^[A-Z]{2}-/, '').split('.').length === 3 ? 'block' : '')) === 'block').sort((a, b) => cmpId(a.id, b.id));
     box.querySelector('.dk-body').innerHTML = `
       ${lastOpen ? `<p class="dk-warn">上一节的整理单还有 ${lastOpen} 条没确认：<a class="dk-link" href="#classes/${escapeHtml(last.id)}">去看那节课</a> 或者在下面「待确认」里点。</p>` : openPd.length ? `<p><a class="dk-link dk-to-pending" href="#">待确认 ${openPd.length} 条 ↓</a></p>` : ''}
-      ${last ? `<p class="dk-last"><span class="dk-k">上一节</span>${escapeHtml(last.id)}${last.block ? `（${escapeHtml(last.block)}）` : ''}${lastLine ? `<span class="muted">：${escapeHtml(lastLine)}</span>` : ''}</p>` : ''}
-      ${opens.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || x.id)}${x.block ? `<span class="muted">（${escapeHtml(x.block)}）</span>` : ''}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button></div>`; }).join('')}
-      <div class="dk-next">${main ? `<p><span class="dk-k">备好的课</span>${inline(main.unit || '（资料包没写 unit）')}${block ? `<span class="muted">（${escapeHtml(block)}）</span>` : ''}${main.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>${main.goal ? `<p class="dk-goal muted" title="点一下看全文">${inline(main.goal)}</p>` : ''}`
+      ${last ? `<p class="dk-last"><span class="dk-k">上一节</span>${escapeHtml(String(last.date || '').slice(5).replace('-', '/'))}${last.block ? ` ${blockTitle(last.block)}` : ''}${lastLine ? `<span class="muted">：${escapeHtml(lastLine)}</span>` : ''} <a class="dk-link" href="#classes/${escapeHtml(last.id)}">看报告</a></p>` : ''}
+      ${opens.map((x) => { const k = kindOf(x); return `<div class="dk-row dk-open is-${k}"><span class="dk-kind">${SESSION_KINDS[k]}</span><span>${inline(x.title || blockTitle(x.block) || x.id)}</span><button type="button" class="btn btn-primary dk-go" data-sid="${escapeHtml(x.id)}">${k === 'class' ? '接着上课' : '进去'}</button><button type="button" class="btn btn-sm dk-close" data-sid="${escapeHtml(x.id)}" title="不调用 Claude：只结束这节、页面算课后报告">直接下课</button></div>`; }).join('')}
+      <div class="dk-next">${main ? `<p><span class="dk-k">备好的课</span>${inline(main.unit || blockTitle(block) || '（没写标题）')}${main.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>${main.goal ? `<p class="dk-goal muted" title="点一下看全文">${inline(main.goal)}</p>` : ''}`
         : `<p class="muted">${SPACES[space].label}还没有备好的课：在下面选一块，让 Claude 备课（也可以直接开课：课堂里的 Claude 带着记忆，但没有这节课的安排）。</p>`}
         ${blocksHere.length ? planner.prepHtml({ suggested: main?.block || suggestBlock(blocksHere, mine.position.find((d) => d.id === positionId(space))), blocks: blocksHere, main, busy: prepBusy, msg: prepMsg }) : ''}
         <button type="button" class="btn ${open || !main ? '' : 'btn-primary'} dk-new"${prepBusy ? ' disabled' : ''}>开新课</button></div>`;
@@ -291,21 +300,22 @@ export async function renderDesk(root, meta) {
     box.querySelectorAll('.dk-go').forEach((b) => b.addEventListener('click', (e) => goto(e.currentTarget.dataset.sid)));
     // 挂着没下课的旧课：直接结束（不写小结、不调用 Claude），课后报告由 fixReports 用代码补上，证据就有了归处
     box.querySelectorAll('.dk-close').forEach((b) => b.addEventListener('click', async (e) => {
-      const sid = e.currentTarget.dataset.sid;
-      if (!confirm(`直接结束 ${sid}？不写小结、不调用 Claude，页面按证据算课后报告。`)) return;
-      e.currentTarget.disabled = true;
+      const btn = e.currentTarget;
+      const sid = btn.dataset.sid;
+      if (!await ask(`直接结束这节课？\n不写小结、不调用 Claude，页面按证据算课后报告。`, { ok: '直接下课' })) return;
+      btn.disabled = true;
       try {
         assertWrite('page', 'sessions');
         const cur = await db.doc(`sessions/${sid}`).get().then((x) => (x.exists ? x.data() : null));
         if (!cur) throw new Error('找不到这节课');
         await db.doc(`sessions/${sid}`).set({ ...cur, status: 'closed', endedAt: cur.endedAt || Date.now(), closedBy: 'me' });
         toast(`${sid} 下课了，课后报告马上补上`);
-      } catch (err) { toast(`没结束成：${err?.message || err}`); e.currentTarget.disabled = false; }
+      } catch (err) { toast(`没结束成：${err?.message || err}`); btn.disabled = false; }
     }));
     box.querySelector('.dk-prep-go')?.addEventListener('click', async () => {
       const id = box.querySelector('.dk-prep-block').value;
       const pages = box.querySelector('.dk-prep-pages')?.value || '';
-      if (pack.main && !confirm(`重新备课会换掉现在备好的「${pack.main.unit || ''}」，接着？`)) return;
+      if (pack.main && !await ask(`重新备课会换掉现在备好的「${pack.main.unit || ''}」，接着？`, { ok: '重新备课' })) return;
       prepBusy = true;
       prepMsg = '开始备课…';
       paintClass();
@@ -320,13 +330,14 @@ export async function renderDesk(root, meta) {
   // —— 练一练（drills.js）：页面挑题、开一节 kind: drill 的练习 ——
   function paintDrill(today) {
     const box = $('.dk-drill');
-    box.hidden = false;
     const pick = pickDrills(data, { space, today });
     const n = data.drills.filter((d) => d.status !== 'void' && !d.broken && (!d.space || d.space === space)).length;
+    // 题库还是空的：整张卡不出现（首页只放现在点得动的东西）
+    box.hidden = !n;
     box.querySelector('.dk-body').innerHTML = !pick.items.length
       ? `<p class="muted">${n ? '题库里的题最近都做对过，过一两天再来。' : '题库还是空的：上过的课下课时，页面会把课上判得了分的题抄进来（以前的课也会补抄）。'}</p>`
-      : `<p>挑好了 ${pick.items.length} 道（题库里一共 ${n} 道）${pick.reviews.length ? `，练到到期的复现组 ${pick.reviews.map(escapeHtml).join('、')}` : ''}：</p>
-        <ul class="dk-drill-why">${pick.items.slice(0, 4).map((x) => `<li>${escapeHtml(x.block)}<span class="muted">　${escapeHtml(x.why)}</span></li>`).join('')}${pick.items.length > 4 ? '<li class="muted">……</li>' : ''}</ul>
+      : `<p>挑好了 ${pick.items.length} 道（题库里一共 ${n} 道）${pick.reviews.length ? `，顺便复习 ${pick.reviews.length} 组到期的` : ''}：</p>
+        <ul class="dk-drill-why">${pick.items.slice(0, 4).map((x) => `<li>${blockTitle(x.block) || escapeHtml(x.block)}<span class="muted">　${escapeHtml(x.why)}</span></li>`).join('')}${pick.items.length > 4 ? '<li class="muted">……</li>' : ''}</ul>
         <button type="button" class="btn btn-primary dk-drill-go">开始（${pick.items.length} 道）</button>`;
     box.querySelector('.dk-drill-go')?.addEventListener('click', async (e) => {
       e.currentTarget.disabled = true;
@@ -363,7 +374,7 @@ export async function renderDesk(root, meta) {
 
   // —— 待确认：所有课的改动单（memoview.js）；我点了才写 ——
   const ops = createMemOps({ db, mem: () => data });
-  const memoView = createMemoView({ db, ops });
+  const memoView = createMemoView({ db, ops, nameOf: nameIn(() => data) });
   let pendingWired = false;
   function paintPending() {
     if (pendingWired) { memoView.refresh(); return; }
@@ -376,6 +387,7 @@ export async function renderDesk(root, meta) {
   }
 
   // —— 我改记忆：偏好的文字、错题标已解决、复现组暂停（memo.js 的 meChange，一样记改动单、能撤销）——
+  const openSecs = new Set(); // 「我改记忆」里点开了的那几类，重画时照旧开着
   function paintMine() {
     const box = $('.dk-mine .dk-body');
     if (box.querySelector('.mm-f')) return; // 正在改的时候不重画
@@ -387,12 +399,15 @@ export async function renderDesk(root, meta) {
     const revs = mine.reviews.filter((r) => !gone.has(`reviews/${r.id}`) && r.status !== 'done').sort((a, b) => cmpId(a.id, b.id));
     // 教学守则（这一科和不分科的）：课堂里的 Claude 下课时把失误归纳进来；我能改说法、不要某一条
     const lessons = activeLessons(data.lessons || [], space).sort((a, b) => (Number(b.hits) || 1) - (Number(a.hits) || 1) || cmpId(a.id, b.id));
+    // 每一类收成一行，点开再看、再改（一下全摊开有上百行）；编号不显示，错题去「错题本」标已解决
+    const fold = (key, title, n, body) => `<details class="dk-soft dk-mine-sec" data-sec="${key}"${openSecs.has(key) ? ' open' : ''}><summary>${title}（${n}）</summary>${body}</details>`;
     box.innerHTML = `
-      <div class="dk-memo-sub" role="heading" aria-level="3">教学守则（老师的失误归纳出来的，${lessons.length} 条）</div>${lessons.map((l) => `<div class="dk-edit-row" data-id="${escapeHtml(l.id)}"><span><b>${escapeHtml(l.id)}</b> ${inline(l.text)}${(Number(l.hits) || 1) > 1 ? `<span class="muted">（犯过 ${Number(l.hits)} 次）</span>` : ''}</span><button type="button" class="btn btn-sm dk-lesson">改</button><button type="button" class="btn btn-sm dk-lesson-x">不用了</button></div>`).join('') || '<p class="muted">还没有：下课时课堂里的 Claude 会把这节课的失误归纳成守则。</p>'}
-      <div class="dk-memo-sub" role="heading" aria-level="3">关于我（讲法、习惯……）</div>${prefs.map((p) => `<div class="dk-edit-row" data-id="${escapeHtml(p.id)}"><span><span class="dk-k">${escapeHtml(p.topic || '')}</span>${inline(p.text)}</span><button type="button" class="btn btn-sm dk-pref">改</button></div>`).join('') || '<p class="muted">还没有。</p>'}
-      <div class="dk-memo-sub" role="heading" aria-level="3">没解决的错题</div>${errs.map((e) => `<div class="dk-edit-row" data-id="${escapeHtml(e.id)}"><span><b>${escapeHtml(e.id)}</b> ${inline(String(e.cause || e.q || '').slice(0, 80))}</span><button type="button" class="btn btn-sm dk-solve">已解决</button></div>`).join('') || '<p class="muted">没有。</p>'}
-      <div class="dk-memo-sub" role="heading" aria-level="3">复现组</div>${revs.map((r) => `<div class="dk-edit-row" data-id="${escapeHtml(r.id)}"><span><b>${escapeHtml(r.id)}</b> ${inline(r.title)}${r.status === 'paused' ? '<span class="muted">（暂停了）</span>' : ''}</span><button type="button" class="btn btn-sm dk-pause">${r.status === 'paused' ? '恢复' : '暂停'}</button></div>`).join('') || '<p class="muted">没有。</p>'}`;
+      ${fold('lessons', '教学守则：老师的失误归纳出来的', lessons.length, lessons.map((l) => `<div class="dk-edit-row" data-id="${escapeHtml(l.id)}"><span>${inline(l.text)}${(Number(l.hits) || 1) > 1 ? `<span class="muted">（犯过 ${Number(l.hits)} 次）</span>` : ''}</span><button type="button" class="btn btn-sm dk-lesson">改</button><button type="button" class="btn btn-sm dk-lesson-x">不用了</button></div>`).join('') || '<p class="muted">还没有：下课时课堂里的 Claude 会把这节课的失误归纳成守则。</p>')}
+      ${fold('prefs', '关于我：讲法、习惯、目标', prefs.length, prefs.map((p) => `<div class="dk-edit-row" data-id="${escapeHtml(p.id)}"><span><span class="dk-k">${escapeHtml(p.topic || '')}</span>${inline(p.text)}</span><button type="button" class="btn btn-sm dk-pref">改</button></div>`).join('') || '<p class="muted">还没有。</p>')}
+      ${fold('revs', '复现组：不想做的可以先暂停', revs.length, revs.map((r) => `<div class="dk-edit-row" data-id="${escapeHtml(r.id)}"><span>${inline(r.title)}${r.status === 'paused' ? '<span class="muted">（暂停了）</span>' : ''}</span><button type="button" class="btn btn-sm dk-pause">${r.status === 'paused' ? '恢复' : '暂停'}</button></div>`).join('') || '<p class="muted">没有。</p>')}
+      <p class="muted dk-mine-note">没解决的错题 ${errs.length} 道：在<a class="dk-link" href="#errors">错题本</a>里标已解决。</p>`;
   }
+  $('.dk-mine .dk-body').addEventListener('toggle', (e) => { const d = e.target; if (d?.classList?.contains('dk-mine-sec')) { if (d.open) openSecs.add(d.dataset.sec); else openSecs.delete(d.dataset.sec); } }, true);
   $('.dk-mine .dk-body').addEventListener('click', async (e) => {
     const b = e.target.closest('button');
     const row = b?.closest('.dk-edit-row');
@@ -410,11 +425,11 @@ export async function renderDesk(root, meta) {
     else if (b.classList.contains('dk-pref-x') || b.classList.contains('dk-lesson-cancel')) { row.innerHTML = ''; paintMine(); }
     else if (b.classList.contains('dk-lesson')) {
       const l = (data.lessons || []).find((x) => x.id === id);
-      row.innerHTML = `<label class="mm-f" style="flex:1"><span>${escapeHtml(id)}</span><textarea rows="3">${escapeHtml(l?.text || '')}</textarea></label><button type="button" class="btn btn-sm btn-primary dk-lesson-save">保存</button><button type="button" class="btn btn-sm dk-lesson-cancel">算了</button>`;
+      row.innerHTML = `<label class="mm-f" style="flex:1"><span>改说法</span><textarea rows="3">${escapeHtml(l?.text || '')}</textarea></label><button type="button" class="btn btn-sm btn-primary dk-lesson-save">保存</button><button type="button" class="btn btn-sm dk-lesson-cancel">算了</button>`;
       row.querySelector('textarea').focus();
     } else if (b.classList.contains('dk-lesson-save')) await run('lesson', { text: row.querySelector('textarea').value }, '改好了（7 天内能撤）').then(() => paintMine());
-    else if (b.classList.contains('dk-lesson-x')) { if (confirm(`${id} 不用了？（7 天内能撤）`)) await run('lesson-retire', {}, `${id} 不用了`); }
-    else if (b.classList.contains('dk-solve')) { if (confirm(`把 ${id} 标成已解决？（原条不动，加一条更正）`)) await run('resolve', {}, `${id} 标了已解决`); }
+    else if (b.classList.contains('dk-lesson-x')) { if (await ask('这条守则不用了？（7 天内能撤）', { ok: '不用了' })) await run('lesson-retire', {}, `${id} 不用了`); }
+    else if (b.classList.contains('dk-solve')) { if (await ask('把这道错题标成已解决？（原条不动，加一条更正）', { ok: '已解决' })) await run('resolve', {}, `${id} 标了已解决`); }
     else if (b.classList.contains('dk-pause')) await run(b.textContent === '暂停' ? 'pause' : 'resume', {}, b.textContent === '暂停' ? `${id} 暂停了，不算到期` : `${id} 恢复了`);
   });
 
@@ -512,8 +527,13 @@ export async function renderDesk(root, meta) {
       const b = JSON.parse(await file.text());
       const have = new Set(MEMORY_COLLECTIONS.flatMap((c) => data[c].map((d) => `${c}/${d.id}`)));
       const all = restorePlan(b, { have, overwrite: true });
-      if (!confirm(`备份里有 ${all.total} 条（${b.today || ''}）。现在的记忆库里已经有其中 ${all.clash} 条。\n确定恢复？下一步问要不要覆盖已有的。`)) return;
-      const overwrite = all.clash > 0 && confirm(`已有的 ${all.clash} 条用备份里的覆盖吗？\n点「取消」只补缺的（不会冲掉这段时间新写的）。`);
+      const pick = await choose(`备份里有 ${all.total} 条（${b.today || ''}），现在的记忆库里已经有其中 ${all.clash} 条。\n只补缺的不会冲掉这段时间新写的。`, [
+        { label: '算了', value: null },
+        ...(all.clash ? [{ label: '全部用备份的', value: 'all', danger: true }] : []),
+        { label: all.clash ? '只补缺的' : '恢复', value: 'fill', primary: true },
+      ]);
+      if (!pick) return;
+      const overwrite = pick === 'all';
       const { writes } = overwrite ? all : restorePlan(b, { have });
       note.textContent = `正在写回 ${writes.length} 条…`;
       let n = 0;
@@ -563,10 +583,12 @@ export async function renderDesk(root, meta) {
     const h = decodeURIComponent(String(location.hash || '').slice(1));
     if (isSessionId(h) || viewHash()) { location.reload(); return; }
     const page = h.split('/')[0];
-    const home = !PAGES[page];
+    const manage = page === 'manage';
+    const home = !PAGES[page] && !manage;
     const books = page === 'books';
     $('.dk-home').hidden = !home;
-    $('.dk-pages').hidden = home || books;
+    $('.dk-manage').hidden = !manage;
+    $('.dk-pages').hidden = home || books || manage;
     $('.dk-bookpage').hidden = !books;
     root.querySelectorAll('.dk-nav a').forEach((a) => a.setAttribute('aria-current', String(a.getAttribute('href') === `#${home ? '' : page}`)));
     if (books) booksView.show(h);
@@ -594,7 +616,7 @@ export async function renderDesk(root, meta) {
       const today = toDate(Date.now());
       for (const src of [sampleMemory(today), sampleSpaces(today)]) for (const [c, docs] of Object.entries(src)) for (const d of docs) { const { id, ...rest } = d; await db.doc(`${c}/${id}`).set(rest); }
     });
-    bar.querySelector('.dk-clear').addEventListener('click', () => { if (confirm('清空本地的示例记忆？')) { db._clear?.(); location.reload(); } });
+    bar.querySelector('.dk-clear').addEventListener('click', async () => { if (await ask('清空本地的示例记忆？', { ok: '清空', danger: true })) { db._clear?.(); location.reload(); } });
   }
 }
 
@@ -633,7 +655,7 @@ async function enterClass(root, meta, sid, { readOnly = false } = {}) {
   const title = doc.title || meta.unit;
   // 实时黑板、自学单元是对话里的 Claude 开的：页面不写报告给课堂 Claude，用完了由谁点「用完了」都行，报告由首页补写（fixReports）
   const finish = async () => {
-    if (!confirm(`${SESSION_KINDS[kind]}「${title}」用完了？以后在「以前的课」里还能翻看。`)) return;
+    if (!await ask(`${SESSION_KINDS[kind]}「${title}」用完了？以后在「以前的课」里还能翻看。`, { ok: '用完了' })) return;
     // 对话里的 Claude 也可能改着这条（改标题、块）：读最新的再改，不拿开页面时那份去盖
     const cur = await db.doc(`sessions/${sid}`).get().then((x) => (x.exists ? x.data() : doc)).catch(() => doc);
     assertWrite('page', 'sessions');
@@ -664,7 +686,7 @@ async function enterClass(root, meta, sid, { readOnly = false } = {}) {
     return renderClass(root, { ...meta, unit: doc.title || meta.unit }, {
       store: { ...store, db: readOnlyDb(scopeDb(db, sid)), assets: null }, sid, block, mem, readOnly: true, books,
       updateSession: () => Promise.resolve(), onHome: () => goto(`classes/${sid}`),
-      memo: { ops, view: createMemoView({ db, ops }) },
+      memo: { ops, view: createMemoView({ db, ops, nameOf: nameIn(() => mem) }) },
     });
   }
   return renderClass(root, { ...meta, unit: doc.title || meta.unit }, {
@@ -672,7 +694,7 @@ async function enterClass(root, meta, sid, { readOnly = false } = {}) {
     writeReport: ({ turns, steps } = {}) => writeReport(db, sid, { doc, turns, steps, update: updateSession }),
     // 下课时先算一份（还没下课：结束时间按现在算）放进给课堂 Claude 的输入
     makeReport: ({ turns, steps } = {}) => makeReport(db, sid, { doc: { ...doc, endedAt: doc.endedAt || Date.now() }, turns, steps }),
-    memo: { ops, view: createMemoView({ db, ops }) },
+    memo: { ops, view: createMemoView({ db, ops, nameOf: nameIn(() => mem) }) },
     review: doc.review || null,
   });
 }
