@@ -532,3 +532,26 @@
   box-shadow: inset 0 0 0 0.5px rgb(var(--pink-rgb) / 0.3), 0 7px 0 -4px var(--card-solid), 0 7px 0 -3.5px rgb(var(--pink-rgb) / 0.22), 0 13px 0 -8px var(--card-solid), 0 13px 0 -7.5px rgb(var(--pink-rgb) / 0.14); }
 :root[data-theme="chalk"] .dk-rv { background: rgb(var(--shade-rgb) / 0.14); box-shadow: inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.1); }
 :root[data-theme="chalk"] .dk-deck { background: rgb(var(--pink-rgb) / 0.08); box-shadow: inset 0 0 0 1.5px rgb(var(--pink-rgb) / 0.35); }
+
+/* —— 离考研多少天（日期那一行）和「这一周」（journey.js）：只写真发生了的事，不夸 —— */
+.dk-countdown { white-space: nowrap; }
+.dk-week-l { list-style: none; margin: 0 0 12px; padding: 0; }
+.dk-week-l li { position: relative; padding: 6px 0 6px 18px; font: 15px/1.5 var(--sans); color: var(--chalk); }
+.dk-week-l li + li { border-top: 0.5px solid rgb(var(--chalk-rgb) / 0.12); }
+.dk-week-l li::before { content: ""; position: absolute; left: 2px; top: 14px; width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--chalk-rgb) / 0.35); }
+.dk-week-l li.is-better::before, .dk-week-l li.is-done::before { background: rgb(var(--green-rgb) / 0.85); }
+.dk-week-l li.is-streak::before { background: rgb(var(--sp-rgb) / 0.85); }
+.dk-progs { display: grid; gap: 8px; }
+.dk-prog { display: grid; grid-template-columns: 3.2em 1fr auto; align-items: center; gap: 10px; font: 14px/1.4 var(--sans); }
+.dk-prog-k { color: rgb(var(--chalk-rgb) / 0.75); }
+.dk-prog.is-here .dk-prog-k { color: var(--chalk); font-weight: 600; }
+.dk-prog-bar { position: relative; height: 8px; border-radius: 4px; background: rgb(var(--chalk-rgb) / 0.1); overflow: hidden; }
+.dk-prog-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.dk-prog-bar .is-taught { background: rgb(var(--sp-rgb) / 0.35); }
+.dk-prog-bar .is-passed { background: rgb(var(--sp-rgb) / 0.9); }
+.dk-prog-n { font-variant-numeric: tabular-nums; font-size: 13px; }
+.dk-warm { margin-left: 6px; }
+/* 每一科一行，各用自己的颜色（和顶上科目的颜色一样） */
+.dk-prog[data-space="math"] { --sp-rgb: var(--blue-rgb); }
+.dk-prog[data-space="cs"] { --sp-rgb: var(--green-rgb); }
+.dk-prog[data-space="en"] { --sp-rgb: var(--pink-rgb); }
