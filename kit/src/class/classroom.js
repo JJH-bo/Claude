@@ -37,10 +37,11 @@ import { shouldNudge, stuckText, STUCK_MS } from './stuck.js';
 import { fromEvidence, sayEvidence, draftEvidence, observationRecord, slipRecord, memoryRead } from '../memory/session.js';
 import { callCost, usageOf, usageText } from './usage.js';
 import { reportText } from '../memory/report.js';
+import { earlierClasses } from '../memory/digest.js';
 import { lessonSheet, sheetMd } from '../memory/sheet.js';
 import { slipsToFold, blockSwitch, tidyDue, tidyText } from '../memory/memo.js';
 import { spaceOfId } from '../memory/space.js';
-import { textbookForClass, readChunks, searchChunks } from '../books/textbook.js';
+import { textbookForClass, readChunks, searchChunks, readHistory } from '../books/textbook.js';
 import { planLocal, markFired, reactNote, armedText, rebuildRules, dropForSeg } from './react.js';
 import { beatPlan, shouldPlay, DEFERRED_OPS } from './beats.js';
 import { ENGINES } from '../engines/registry.js';
@@ -265,17 +266,38 @@ export async function renderClass(root, meta, desk = null) {
     const b = desk?.books;
     if (!b?.chunks?.length) return { textbook: '', catalog: '', images: [] };
     const block = (desk.mem?.curriculum || []).find((x) => x.id === (pack.main?.block || desk.block));
-    return textbookForClass({ main: pack.main, block, books: b.books, chunks: b.chunks, tools });
+    // 这节课取过的条目一直留着（只算 Opus 5.5 讲完的轮：作废的轮不进 history 的有效记录）
+    const calls = history.filter((t) => t && !t.discarded && t.role === 'claude' && Array.isArray(t.tools)).flatMap((t) => t.tools);
+    const read = calls.length ? readHistory(calls, b.chunks, b.books) : [];
+    return textbookForClass({ main: pack.main, block, books: b.books, chunks: b.chunks, tools, read });
   }
   function packForPrompt(tools) {
     const tb = textbookNow(tools);
-    if (!tb.textbook && !tb.catalog) return pack;
+    if (!tb.textbook && !tb.catalog && !earlier) return pack;
     const main = { ...(pack.main || {}) };
     if (tb.textbook) main.textbook = [main.textbook, tb.textbook].filter((x) => x && (typeof x !== 'string' || x.trim())).map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('\n\n');
     if (tb.catalog) main['教材目录（按需取）'] = tb.catalog;
+    if (earlier) main[EARLIER_LABEL] = earlier;
     return { ...pack, main };
   }
   syncPackImages();
+  // 以前的课：开课时页面先取好（和 memory_read 取 sessions 给的一样），放进资料包，第一轮不用先取一整轮再开讲
+  const EARLIER_LABEL = '以前的课（页面开课时替你取好的，和 memory_read 取 sessions 给的一样，不用再取）';
+  // 记忆库是订阅着读进来的，刚开课时可能还没到：开课 2 秒后、或者第一次调用时再挑（只挑一次）
+  let earlier = '';
+  let earlierReady = null;
+  const fetchEarlier = () => (earlierReady ??= desk && !readOnly ? (async () => {
+    const ids = earlierClasses(desk.mem?.sessions || [], { session: desk.sid, block: desk.block });
+    if (!ids.length) return;
+    const { items } = await sessionRows(ids);
+    earlier = items.filter((x) => !x.error).map((x) => [
+      `### ${x.id}（${x.date || ''} ${x.block || ''}${x.status === 'closed' ? '' : '，没点下课'}）${x.title || ''}`,
+      x.summary ? `- 小结：${String(x.summary).slice(0, 1500)}` : '',
+      ...(x.notes || []).slice(0, 8).map((n) => `- ${String(n).slice(0, 300)}`),
+      x.report ? `- 课后报告：\n${String(x.report).slice(0, 3000)}` : '',
+    ].filter(Boolean).join('\n')).join('\n\n');
+  })().catch((e) => console.warn('以前的课没取到', e)) : Promise.resolve());
+  if (desk && !readOnly) setTimeout(fetchEarlier, 2000);
   db.doc('pack/main').onSnapshot((s) => applyMain(s.exists ? s.data() : null), () => {});
   db.doc('pack/problems').onSnapshot((s) => { pack.problems = s.exists ? s.data() : null; }, () => {});
 
@@ -1312,12 +1334,14 @@ export async function renderClass(root, meta, desk = null) {
         failTurn(e);
         return false;
       }
+      // 开课时取的以前的课：最多等 3 秒（一般早就取好了）
+      await Promise.race([fetchEarlier(), new Promise((r) => setTimeout(r, 3000))]);
       bv.measureFit();
       const level = Math.min(budgetLevel, 3);
       const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(teacher.tools), board: boardState(), packBudget: PACK_BUDGET >> level, subject: session.subject, tools: teacher.tools, memory: memoryArg(), canvas: CANVAS, ...planArg() });
       const maxBytes = Math.round(promptLimit() * [1, 0.85, 0.7, 0.55][level]);
       const fit = fitTurns({ system, history: promptHistory(history), maxBytes, stub: teacher.tools });
-      lastPrompt = { bytes: fit.bytes, maxBytes, keepRecent: fit.keepRecent, dropped: fit.dropped, turns: fit.turns.length, level };
+      lastPrompt = { bytes: fit.bytes, maxBytes, keepRecent: fit.keepRecent, dropped: fit.dropped, turns: fit.turns.length, level, ...(dev ? { system } : {}) };
       // 工具做的事先记着，确认是 Opus 5.5 讲的才算数（退路模型记的观察、要看的图都不留）
       const staged = { notes: [], slips: [], images: [], ids: [], calls: [] };
       const opts = { ...TEACH, cache: false, signal, onText: ({ text }) => drawDraft(text) };
@@ -1784,7 +1808,7 @@ export async function renderClass(root, meta, desk = null) {
       {
         // 较早几轮的段原文在对话里被省略了（prompt.js 的 stubBoardText）：要照着原文改、要对上记号时取回来
         name: 'board_read',
-        description: '取黑板上几段的原文（你以前写的 Markdown，最后的版本）。ids 写段的 id 数组，比如 ["b3","b5"]，一次可以取好几段。对话里较早的段原文被页面省略了，要照着原文改写、要和以前写的记号对上时用。每调用一次你要多等一整轮。',
+        description: '取黑板上几段的原文（你以前写的 Markdown，最后的版本）。ids 写段的 id 数组，比如 ["b3","b5"]，一次可以取好几段。对话里较早的段原文被页面省略了，要照着原文改写、要和以前写的记号对上时用。取回的段，接下来几轮的对话里页面不再省略它的原文，不用再取。每调用一次你要多等一整轮。',
         inputSchema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' } } }, required: ['ids'] },
         async execute(input) {
           const ids = (Array.isArray(input?.ids) ? input.ids : String(input?.ids ?? '').split(/[,，\s]+/)).map((x) => String(x).trim()).filter(Boolean).slice(0, 12);
@@ -1909,14 +1933,15 @@ export async function renderClass(root, meta, desk = null) {
       },
       ...(desk?.books?.chunks?.length ? [{
         name: 'textbook_read',
-        description: '取教材、文稿、讲义的全文（学习台的资料；资料包里的「教材目录」有编号）。ids 写条目编号数组（B1-23.1），连着的一串写范围「B1-10.1~B1-17.3」；或者 pages 写书页「10-17」（book 写哪本，不写就是全部）。**一次取够一整节**：每调用一次你要多等一整轮、整份说明再读一遍，一条一条取很贵。',
+        description: '取教材、文稿、讲义的全文（学习台的资料；资料包里的「教材目录」有编号）。ids 写条目编号数组（B1-23.1），连着的一串写范围「B1-10.1~B1-17.3」；或者 pages 写书页「10-17」（book 写哪本，不写就是全部）。**一次取够一整节**：每调用一次你要多等一整轮、整份说明再读一遍，一条一条取很贵。取到的全文页面会一直留在资料包的「教材原文」里（这节课后面每一轮都带着），**取过的不要再取**。',
         inputSchema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' } }, pages: { type: 'string' }, book: { type: 'string' } } },
         async execute(input) {
           const ids = Array.isArray(input?.ids) ? input.ids.map(String) : String(input?.ids ?? '').split(/[,，\s]+/).filter(Boolean);
           const pages = String(input?.pages ?? '').trim();
-          staged.calls.push({ name: 'textbook_read', input: { ids, ...(pages ? { pages } : {}) } });
+          const book = String(input?.book ?? '').trim();
+          staged.calls.push({ name: 'textbook_read', input: { ids, ...(pages ? { pages } : {}), ...(book ? { book } : {}) } });
           if (!ids.length && !pages) throw new Error('要写 ids（条目编号或范围）或者 pages（书页）');
-          const r = readChunks(desk.books.chunks, desk.books.books, ids, { pages, book: String(input?.book ?? '') });
+          const r = readChunks(desk.books.chunks, desk.books.books, ids, { pages, book });
           return { text: r.text || '（一条都没找到）', ...(r.missing.length ? { missing: r.missing } : {}), ...(r.more.length ? { more: r.more, note: '一次放不下，剩下的再取一次' } : {}) };
         },
       }, {

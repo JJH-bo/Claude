@@ -277,3 +277,29 @@ test('textbook_read 一次取够：编号范围、书页范围都行，放不下
   const c = readChunks(chunks, books, [], { pages: '10-19', max: 40 });
   assert.ok(c.more.length > 0);
 });
+
+test('textbook_read 取过的条目页面替它留着：按当时的参数解析、最近的在后面，课堂资料包的「教材原文」一直带着（不用再取）', async () => {
+  const { readHistory, textbookForClass } = await import('../kit/src/books/textbook.js');
+  const books = [{ id: 'B1', title: '句句真研' }];
+  const chunks = [10, 11, 12, 13, 17, 19].map((p, i) => ({ id: `B1-${p}.1`, book: 'B1', seq: i + 1, kind: '说明', title: `第 ${p} 页`, page: p, text: `第 ${p} 页的字` }));
+  const calls = [
+    { name: 'textbook_read', input: { ids: ['B1-17.1'] } },
+    { name: 'board_read', input: { ids: ['b3'] } },
+    { name: 'textbook_read', input: { ids: [], pages: '11-12' } },
+    { name: 'textbook_read', input: { ids: ['B1-17.1', 'B1-99.9'] } },
+  ];
+  assert.deepEqual(readHistory(calls, chunks, books), ['B1-11.1', 'B1-12.1', 'B1-17.1']);
+  assert.deepEqual(readHistory([], chunks, books), []);
+  // 取过的在前（按书里的顺序），备课点名的跟在后面；写明不用再取
+  const t = textbookForClass({ main: { chunks: ['B1-10.1', 'B1-12.1'] }, books, chunks, read: ['B1-17.1', 'B1-12.1'] });
+  // 取过的 + 最近取的 B1-12.1 往下的几条（接着讲不用先取）在前，备课点名的跟在后面
+  assert.deepEqual([...t.textbook.matchAll(/### (B1-[\d.]+)/g)].map((m) => m[1]), ['B1-12.1', 'B1-13.1', 'B1-17.1', 'B1-19.1', 'B1-10.1']);
+  assert.match(t.textbook, /其中 2 条是你这节课用 textbook_read 取过的，2 条是接着往下的几条.*不用再取/);
+  assert.equal(textbookForClass({ books, chunks, read: ['B1-17.1'], aheadMax: 0 }).textbook.match(/### /g).length, 1);
+  // 放不下时先丢最早取的
+  const big = chunks.map((c) => ({ ...c, text: 'x'.repeat(300) }));
+  const u = textbookForClass({ books, chunks: big, read: ['B1-10.1', 'B1-11.1', 'B1-12.1'], readMax: 800, aheadMax: 0 });
+  assert.deepEqual([...u.textbook.matchAll(/### (B1-[\d.]+)/g)].map((m) => m[1]), ['B1-11.1', 'B1-12.1']);
+  // 没取过：和原来一样
+  assert.doesNotMatch(textbookForClass({ main: { chunks: ['B1-10.1'] }, books, chunks }).textbook, /取过的/);
+});

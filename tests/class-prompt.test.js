@@ -686,3 +686,27 @@ test('省额度不丢信息：较早几轮 Claude 写的长段原文换成一行
   assert.ok(on.bytes < off.bytes - 3 * 1000);
   assert.ok(!off.turns.some((t) => t.content.includes('页面省略了')));
 });
+
+test('board_read 取回过的段：之后几轮对话里不再省略（只留最后写它的那一轮），没取过的照旧省', async () => {
+  const { buildTurns, STUB_AFTER, recentlyFetched } = await import('../kit/src/class/prompt.js');
+  const long = (tag) => `${tag} ` + 'x'.repeat(600);
+  const seg = (id, tag) => `\`\`\`\`board add id=${id}\n${long(tag)}\n\`\`\`\``;
+  const history = [
+    { role: 'student', text: '开始' },
+    { role: 'claude', text: `${seg('b1', '旧版')}\n\n${seg('b2', '二')}` },
+    { role: 'student', text: '嗯' },
+    { role: 'claude', text: `\`\`\`\`board replace id=b1\n${long('新版')}\n\`\`\`\`` },
+  ];
+  for (let i = 0; i < STUB_AFTER; i++) history.push({ role: 'student', text: `第 ${i} 句` }, { role: 'claude', text: '好', ...(i === STUB_AFTER - 1 ? { tools: [{ name: 'board_read', input: { ids: ['b1'] } }] } : {}) });
+  history.push({ role: 'student', text: '好了' });
+  const said = buildTurns({ system: '说明', history, stub: true }).turns.filter((t) => t.role === 'assistant').map((t) => t.content);
+  assert.match(said[1], /新版 x{600}/, '取回过的 b1：最后写它的那一轮原样');
+  assert.doesNotMatch(said[0], /旧版 x/, 'b1 的旧版本照旧省');
+  assert.match(said[0], /页面省略了.*b2/, '没取过的 b2 照旧省');
+  assert.deepEqual([...recentlyFetched(history.filter((h) => h.role === 'claude'))], ['b1']);
+  // 取回是很久以前的事：又省掉
+  const later = [...history];
+  for (let i = 0; i < STUB_AFTER; i++) later.push({ role: 'claude', text: '嗯' }, { role: 'student', text: '再' });
+  const said2 = buildTurns({ system: '说明', history: later, stub: true }).turns.filter((t) => t.role === 'assistant').map((t) => t.content);
+  assert.doesNotMatch(said2[1], /新版 x/);
+});

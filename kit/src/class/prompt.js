@@ -1056,16 +1056,28 @@ export const OMITTED = '（更早的对话已省略）';
 export const STUB_AFTER = 6;
 const STUB_MIN = 400; // 原文比这短的不省
 const STUB_OPS = new Set(['new', 'add', 'replace']);
-export function stubBoardText(text) {
+// keep：最近用 board_read 取回过的段 id，这些不省（不然它取回来、下一轮又看不到，接着再取：每取一次多等一整轮）
+export function stubBoardText(text, keep = null) {
   const src = String(text ?? '');
   const { segments } = parseOutput(src, { final: true });
-  const long = (sg) => sg.type === 'board' && STUB_OPS.has(sg.op?.op) && bytes(sg.body) > STUB_MIN;
+  const long = (sg) => sg.type === 'board' && STUB_OPS.has(sg.op?.op) && bytes(sg.body) > STUB_MIN && !(keep && sg.op?.id && keep.has(String(sg.op.id)));
   if (!segments.some(long)) return src;
   return segments.map((sg) => {
     if (sg.type !== 'board') return sg.text;
     if (!long(sg)) return `\`\`\`\`board ${sg.header}\n${sg.body}\n\`\`\`\``;
     return `[页面省略了这一段的原文：这一轮写了 board ${oneLine(sg.header, 120)}（${(bytes(sg.body) / 1024).toFixed(1)} KB）。段还在黑板上，要看原文用 board_read 取 ${sg.op.id || '这一段'}]`;
   }).join('\n\n');
+}
+
+// 最近 STUB_AFTER 轮里 board_read 取过的段 id（各轮记下的工具调用 tools）
+export function recentlyFetched(said = []) {
+  const ids = new Set();
+  for (const h of said.slice(-STUB_AFTER)) {
+    for (const c of Array.isArray(h?.tools) ? h.tools : []) {
+      if (c?.name === 'board_read') for (const id of c.input?.ids || []) ids.add(String(id));
+    }
+  }
+  return ids;
 }
 
 // history: [{ role: 'student' | 'claude' | 'system', text, discarded?, kind? }]
@@ -1078,13 +1090,24 @@ export function buildTurns({ system, history = [], maxBytes = 262144, keepRecent
   // 最近 STUB_AFTER 轮 Claude 的输出原样，更早的长段省略（stub：能用 board_read 取回时才省）
   const said = (history || []).filter((h) => h && !h.discarded && h.role === 'claude');
   const old = new Set(stub ? said.slice(0, Math.max(0, said.length - STUB_AFTER)) : []);
+  // 取回过的段只留最后写它的那一轮的原文（同一段改写过几次，旧版本照旧省略）
+  const fetched = stub ? recentlyFetched(said) : null;
+  const lastWrite = new Map(); // 段 id → 最后写它的那一轮
+  if (fetched?.size) {
+    for (const h of said) {
+      for (const sg of parseOutput(String(h.text ?? ''), { final: true }).segments) {
+        if (sg.type === 'board' && STUB_OPS.has(sg.op?.op) && fetched.has(String(sg.op?.id))) lastWrite.set(String(sg.op.id), h);
+      }
+    }
+  }
+  const keepIn = (h) => new Set([...lastWrite].filter(([, t]) => t === h).map(([id]) => id));
   for (const h of history || []) {
     if (!h || h.discarded) continue;
     const role = h.role === 'claude' ? 'assistant' : h.role === 'student' || h.role === 'system' ? 'user' : null;
     if (!role) continue;
     let content = String(h.text ?? '').trim();
     if (h.role === 'claude') content = stripPlan(content).trim();
-    if (old.has(h)) content = stubBoardText(content).trim();
+    if (old.has(h)) content = stubBoardText(content, lastWrite.size ? keepIn(h) : null).trim();
     if (!content) continue; // sample 不收空的 content
     if (h.role === 'system' && !content.startsWith('[系统]')) content = `[系统] ${content}`;
     conv.push({ role, content, size: bytes(content), pinned: h.kind === 'summary' });

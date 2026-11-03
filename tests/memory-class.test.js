@@ -302,3 +302,21 @@ test('一个学习台：实时黑板、自学单元也是 sessions 里的一节�
   assert.equal(canWrite('chat', 'sessions'), true);
   assert.equal(canWrite('class', 'sessions'), false);
 });
+
+
+test('开课时先取好的以前的课：这一科最近的一节 + 这一块最近的一节，没点下课的也算，练一练、别的科、更晚开的不算', async () => {
+  const { earlierClasses } = await import('../kit/src/memory/digest.js');
+  const sessions = [
+    { id: 'c-1', block: 'EN-L3.1.1', startedAt: 1, status: 'closed' },
+    { id: 'c-2', block: 'EN-L1.2.1', startedAt: 2 },
+    { id: 'c-3', block: 'L2.1.4', startedAt: 3 },
+    { id: 'c-4', block: 'EN-L3.1.1', startedAt: 4, kind: 'drill' },
+    { id: 'c-5', block: 'EN-L1.2.1', startedAt: 5 },
+    { id: 'c-6', block: 'EN-L3.1.1', startedAt: 6 },
+    { id: 'c-7', block: 'EN-L1.2.1', startedAt: 7 },
+  ];
+  assert.deepEqual(earlierClasses(sessions, { session: 'c-6', block: 'EN-L3.1.1' }), ['c-5', 'c-1']);
+  assert.deepEqual(earlierClasses(sessions, { session: 'c-5', block: 'EN-L1.2.1' }), ['c-2']);
+  assert.deepEqual(earlierClasses(sessions, { session: 'c-3', block: 'L2.1.4' }), []);
+  assert.deepEqual(earlierClasses([], { session: 'c-9', block: 'L2.1.4' }), []);
+});

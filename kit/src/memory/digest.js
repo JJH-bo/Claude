@@ -287,3 +287,20 @@ export function memoryCatalog(view, { shown = new Set(), here = view.here, nearI
   for (let i = parts.length - 1; text && utf8(text) > max && i >= 0; i--) { mode[i] = true; text = render(mode); }
   return { text, cut };
 }
+
+/**
+ * 开课时页面先替课堂 Claude 取好的「以前的课」：这一科最近的一节，再加这一块最近的一节（不是同一节时），最多 2 节。
+ * 真课里 5 节有 3 节，它第一轮先 memory_read 取上一节课，开场的板就多等一整轮（2026-11-02、11-03）。
+ * 学生常常不点「下课」，所以 open 的课也算；只要比这节课早开始的。返回课的编号（最近的在前）
+ */
+export function earlierClasses(sessions = [], { session = '', block = '' } = {}) {
+  const me = (sessions || []).find((s) => s?.id === session);
+  const sp = spaceOfId(block || me?.block || '');
+  const before = (sessions || []).filter((s) => s && s.id !== session && (s.kind || 'class') === 'class' && spaceOfId(s.block || '') === sp
+    && (!me?.startedAt || !s.startedAt || s.startedAt < me.startedAt)).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+  const out = [];
+  if (before[0]) out.push(before[0].id);
+  const same = before.find((s) => s.block === block);
+  if (same && !out.includes(same.id)) out.push(same.id);
+  return out;
+}
