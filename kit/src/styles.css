@@ -2481,3 +2481,7 @@ g.sv-new.sv-flash > rect, g.sv-new.sv-flash > circle, g.sv-new.sv-flash > path {
 .lk-line.is-answer { stroke: rgb(var(--blue-rgb)); }
 .lk-w.is-linked { border-color: rgb(var(--yellow-rgb) / 0.45); }
 .en-fix .en-del { margin-left: 8px; min-height: 44px; }
+
+/* mode: fill 的 by: row：做完的行淡一点、还没轮到的行更淡（输入框是 disabled） */
+.sv-fill-t td.sv-fill-locked { opacity: 0.75; }
+.sv-fill-t td.sv-fill-later { opacity: 0.4; }

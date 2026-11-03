@@ -330,7 +330,7 @@ function pagingView(s, input) {
   const bitsHtml = (u, m) => (clk ? `<sup>${u}${algo === 'eclock' ? `,${m}` : ''}</sup>` : '');
   // 给了 init: 时最前面加一列「开始」：开始时的页、位和指针
   const initSlots = Array.from({ length: frames }, (_, f) => init?.[f]?.page ?? null);
-  const head = ['', ...(init ? ['<span class="os-start">开始</span>'] : []), ...refs.map((r, k) => `<span class="${k === cur ? 'os-cur' : ''}">${esc(r)}${input.writes?.[k] ? '<sub>写</sub>' : ''}</span>`)];
+  const head = ['', ...(init ? ['<span class="os-start">开始</span>'] : []), ...refs.map((r, k) => `<span class="${k === cur ? 'os-cur' : ''}" data-cmd="${k + 1}" data-label="第 ${k + 1} 次访问">${esc(r)}${input.writes?.[k] ? '<sub>写</sub>' : ''}</span>`)];
   const rows = [];
   for (let f = 0; f < frames; f++) {
     const first = init ? [{ html: init[f] ? `${esc(init[f].page)}${bitsHtml(init[f].use, init[f].mod)}${clk && input.ptr === f ? '<i class="os-ptr">◀</i>' : ''}` : '', cls: 'os-startcol' }] : [];

@@ -11,6 +11,7 @@
 //   explain: $A^5=(\operatorname{tr}A)^4A=\calc{A^5}$
 import { parse } from './expr.js';
 import { calcValue, expandCalc, isQ, Q, textValue } from './exact.js';
+import './algofuncs.js'; // where 里用得到 faults()、nextval()（引擎算）
 
 const CMD = /^(pick|let|where)\s+(.*)$/i;
 const NAME = /^[A-Za-z_][\w]*$/;

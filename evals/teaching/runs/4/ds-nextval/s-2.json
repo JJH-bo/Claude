@@ -1,0 +1,1 @@
+{"say": "我觉得 nextval 就是 next 的另一种写法，所以直接照抄 next：0 1 1 2 3 4。不太有把握。", "acts": [{"comp": "q-nv1", "value": "0 1 1 2 3 4"}], "sure": {"q-nv1": false}}

@@ -7,7 +7,7 @@ import { parseFields } from './parse.js';
 import { session } from './session.js';
 import { widget, mdToHtml, tex2html, escapeHtml, calcProblems, calcScope } from './blocks/common.js';
 import { figureControls, sliderText } from './plot.js';
-import { commonSpec, resolveAsks, checkAsk, askAnswerText, stepLabel, parseAskField, fillSpec, checkFill, cellName, cellAnswer, fillOrder, misreadFill, trackFields, calcFields, parseVary } from './stepperspec.js';
+import { commonSpec, resolveAsks, checkAsk, askAnswerText, stepLabel, parseAskField, fillSpec, checkFill, cellName, cellAnswer, fillOrder, misreadFill, trackFields, calcFields, parseVary, stepOfEvent, stepOutline } from './stepperspec.js';
 import { markDraft } from './drafts.js';
 import { answerWidget, textAnswerSpec } from './blocks/answer.js';
 import { snapshot, animateFrom, settle } from './morph.js';
@@ -501,6 +501,24 @@ export function stepperBlock(engine) {
       };
       let attempts = 0, done = false, revealed = 0, last = null;
       const t0 = Date.now();
+      // by: row：一行（列方向的表是一列）一行判：只开着这一行，对了锁上、开下一行（Booth、除法、CRC 的竖式，CLOCK 每一次访问）
+      const byRow = /^(rows?|行|列|col|cols|step)$/i.test(String(fields.by ?? '').trim());
+      if (fields.by !== undefined && !byRow) session.problem(el, engine.name, `by: 只能写 row（一行一行判）（现在是「${fields.by}」）`);
+      let cur = 0;
+      const unit = t.dir === 'col' ? '列' : '行';
+      const openRows = () => {
+        if (!byRow) return;
+        box.querySelectorAll('[data-r]').forEach((x) => {
+          if (x.classList.contains('sv-fill-copy')) return;
+          const r = Number(x.dataset.r);
+          x.disabled = r !== cur;
+          cellBox(x)?.classList.toggle('sv-fill-locked', r < cur);
+          cellBox(x)?.classList.toggle('sv-fill-later', r > cur);
+        });
+        // 表下面那几格（ASL、余数……）最后一行做完才开
+        box.querySelectorAll('.sv-fill-xin').forEach((x) => { x.disabled = cur < t.rows.length; });
+        box.querySelector('.sv-fill-check').textContent = cur < t.rows.length ? `检查这一${unit}` : '检查';
+      };
       // 草稿：填了几格、写的是什么（课堂发下一轮时一起告诉老师）
       markDraft(box.querySelector('.sv-fill-wrap'), () => {
         if (done) return '';
@@ -556,6 +574,20 @@ export function stepperBlock(engine) {
         read();
         const res = checkFill(t, values);
         attempts++;
+        // 一行一行判：第一处不对（或空着）在后面的行里，就是这一行全对了：锁上、开下一行
+        if (byRow && !res.ok && cur < t.rows.length && (res.first.extra !== undefined || res.first.r > cur)) {
+          const name = t.rows[cur].label ?? `第 ${cur + 1} ${unit}`;
+          record({ type: 'stepper', engine: engine.name, liveOnly: true, title, q: plainText(q), value: `${name}填对了`, ok: true, attempts, detail: `填表：第 ${cur + 1} ${unit}`, el });
+          cur++;
+          while (cur < t.rows.length && t.rows[cur].cells.every((x) => x.given)) cur++;
+          openRows();
+          box.querySelectorAll('.is-bad').forEach((x) => x.classList.remove('is-bad'));
+          fb.hidden = false;
+          fb.className = 'sv-fill-fb is-ok';
+          fb.textContent = `✓ 「${name}」这一${unit}对了。${cur < t.rows.length ? `接着填下一${unit}。` : '再把下面那几格填上。'}`;
+          (cur < t.rows.length ? box.querySelector(`[data-r="${cur}"]:not(.sv-fill-copy)`) : box.querySelector('.sv-fill-xin'))?.focus?.({ preventScroll: true });
+          return;
+        }
         show(res);
         fb.hidden = false;
         if (res.ok) {
@@ -604,6 +636,7 @@ export function stepperBlock(engine) {
         demo.hidden = false;
         go(0, { record: false });
       });
+      openRows();
     }
 
     // 一开始停在哪：start: end 直接看结果
@@ -639,6 +672,10 @@ export function stepperBlock(engine) {
       },
       highlight: ctl.highlight,
       vars: () => ({ step: k, ...varyVals }),
+      // 黑板现状里给课堂 Claude 的一行：一共几步、每种问题在第几步
+      outline: () => stepOutline(steps, k),
+      // figure set step=rotate#2 / end：按事件找步号
+      stepAlias: (src) => stepOfEvent(steps, src),
       snapshot: () => ({ step: k, ...varyVals }),
       // 课堂里老师直接跳：不问（问题留给学生自己点「下一步」时）。vary 的滑块也能 set（figure set d=5）
       set(name, value) {

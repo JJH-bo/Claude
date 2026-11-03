@@ -120,3 +120,27 @@ test('内置出题可以改字段：老师写的同名字段覆盖内置的（al
   const fill = parseUseTemplate('use: paging\nmode: fill', ENGINES);
   assert.equal(prepareUse(fill, instantiate(fill, { rand: seeded(9) }).vars).mode, 'fill');
 });
+
+test('表达式里的算法函数：next / nextval / faults / victims / wpl / same；内置出题保证能分开对错两种想法', async () => {
+  await import('../kit/src/algofuncs.js');
+  const v = { v: toExact([7, 0, 1, 2, 0, 3, 0, 4]) };
+  const { textValue } = await import('../kit/src/exact.js');
+  v.p = textValue('abaabcac');
+  assert.equal(calcValue('faults(v, 3, lru)', v).text, '6');
+  assert.equal(calcValue('faults(v, 3, fifo)', v).text, '7');
+  assert.equal(calcValue('victims(v, 3, lru)', v).text, '[7, 1, 2]');
+  assert.equal(calcValue('list(next(p))', v).text, '0 1 1 2 2 3 1 2');
+  assert.equal(calcValue('list(nextval(p))', v).text, '0 1 0 2 1 3 0 2');
+  assert.equal(calcValue('wpl([7, 5, 2, 4])', v).text, '35');
+  assert.equal(calcValue('same(next(p), nextval(p))', v).text, '0');
+  assert.equal(calcValue('same(victims(v, 3, lru), victims(v, 3, lru))', v).text, '1');
+  // 内置的页面置换、nextval：每一题 LRU 和 FIFO 换出的不一样，nextval 和 next 不一样
+  for (const [use, level] of [['paging', 1], ['paging', 2], ['kmp', 2]]) {
+    const tpl = parseUseTemplate(`use: ${use}\nlevel: ${level}`, ENGINES);
+    for (let k = 0; k < 15; k++) {
+      const { vars } = instantiate(tpl, { rand: seeded(k + 11) });
+      if (use === 'kmp') assert.equal(calcValue('same(next(p), nextval(p))', vars).text, '0');
+      else assert.equal(calcValue(`same(victims(v, ${level === 1 ? 3 : 'f'}, lru), victims(v, ${level === 1 ? 3 : 'f'}, fifo))`, vars).text, '0');
+    }
+  }
+});

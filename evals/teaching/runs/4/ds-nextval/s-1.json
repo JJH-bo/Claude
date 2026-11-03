@@ -1,0 +1,1 @@
+{"say": "next 我算了一遍，应该是 0 1 1 2 3 4。", "acts": [{"comp": "q-next1", "value": "0 1 1 2 3 4"}], "sure": {"q-next1": true}}

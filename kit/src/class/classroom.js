@@ -707,6 +707,7 @@ export async function renderClass(root, meta, desk = null) {
         id: b.dataset.bid,
         kind: [...b.classList].find((c) => c.startsWith('block-'))?.slice(6) || '',
         vars: tools.figureVars(b),
+        outline: tools.figureOutline(b),
         results: (results.get(b.dataset.bid) || []).slice(-6).map((r) => r.line),
         draft: draftsIn(b).map((d) => (d.label ? `${d.label}：${d.text}` : d.text)).join('；'),
       })) : [];

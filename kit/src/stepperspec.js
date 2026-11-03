@@ -60,9 +60,18 @@ export function resolveAsks(ask, steps) {
   steps.forEach((s, k) => { if (k > 0) asksOf(s).forEach((a) => tags.add(a.tag)); });
   const askable = steps.map((s, k) => (k > 0 && asksOf(s).length ? k : -1)).filter((k) => k > 0);
   const put = (k, a) => { if (!which.has(k)) { which.set(k, a); asks.add(k); } };
-  for (const t of ask.tags) {
+  for (const t0 of ask.tags) {
+    // rotate#2：只问第 2 次（老师看不到页面、数不出步号，按「第几次」指）
+    const [t, nth] = t0.split('#');
     if (!tags.has(t)) { errors.push(`ask: 没有「${t}」这种问题${tags.size ? `（这个演示能问的：${[...tags].join('、')}）` : '（这个演示没有可以问的步）'}`); continue; }
-    askable.forEach((k) => { const a = asksOf(steps[k]).find((x) => x.tag === t); if (a) put(k, a); });
+    const at = askable.filter((k) => asksOf(steps[k]).some((x) => x.tag === t));
+    if (nth !== undefined) {
+      const n = Number(nth);
+      if (!(Number.isInteger(n) && n >= 1 && n <= at.length)) { errors.push(`ask: ${t0}：「${t}」一共 ${at.length} 次，写 ${t}#1 到 ${t}#${at.length}`); continue; }
+      put(at[n - 1], asksOf(steps[at[n - 1]]).find((x) => x.tag === t));
+      continue;
+    }
+    at.forEach((k) => put(k, asksOf(steps[k]).find((x) => x.tag === t)));
   }
   if (ask.all) askable.forEach((k) => put(k, asksOf(steps[k])[0]));
   for (const n of ask.nums) {
@@ -430,4 +439,28 @@ export function parseVary(src) {
   if (!out.length) throw new Error('vary: 写「名字 = 最小..最大」，比如 vary: d = 1..10 step 1 km');
   if (out.length > 3) throw new Error('vary: 最多 3 个滑块');
   return out;
+}
+
+/**
+ * 按事件找步号（老师看不到页面、数不出步号）：「rotate#2」= 第 2 个能问 rotate 的那一步，「end」= 最后一步，数字照旧。
+ * 找不到返回 null
+ */
+export function stepOfEvent(steps, src) {
+  const s = String(src ?? '').trim().toLowerCase();
+  if (s === 'end' || s === 'last') return steps.length - 1;
+  if (s === 'start') return 0;
+  const m = s.match(/^([a-z]+)#(\d+)$/);
+  if (!m) return null;
+  const at = steps.map((x, k) => (k > 0 && asksOf(x).some((a) => a.tag === m[1]) ? k : -1)).filter((k) => k > 0);
+  const n = Number(m[2]);
+  if (!(n >= 1 && n <= at.length)) throw new Error(at.length ? `「${m[1]}」一共 ${at.length} 次，写 ${m[1]}#1 到 ${m[1]}#${at.length}` : `这个演示没有「${m[1]}」这种问题`);
+  return at[n - 1];
+}
+
+/** 给课堂 Claude 看的一行：一共几步、每种问题在第几步（按「第几次」指的时候对照用） */
+export function stepOutline(steps, k = 0) {
+  const by = new Map();
+  steps.forEach((x, i) => { if (i > 0) for (const a of asksOf(x)) { if (!by.has(a.tag)) by.set(a.tag, []); by.get(a.tag).push(i); } });
+  const list = [...by].map(([t, ks]) => `${t} 在第 ${ks.slice(0, 12).join('、')}${ks.length > 12 ? '……' : ''} 步`).join('；');
+  return `一共 ${steps.length - 1} 步，现在第 ${k} 步${list ? `；${list}` : ''}`;
 }

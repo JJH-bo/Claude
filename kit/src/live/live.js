@@ -489,7 +489,7 @@ export async function renderLive(root, meta, desk = null) {
       if (s.hidden || !s.sec?.isConnected || !(s.place === 'pin' || s.page === bv.cur)) continue;
       for (const b of s.sec.querySelectorAll('.block[data-bid][data-scene]')) {
         const vars = tools.figureVars(b);
-        if (vars) out.push({ id: b.dataset.bid, kind: [...b.classList].find((c) => c.startsWith('block-'))?.slice(6) || '', step: s.id, vars });
+        if (vars) out.push({ id: b.dataset.bid, kind: [...b.classList].find((c) => c.startsWith('block-'))?.slice(6) || '', step: s.id, vars, outline: tools.figureOutline(b) });
       }
     }
     return out;

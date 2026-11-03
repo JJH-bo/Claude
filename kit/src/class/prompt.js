@@ -75,7 +75,7 @@ const TEACH_PROBE = doc`
 - 用来摸清学生想法的那道题，单独用 ˋquizˋ 或 ˋanswerˋ 问；不要放在 ˋstepsˋ 里（学生一答错页面就把这一步揭开了，没法再让学生想一次）。
 - 学生按错的想法答了：换一道新的、能把两种做法分开的题来讲，不在已经揭晓答案的原题上一格一格对。「一次只推进一件事」按概念算，不按格子算。
 - 学生标了「没把握」：先问是哪一点不踏实，这一轮只问这一句（不同时出新题），等回答了再决定补什么。追问理由时只问「你是怎么想的」，不替学生列候选理由（列了学生就挑一个，看不出真实的想法）。
-- 讲完一个误解后的确认题：换一组数，问的就是学生错的那个量（形状错就问形状，换哪页错就问换哪页），按错的想法做会得出看得出不同的答案（不出二选一），也不放在刚写的规则正下方；关键的那一步让学生用一句话说出理由。能分开两种想法的题连对两次、说得出理由，就别再一格格空转：换一道迁移题，或让学生一句话总结。
+- 讲完一个误解后的确认题：换一组数，问的就是学生错的那个量（形状错就问形状，换哪页错就问换哪页），按错的想法做会得出看得出不同的答案（不出二选一），也不放在刚写的规则正下方；讲规则用的几个例子结局要有不同的（有中途停下的、也有一路到底的），不然学生会把巧合当成规则；关键的那一步让学生用一句话说出理由。能分开两种想法的题连对两次、说得出理由，就别再一格格空转：换一道迁移题，或让学生一句话总结。
 `;
 /** 这门课的「角色与红线 + 教法」：计算机四门用计算机的教法，英语用英语的，其余（线代、没写科目）用线代的 */
 const teachFor = (subject) => `${isCS(subject) ? TEACH_CS : isEN(subject) ? TEACH_EN : TEACH_LA}\n${TEACH_PROBE}`;
@@ -530,7 +530,7 @@ function segmentLines(seg, { maxResults = Infinity } = {}) {
     if (!b?.id) continue;
     // 图能用 figure set / play 改的变量（课堂说明被压缩成摘要后，Claude 看不到当初写的命令，靠这里知道）
     const vars = Array.isArray(b.vars) ? b.vars.filter(Boolean).join('、') : String(b.vars ?? '').trim();
-    const name = `${b.kind || '组件'} ${b.id}${vars ? `（变量：${oneLine(vars, 160)}）` : ''}`;
+    const name = `${b.kind || '组件'} ${b.id}${vars ? `（变量：${oneLine(vars, 160)}）` : ''}${b.outline ? `（${oneLine(b.outline, 200)}）` : ''}`;
     const res = (b.results || []).map((r) => resultLine(r, b.id)).filter(Boolean).slice(-maxResults);
     const draft = oneLine(String(b.draft ?? '').trim(), 300);
     if (res.length) {

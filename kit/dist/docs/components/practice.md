@@ -51,6 +51,7 @@ ask: rotate
 
 - `use:` 的细节：没写 `mode:` 也没写 `ask:` 就是 `mode: quiz`；`mode: fill`、`ask:` 照组件的写法（`mode: do` 不行）。这一组数正好问不到（插了几个数都没失衡，就没有 `rotate`）时页面自己换一组。作答记录照那个组件的写，题目后面带着这一题取的数（`（v=7 3 12 …）`）。`frames` 没有可以换的数，用 `type: custom`。
 - 计算机课的取数：`bits(4)`（一串 0/1，`nonzero` 不全是 0，写出来就是 `1011`）、`seq(8, 0, 5)`（8 个数，`distinct` 不重复）、`word(fifo, lru, opt)`（挑一个词：算法名、方向）、`str(7, ab)`（用 a、b 拼 7 个字母：KMP 的模式串）。写进字段：向量用 `\calc{list(v)}`（写成 `7 0 1 2`），带正负号的二进制真值用 `\calc{sbin(x, 4)}`（`sbin(-13/16, 4)` 是 `-0.1101`，`sbin(-3, 3)` 是 `-011`），`bin(g)` 是不带符号的。向量的小工具：`el(v, 2)`（第 2 个，从 1 数）、`sort(v)`、`sum(v)`、`cumsum(v)`（前缀和：到达时间）。
+- **算法函数**（用演示组件的引擎算，和画面一样）：`next(p)`、`nextval(p)`（模式串）、`faults(v, 3, lru)`、`victims(v, 3, fifo)`（页面引用串、块数、算法）、`wpl(w)`（哈夫曼）；`same(a, b)` 一样是 1。最有用的是 `where`：只出**能分开对错两种想法**的题，比如 `where same(victims(v, 3, lru), victims(v, 3, fifo)) == 0`（LRU 和 FIFO 换出的不一样，按 FIFO 做一定对不上）、`where same(next(p), nextval(p)) == 0`（照抄 next 一定错）。内置的 `paging`、`kmp`（level 2）已经这样取数。`\calc{list(nextval(p))}` 也能写在题面、解析里。
 
 ### practice 的内置题型（线代）
 
