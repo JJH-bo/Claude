@@ -103,10 +103,56 @@
 .class-seg.beat-wait { display: none; }
 .class-seg.beat-in { animation: beatIn .45s ease both; }
 @keyframes beatIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.class-page-body > .class-seg { transition: opacity .3s ease; }
-.class-page.is-beating .class-page-body > .class-seg:not(.beat-focus) { opacity: .45; }
+.class-page-body .class-seg { transition: opacity .3s ease; }
+.class-page.is-beating .class-page-body .class-seg:not(.beat-focus) { opacity: .45; }
 .class-seg.beat-focus { animation: beatFocus 1.4s ease; border-radius: 10px; }
 @keyframes beatFocus { 0% { box-shadow: 0 0 0 0 rgb(var(--yellow-rgb) / 0); } 30% { box-shadow: 0 0 0 6px rgb(var(--yellow-rgb) / 0.22); } 100% { box-shadow: 0 0 0 0 rgb(var(--yellow-rgb) / 0); } }
+/* 版面（canvas.js）：整块横屏是一张 12 列的格子，课堂 Claude 用 at= 把每一段摆在它定的地方。整个屏幕的宽度都用上 */
+.la-lesson.is-class.is-canvas { max-width: none; padding-left: 20px; padding-right: 20px; }
+.is-canvas .class-app:not(.has-pins) .class-stage { width: 100%; }
+.class-page-body.is-canvas { display: block; margin-top: 6px; }
+/* 一层：分几栏（宽度比由 Claude 的 cols= 给，写在 style 上）；一栏里的段从上往下接 */
+.cv-band { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 56px; margin: 0 0 22px; }
+.cv-band:last-child { margin-bottom: 0; }
+.cv-col { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+/* 栏和栏之间一道淡淡的竖粉笔线：一栏从上往下读，左右是两件事（这一栏里还没有露出来的东西时不画） */
+.cv-col + .cv-col::before {
+  content: ""; position: absolute; left: -29px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px;
+  background: rgb(var(--chalk-rgb) / 0.16); filter: var(--rough);
+}
+.cv-col + .cv-col:not(:has(> .class-seg:not([hidden]):not(.beat-wait)))::before { display: none; }
+/* 板上的东西直接写在黑板上，不框成一块块（2026-11-03 我说：每块都被框着，感觉还是一块块）：段没有底色、没有边，
+   靠留白分开；段里组件自带的卡片框也拿掉（题、步骤、选择题只留自己的输入框和按钮） */
+.class-page-body.is-canvas .class-seg {
+  position: relative; margin: 0; min-width: 0; min-height: 0; padding: 2px 4px 4px;
+}
+.class-page-body.is-canvas .widget.act { padding: 2px 0 0; background: none; box-shadow: none; }
+.class-page-body.is-canvas .widget.act::before { display: none; }
+/* 重点、提示这类框：版面里也不框起来，左边一道粉笔线表示「这是要记住的」 */
+.class-page-body.is-canvas .callout { background: none; box-shadow: none; border-radius: 0; padding: 2px 0 2px 16px; border-left: 3px solid rgb(var(--yellow-rgb) / 0.6); }
+.class-page-body.is-canvas .callout::before { display: none; }
+.class-page-body.is-canvas .block { margin: 6px 0; }
+/* 段的标题和段里组件的标题常常是一回事：留段的（粉笔字的板书标题），组件的不再写一遍 */
+.class-page-body.is-canvas .stage-body > h2 + .block .w-title { display: none; }
+.class-page-body.is-canvas .st-item { padding-left: 40px; }
+/* 揭开以后「你的想法」里已经有学生写的那句：上面的输入框不再占地方（同一句话不出现两遍） */
+.class-page-body.is-canvas .st-item.is-revealed:has(> .st-compare .st-mine) > .st-input { display: none; }
+.class-page-body.is-canvas .st-mine { background: none; border-radius: 0; padding: 0 0 0 12px; border-left: 2px dashed rgb(var(--chalk-rgb) / 0.3); }
+.class-page-body.is-canvas .stage-body > :first-child { margin-top: 2px; }
+.class-page-body.is-canvas .stage-body > h2 { font-size: 24px; margin: 4px 44px 6px 0; padding-top: 0; }
+.class-page-body.is-canvas .stage-body > h2::before { display: none; }
+.class-page-body.is-canvas .stage-body > p, .class-page-body.is-canvas .stage-body > ul > li { margin-bottom: 8px; }
+.class-page-body.is-canvas .katex-display { margin: 6px 0; }
+.is-canvas-page > .class-talk { margin: 4px 0 0; }
+.cv-zoom {
+  position: absolute; right: 2px; top: 2px; z-index: 2; width: 44px; height: 44px; border: 0; border-radius: 12px;
+  background: transparent; color: rgb(var(--chalk-rgb) / 0.4); font: 20px/1 var(--sans); cursor: pointer;
+}
+.cv-zoom:hover, .cv-zoom:focus-visible { color: var(--yellow); background: rgb(var(--chalk-rgb) / 0.06); }
+.class-page-body.is-canvas .class-seg.is-zoomed {
+  position: fixed; z-index: 30; top: 16px; left: 16px; right: 16px; bottom: var(--cv-bottom, 120px);
+  overflow: auto; padding: 16px 24px; background: var(--page-bg); box-shadow: 0 20px 60px rgb(var(--shade-rgb) / 0.5), inset 0 0 0 1px rgb(var(--chalk-rgb) / 0.15);
+}
 /* 正在写这一轮：原来的话先藏起来，换成草稿 */
 .class-page.is-drafting > .class-talk { display: none; }
 
@@ -290,3 +336,9 @@ body.class-docked .class-more:not(.in-bar) { right: calc(var(--cb-r, 20px) + 8px
 .class-by.is-mock { border-color: var(--border); color: var(--muted); }
 /* 小结的最后一行：页面写的核验说明 */
 .class-foot { margin: 14px 0 0; padding-top: 10px; border-top: 1px dashed var(--border); color: var(--muted); font: 14px/1.6 var(--sans); }
+
+/* 边写边显示（features.js 的 stream）：课堂 Claude 写完一段就先画上来，核验之前看得到、点不了；核验过了换成正式的，不再淡入一次 */
+.class-seg.is-preview { pointer-events: none; }
+.class-seg.no-anim { animation: none !important; }
+/* 版面：带 ⤢ 的段右上角留出按钮的地方，字不压在按钮底下 */
+.class-page-body.is-canvas .class-seg:has(> .cv-zoom) { padding-right: 44px; }

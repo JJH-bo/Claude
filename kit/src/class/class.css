@@ -26,6 +26,8 @@
 body.class-docked .class-bar { padding-left: var(--cb-l, 20px); padding-right: var(--cb-r, 20px); }
 body.class-docked .class-bar::before { left: var(--cb-l, 0px); right: var(--cb-r, 0px); }
 .class-bar > * { pointer-events: auto; width: min(calc(var(--cb-col) - 2 * var(--cb-pad)), 100%); }
+/* 版面：黑板用满整个宽度，底部的条跟着黑板一样宽（有常驻栏时只在黑板那一栏下面） */
+body.class-canvas .class-bar { --cb-col: 100vw; }
 .class-bar.is-lifted { padding-bottom: 8px; }
 /* 让开：黑板上的数字小键盘出来、或者在黑板上的输入框里打字（软键盘只剩小半屏）时，滑到屏幕外，收起再回来 */
 body.has-keypad .class-bar, .class-bar.is-away {

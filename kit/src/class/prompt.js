@@ -352,6 +352,25 @@ explain: $A\mathbf x = (2, 4)$，还在 $(1, 2)$ 这条线上。
 - 能用工具时，ˋcalcˋ 工具可以精确地算一个式子。每用一次你都要多等一整轮，所以只在改数出新题、得先知道结果才能决定怎么出时用；写上黑板的数用 ˋ\calc{…}ˋ。
 `;
 
+// —— 版面（canvas.js，docs/canvas-plan.md）：开着时你自己排板 ——
+export const CANVAS_DOC = doc`
+### 版面：你自己排板
+
+这节课的黑板是**一整块横屏**。没有模板，也不用写坐标：你说这块板的**结构**，页面按真实内容排（每段多高页面量，不用你估）。
+
+- ˋboard new … cols=7/5ˋ：这块板分两栏，宽 7:5（ˋcols=1/1/1ˋ 三栏等宽，不写就是一栏）。讲到一半要换：ˋboard layout cols=6/6ˋ。
+- 每一段写 ˋcol=1ˋ / ˋcol=2ˋ 放第几栏；同一栏里按写的先后**从上往下接**。不写就接着上一段那一栏。ˋcol=allˋ 是横跨整块板的一段：它前面、后面的段各成一层分栏（比如上面一张横跨的图，下面两栏）。
+- ˋboard move id=b3 col=2ˋ：挪到别的栏（放到那一栏最下面，不重画，作答都在）。
+- 栏和栏之间页面画一道竖线：**一栏从上往下读，左右两栏是两件事**。所以：
+  - 一句话、一段推导、一道题的几步不跨栏；左栏讲的东西不要在右栏接着讲。
+  - 两栏各放一件事：比如左栏推导、右栏题或对照；左栏讲一般、右栏回到例子。
+  - 内容少、一条线讲下来的板用一栏；有两件要对着看的事才分栏；三栏只给很短的几样并列（三个例子、三种情况）。
+  - 要学生看右边时，板顶那句话说「看右边」。
+- 黑板现状里写着当前板的版式（几栏、每栏从上往下是哪几段、各多高）和整块板比一屏长多少。两栏差得太多时把短的那栏补上下一件事，或者改成一栏。
+- 藏着的段（ˋadd … holdˋ）揭开时出现在它那一栏它的位置上。
+- 板顶的话要短（一两句），讲解写在板上、挨着它讲的东西。要拖、要看细节的图，学生能点角上的 ⤢ 放大铺满整屏。
+`;
+
 // —— 字节和截断 ——
 
 // UTF-8 字节数（sample 的 maxPromptBytes 按它算；中文 3 字节，emoji 4 字节）
@@ -600,7 +619,8 @@ function pagedStateText(board) {
   const cur = Number(board.cur) || 0;
   const ids = `新的一段用 id ${nextSegmentId(list)}，常驻栏新的一条用 id ${nextPinId(list)}（用过的 id，包括撤回的，都不要再用）。`;
   const screen = screenLine(board.screen);
-  if (!pages.length && !list.length) return [`黑板是空的：第一块板用 board new 写。${screen}`, ids].filter(Boolean).join('\n');
+  const grid = board.canvas ? '版面：整块横屏，这块板分几栏由你定（board new 的 cols=）。' : '';
+  if (!pages.length && !list.length) return [`黑板是空的：第一块板用 board new 写。${screen}${grid}`, ids].filter(Boolean).join('\n');
   const lines = [];
   const curPage = pages.find((p) => p.n === cur);
   const view = Number(board.view) || cur;
@@ -612,11 +632,13 @@ function pagedStateText(board) {
     lines.push(curPage.talk ? `当前板${title}最上面写着你上一句话：「${oneLine(curPage.talk, 160)}」（说新的话会把它换掉）。` : `当前板${title}最上面还没有你说的话。`);
     const here = onPage(cur);
     if (here.length) {
-      lines.push('当前板上的段（从上到下）：');
+      lines.push(board.canvas ? '当前板上的段：' : '当前板上的段（从上到下）：');
       for (const seg of here) lines.push(...segmentLines(seg));
     } else lines.push('当前板上还没有段。');
+    // 版式：几栏、每栏从上往下是哪几段、各多高（你自己排板时用）
+    if (board.canvas?.text) lines.push(board.canvas.text);
     const fit = board.fit;
-    if (fit && fit.fits === false && fit.need > 0 && fit.avail > 0) {
+    if (!board.canvas && fit && fit.fits === false && fit.need > 0 && fit.avail > 0) {
       // 稍长学生上下滑着看，不用为这个改板、也不用记成失误（改一次就是多写一整块板）；长到两屏多才提一句
       lines.push(fit.need > fit.avail * 2.2
         ? `（这块板很长：内容高约 ${fit.need}，一屏约 ${fit.avail}，学生要滑好几下。不用改这块；下一个点换新板时写紧凑些。）`
@@ -712,7 +734,8 @@ export function docLookup(componentDocs, subject, name) {
  * memory（学习台里上课时才有）：{ mem: 记忆库各类的数组, block: 这节课的块, session: 这节课的编号 }。
  * 有记忆时多一节「你对学生的了解」，记忆库 rules 替换内置的红线；记忆先占（最多 MEMORY_BUDGET），资料包用剩下的
  */
-export function buildSystem({ rules, componentDocs, pack, board, packBudget = PACK_BUDGET, subject = '线代', tools = true, memory = null, plan = null, planDoc = true } = {}) {
+// canvas：这节课开着版面（你自己排板，canvas.js），说明里多一节 CANVAS_DOC
+export function buildSystem({ rules, componentDocs, pack, board, packBudget = PACK_BUDGET, subject = '线代', tools = true, memory = null, plan = null, planDoc = true, canvas = false } = {}) {
   const custom = asText(rules) || asText(pack?.main?.rules);
   const { docs } = systemDocs(componentDocs, subject, packComponents(pack), { lookup: tools });
   const lookupNote = tools
@@ -723,7 +746,7 @@ export function buildSystem({ rules, componentDocs, pack, board, packBudget = PA
     const role = custom || (mem?.rules ? memoryRules(subject, mem.rules) : defaultRules(subject));
     const sections = [
       `你的角色和红线\n\n${role}`,
-      `组件写法和黑板指令\n\n## 组件说明\n\n下面的组件说明原本是学生写的，文中的「我」指学生、「你」指写黑板的 Claude。说到 guided 课件的关卡、小节结构的地方，课堂里不适用；课堂里的段落由你用黑板指令一段一段写。有的组件这里只写了最常用的写法（末尾写着「更多写法」）：照着写就行；${lookupNote}写错了页面会把那个组件的完整写法附在提醒里。资料包里点了名的组件，完整写法已经放在下面；点了名时，没点名的不常用组件只留了标题（要用就按名字取）。\n\n${docs || '（组件说明没有打包进来。只用最常见的组件：answer、steps、scene、predict，写法要保守。）'}\n\n## 黑板指令\n\n${PROTOCOL_DOC}${planDoc ? `\n\n${PLAN_DOC}` : ''}`,
+      `组件写法和黑板指令\n\n## 组件说明\n\n下面的组件说明原本是学生写的，文中的「我」指学生、「你」指写黑板的 Claude。说到 guided 课件的关卡、小节结构的地方，课堂里不适用；课堂里的段落由你用黑板指令一段一段写。有的组件这里只写了最常用的写法（末尾写着「更多写法」）：照着写就行；${lookupNote}写错了页面会把那个组件的完整写法附在提醒里。资料包里点了名的组件，完整写法已经放在下面；点了名时，没点名的不常用组件只留了标题（要用就按名字取）。\n\n${docs || '（组件说明没有打包进来。只用最常见的组件：answer、steps、scene、predict，写法要保守。）'}\n\n## 黑板指令\n\n${PROTOCOL_DOC}${canvas ? `\n\n${CANVAS_DOC}` : ''}${planDoc ? `\n\n${PLAN_DOC}` : ''}`,
       // 顺序按「一节课里多久变一次」排：组件说明、资料包几乎不变，记忆（等确认的改动）偶尔变，黑板现状每轮都变。
       // 每一轮整份重发；平台要是对重复的开头打折，不变的放前面最省
       `这节课的资料包\n\n课前备好的（学习台备课、复现课由页面拼），课中也可能更新。${memory ? '在学习台里，资料包是这节课的额外安排（推进建议、备好的题），学生的情况看后面的记忆。' : ''}\n\n${packBody}`,

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { parseReact, classify, planLocal, markFired, reactNote, armedText, rebuildRules, dropForSeg, stepOf } from '../kit/src/class/react.js';
 import { parseOutput, parseCommand } from '../kit/src/class/protocol.js';
 import { PROTOCOL_DOC } from '../kit/src/class/prompt.js';
-import { usageOf, usageText } from '../kit/src/class/usage.js';
+import { usageOf, usageText, callCost } from '../kit/src/class/usage.js';
 
 const BODY = [
   'right show=b4: 对。再来一个：乘 $(1,0)$ 呢？',
@@ -165,4 +165,12 @@ test('花费：页面按预案接了几次（没调用）', () => {
   assert.equal(u.calls, 1);
   assert.match(usageText(u), /页面按预案接了 2 次，没调用/);
   assert.equal(usageOf([{ role: 'claude', cost: { bytes: 1, why: 'turn' } }]).local, undefined);
+});
+
+test('花费：每轮等了多久（从发出到写完、到第一个字出现）', () => {
+  const c = (ms, first) => ({ role: 'claude', cost: callCost({ bytes: 1000, why: 'turn', ms, first }) });
+  const u = usageOf([c(20000, 4000), c(30000, 6000), { role: 'claude', cost: callCost({ bytes: 1, why: 'lint', ms: 99999 }) }]);
+  assert.deepEqual(u.wait, { n: 2, ms: 25000, first: 5000 });
+  assert.match(usageText(u), /每轮平均等 25 秒，5\.0 秒后开始出字/);
+  assert.equal(usageOf([{ role: 'claude', cost: { bytes: 1, why: 'turn' } }]).wait, undefined);
 });
