@@ -82,7 +82,8 @@
   "q-b1": 1,
   "q-b2": 1,
   "q-b3": 1,
-  "cz-b4": 1
+  "cz-b4": 1,
+  "cz-b5": 1
  },
  "results": {
   "q-b1": [
@@ -134,6 +135,21 @@
     "attempts": 1,
     "detail": "第 1 空：这里前面有逗号，是补充说明",
     "misread": "第 1 空写成「that」：这里前面有逗号，是补充说明"
+   }
+  ],
+  "cz-b5": [
+   {
+    "source": "record",
+    "block": "cz-b5",
+    "step": "b5",
+    "type": "cloze",
+    "title": "再填一组",
+    "q": "每个空填一个关系词（who / which / that）。",
+    "value": "who",
+    "ok": true,
+    "attempts": 1,
+    "detail": "",
+    "final": true
    }
   ]
  },
@@ -255,6 +271,11 @@
    "role": "claude",
    "seq": 11,
    "text": "「that 万能」只在**没有逗号**的限制性从句里成立。逗号后面的非限制性从句有一条硬规定：**不用 that**，指物用 which，指人用 who。所以北京那句只能是 which。看板上，再填一组。\n\n````board new id=b5 title=\"逗号后面不用 that\"\n| | 没逗号（限制性） | 有逗号（非限制性） |\n|---|---|---|\n| 指物 | that / which | **which**（不用 that） |\n| 指人 | who / that | **who**（不用 that） |\n\n```cloze\nid: cz-b5\ntitle: 再填一组\nq: 每个空填一个关系词（who / which / that）。\ntext: 1. My father, {{who|!that=前面有逗号，不用 that|!which=father 是人}} works in a hospital, often comes home late.\n  2. The Yangtze River, {{which|!that=前面有逗号，不用 that|!who=river 是物}} flows through Wuhan, is the longest river in China.\n  3. The man {{who|that|!which=man 是人}} helped me yesterday is my teacher.\nexplain: 1、2 有逗号，是补充说明：指人 who、指物 which，不用 that；3 没有逗号，在挑出是哪个人，who 和 that 都行。\n```\n````\n\n````board pin id=k1 title=\"有没有逗号\"\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）：指人 who，指物 which，**不用 that**\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）：that 也行\n````\n\n填完一句话告诉我：第 3 空为什么 that 可以？\n"
+  },
+  {
+   "role": "student",
+   "seq": 12,
+   "text": "填 who。逗号后面不能用 that。不过这里只有一个空，没有第3空；另外我还不太懂为什么逗号后面就不行，只是照表上记\n[作答] b5 里的填空 cz-b5「再填一组」：「每个空填一个关系词（who / which / that）。」做对了（共 1 次）\n[动作] b5 里的组件 cz-b5：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
   }
  ],
  "turns": [
@@ -410,8 +431,26 @@
    "notes": [],
    "plan": false,
    "view": "# 第 5 块板「逗号后面不用 that」\n\n老师写在板顶的话：「that 万能」只在**没有逗号**的限制性从句里成立。逗号后面的非限制性从句有一条硬规定：**不用 that**，指物用 which，指人用 who。所以北京那句只能是 which。看板上，再填一组。\n\n填完一句话告诉我：第 3 空为什么 that 可以？\n\n## 逗号后面不用 that\n| | 没逗号（限制性） | 有逗号（非限制性） |\n|---|---|---|\n| 指物 | that / which | **which**（不用 that） |\n| 指人 | who / that | **who**（不用 that） |\n\n【填空 cz-b5】再填一组\n  每个空填一个关系词（who / which / that）。\n  1. My father, （1）____ works in a hospital, often comes home late.\n  （按顺序写每个空，用 | 隔开，比如 \"who | has lived\"）\n\n# 常驻栏\n## 有没有逗号\n删掉从句，名词还知道是谁 → 补充说明，**加逗号**（非限制性 non-restrictive）：指人 who，指物 which，**不用 that**\n删掉就不知道是谁 → 挑出是哪个，**不加逗号**（限制性 restrictive）：that 也行\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 12,
+   "role": "student",
+   "say": "填 who。逗号后面不能用 that。不过这里只有一个空，没有第3空；另外我还不太懂为什么逗号后面就不行，只是照表上记",
+   "acts": [
+    {
+     "comp": "cz-b5",
+     "ok": true,
+     "type": "cloze"
+    },
+    {
+     "comp": "cz-b5",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "填 who。逗号后面不能用 that。不过这里只有一个空，没有第3空；另外我还不太懂为什么逗号后面就不行，只是照表上记\n[作答] b5 里的填空 cz-b5「再填一组」：「每个空填一个关系词（who / which / that）。」做对了（共 1 次）\n[动作] b5 里的组件 cz-b5：学生标了「没把握」——这题答对了，但没把握，按没过处理（红线 5）"
   }
  ],
- "seq": 11,
+ "seq": 12,
  "pendingNotes": []
 }
