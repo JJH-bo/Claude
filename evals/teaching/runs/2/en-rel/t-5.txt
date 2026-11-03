@@ -1,0 +1,4 @@
+先别改。第 1 空你填 that 而且很有把握，我想知道你是怎么想的：用一句话说说，你选 that 的理由是什么？（比如「that 指人指物都行」，或者别的。）
+
+````board mark target=cz-b4 blank=1 note="为什么是 that？"
+````
