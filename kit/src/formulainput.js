@@ -121,3 +121,67 @@ function press(k) {
   // 多个字母的量（alpha）写成希腊字母，前后不用加乘号：页面会补
   else put(SHOW[k] || k);
 }
+
+/**
+ * 按格写的矩阵答案（Aⁿ 的每个元素是含 n 的式子）：每格一个式子框，外面画方括号。接口和 formulaInput 一样，
+ * read() 返回每格读懂的式子 [[…]]，mark(wrong) 标出不对的格（按行数的序号）
+ */
+export function formulaGrid(container, { rows, cols, names = [], keys = names } = {}) {
+  const root = document.createElement('div');
+  root.className = 'fi-grid-wrap';
+  root.innerHTML = `<div class="fi-grid" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr))"></div>`;
+  container.appendChild(root);
+  const grid = root.querySelector('.fi-grid');
+  const cells = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const box = document.createElement('div');
+    box.className = 'fi-cell';
+    grid.appendChild(box);
+    const f = formulaInput(box, { names, keys, placeholder: `第 ${r + 1} 行第 ${c + 1} 列` });
+    f.root.querySelector('.fi-text').setAttribute('aria-label', `第 ${r + 1} 行第 ${c + 1} 列的式子`);
+    f.onEnter(() => {
+      // 写完一格跳到下一格；最后一格才算交
+      const next = cells[r * cols + c + 1];
+      if (next) next.root.querySelector('.fi-text').focus();
+      else root.dispatchEvent(new CustomEvent('mi-enter'));
+    });
+    cells.push(f);
+  }
+  const at = (fn) => Array.from({ length: rows }, (_, r) => Array.from({ length: cols }, (_, c) => fn(cells[r * cols + c], r, c)));
+  return {
+    read() {
+      return at((f, r, c) => {
+        try { return f.read(); } catch (e) { throw new Error(`第 ${r + 1} 行第 ${c + 1} 列：${e.message}`); }
+      });
+    },
+    text() { return `[${at((f) => f.partial() || '?').map((row) => `[${row.join(', ')}]`).join(', ')}]`; },
+    partial() { return cells.some((f) => f.partial()) ? this.text() : ''; },
+    mark(wrong = []) { cells.forEach((f, i) => f.markAll(wrong.includes(i) ? 'is-wrong' : '')); },
+    markAll(cls) { cells.forEach((f) => f.markAll(cls)); },
+    fill(value) {
+      const m = Array.isArray(value) ? value : parseCells(String(value ?? ''));
+      if (m) cells.forEach((f, i) => f.fill(m[Math.floor(i / cols)]?.[i % cols] ?? ''));
+    },
+    lock(on = true) { cells.forEach((f) => f.lock(on)); },
+    clear() { cells.forEach((f) => f.clear()); },
+    root,
+    onEnter(fn) { root.addEventListener('mi-enter', fn); },
+  };
+}
+// 「[[2^n, 0], [0, 3^n]]」拆回每一格（看答案、刷新后恢复时填回去）
+function parseCells(s) {
+  const t = s.trim();
+  if (!t.startsWith('[[')) return null;
+  const rows = [];
+  let depth = 0, cur = '', row = [];
+  for (const ch of t.slice(1, -1)) {
+    if (ch === '[' && depth === 0) { depth = 1; row = []; cur = ''; continue; }
+    if (ch === ']' && depth === 1) { row.push(cur.trim()); rows.push(row); depth = 0; cur = ''; continue; }
+    if (depth === 0) continue;
+    if ('([{'.includes(ch)) depth++;
+    if (')]}'.includes(ch)) depth--;
+    if (ch === ',' && depth === 1) { row.push(cur.trim()); cur = ''; continue; }
+    cur += ch;
+  }
+  return rows;
+}

@@ -89,12 +89,21 @@ function decimal(x) {
 
 // —— 值：数（Q）、向量（Q 的数组，列向量）、矩阵（Q 的二维数组，按行）——
 export const isQ = (x) => x instanceof Q;
+
+// 参数：let 块里写 `a = param`，a 不取值。算到含参数的式子时交给 paramcalc.js（按 a 的多项式精确地算）
+export class Sym { constructor(name) { this.name = name; } }
+export const isSym = (x) => x instanceof Sym;
+let symbolic = null;
+export function useSymbolic(fn) { symbolic = fn; }
+class NeedSymbolic extends Error { constructor() { super('含参数'); this.symbolic = true; } }
 export const isQVec = (x) => Array.isArray(x) && x.length > 0 && x.every(isQ);
 export const isQMat = (x) => Array.isArray(x) && x.length > 0 && x.every((r) => isQVec(r) && r.length === x[0].length);
 
 /** JS 的数 / 数组（浮点）或已经是精确的值 → 精确的值 */
 export function toExact(v) {
   if (v instanceof Q || isRadix(v)) return v;
+  // 含参数算出来的（paramcalc.js 的多项式）：后面用到它的也按参数算
+  if (v && typeof v === 'object' && !Array.isArray(v) && Array.isArray(v.c) && typeof v.toFactorTeX === 'function') throw new NeedSymbolic();
   if (typeof v === 'number' || typeof v === 'bigint') return Q.from(v);
   if (Array.isArray(v)) return v.map(toExact);
   throw new Error('这里需要数、向量或矩阵');
@@ -350,6 +359,9 @@ const FUNCS = {
   // 只为写出来的：vmat(A) 写成行列式的竖线 |…|；qf(A) 把对称矩阵写成二次型 x₁² + 2x₁x₂ + …（练习题的题面用）
   vmat: (M) => { square(M, '行列式'); return new Shown(`\\begin{vmatrix}${M.map((r) => r.map((x) => x.toTeX()).join(' & ')).join(' \\\\ ')}\\end{vmatrix}`, exactText(M)); },
   qf: (M) => quadFormShown(M),
+  // 含参数时 factor(det(A)) 写成因式分解的样子（paramcalc.js）；没有参数时就是它自己
+  factor: (x) => x,
+  expand: (x) => x,
   // 向量的几个小工具（practice 取数用）：el(v, 2) 第 2 个分量（从 1 数）、sort(v) 从小到大、sum(v)、cumsum(v) 前缀和
   el: (v, i) => { vec(v); const k = int(i, '第几个') - 1; if (k < 0 || k >= v.length) throw new Error(`没有第 ${k + 1} 个分量（一共 ${v.length} 个，从 1 数）`); return v[k]; },
   sort: (v) => vec(v).slice().sort((a, b) => a.cmp(b)),
@@ -456,7 +468,9 @@ function run(n, vars) {
   switch (n.t) {
     case 'num': return n.big !== undefined ? new Q(n.big) : Q.from(n.v);
     case 'var': {
+      if (n.name in vars && vars[n.name] instanceof Sym) throw new NeedSymbolic();
       if (n.name in vars) return toExact(vars[n.name]);
+      if (n.name === 'param') return new Sym(null);
       if (n.name === 'pi' || n.name === 'e') throw new Inexact(n.name === 'pi' ? 'π ' : 'e ');
       if (n.name === 'I' || n.name === 'E') return eye(2);
       throw new Error(`未定义的变量 ${n.name}`);
@@ -543,12 +557,17 @@ export function calcValue(src, vars = {}) {
   const ast = typeof src === 'string' ? parse(src) : src;
   try {
     const value = run(ast, vars || {});
+    if (value instanceof Sym) return { value, exact: true, tex: value.name || 'a', text: 'param', float: NaN };
     return { value, exact: true, tex: exactTeX(value), text: exactText(value), float: toFloat(value) };
   } catch (e) {
+    if (e?.symbolic) {
+      if (!symbolic) throw new Error('这里不能用参数');
+      return symbolic(ast, vars || {});
+    }
     if (!e?.inexact) throw e;
   }
   const fv = {};
-  for (const [k, v] of Object.entries(vars || {})) fv[k] = toFloat(v);
+  for (const [k, v] of Object.entries(vars || {})) if (!(v instanceof Sym)) fv[k] = toFloat(v);
   const value = evaluateFloat(ast, fv);
   // dec(sqrt(2), 3) 这种：小数算出来以后照 dec 写好了，按它写的位数（不再截成 4 位有效数字）
   if (isRadix(value)) return { value, exact: false, tex: value.toTeX(), text: value.digits, float: value.base === 10 ? Number(value.digits) : NaN };
@@ -563,7 +582,7 @@ export function letScope(cmds, base = {}) {
   const scope = { ...base };
   for (const c of cmds || []) {
     if (c?.kind !== 'let' || !c.src) continue;
-    try { scope[c.name] = calcValue(c.src, scope).value; } catch { /* 组件画的时候会报 */ }
+    try { scope[c.name] = letValue(c.name, calcValue(c.src, scope).value); } catch { /* 组件画的时候会报 */ }
   }
   return scope;
 }
@@ -571,9 +590,12 @@ export function letScope(cmds, base = {}) {
 /** 精确的量 → 浮点（给 expr.js 求值的组件当初始变量） */
 export function floatVars(vars) {
   const out = {};
-  for (const [k, v] of Object.entries(vars || {})) out[k] = toFloat(v);
+  for (const [k, v] of Object.entries(vars || {})) if (!(v instanceof Sym)) out[k] = toFloat(v);
   return out;
 }
+
+/** let 的结果：写的是 param 时记成叫这个名字的参数 */
+export const letValue = (name, v) => (v instanceof Sym && !v.name ? new Sym(name) : v);
 
 // —— let 块：整节课的量 ——
 const LET_LINE = /^\s*(?:let\s+)?([A-Za-z_Ͱ-Ͽ][\wͰ-Ͽ]*)\s*[=＝]\s*(.+?)\s*$/;

@@ -3,7 +3,8 @@ import MarkdownIt from 'markdown-it';
 import katex from 'katex';
 import { blocks } from './blocks/index.js';
 import { session } from './session.js';
-import { calcValue, expandCalc, parseLets } from './exact.js';
+import { calcValue, expandCalc, parseLets, letValue } from './exact.js';
+import './paramcalc.js'; // 含参数的 \calc（let 里写 a = param）：exact.js 遇到参数时交给它
 import { MARK_COLORS } from './markspec.js';
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false, typographer: false });
@@ -165,7 +166,7 @@ function prerunLets(src) {
         if (body) {
           try {
             for (const d of parseLets(body.join('\n'))) {
-              try { session.vars[d.name] = calcValue(d.src, session.vars).value; } catch { /* 组件会报 */ }
+              try { session.vars[d.name] = letValue(d.name, calcValue(d.src, session.vars).value); } catch { /* 组件会报 */ }
             }
           } catch { /* 组件会报 */ }
         }

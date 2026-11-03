@@ -11,8 +11,8 @@ import { createPad } from '../ink/pad.js';
 import { photoPicker, readFinal, flatFinal, photoError, transcriptHtml } from '../photo.js';
 import { FEATURES } from '../features.js';
 import { markDraft } from '../drafts.js';
-import { formulaInput } from '../formulainput.js';
-import { formulaSpec, formulaTeX, compareFormula } from '../formula.js';
+import { formulaInput, formulaGrid } from '../formulainput.js';
+import { formulaSpec, formulaTeX, compareFormula, matrixCells, compareCells } from '../formula.js';
 import { textAnswerInput } from '../textinput.js';
 import { parseConditions, checkConditions, refConditions } from '../anscheck.js';
 import { textAnswerSpec } from '../textspec.js';
@@ -44,7 +44,10 @@ export function answerWidget(body, spec, onDone) {
     </div>
     <div class="ans-feedback" hidden></div>`;
   const box = body.querySelector('.ans-input');
-  const input = formula ? formulaInput(box, { names: formula.names, keys: formula.keys }) : text ? textAnswerInput(box, shape) : mathInput(box, shape);
+  // 标准答案按格写的矩阵（Aⁿ 每个元素含 n）：每格一个式子框，逐格判
+  const cells = formula ? matrixCells(formula.expected) : null;
+  const input = cells ? formulaGrid(box, { rows: cells.length, cols: cells[0].length, names: formula.names, keys: formula.keys })
+    : formula ? formulaInput(box, { names: formula.names, keys: formula.keys }) : text ? textAnswerInput(box, shape) : mathInput(box, shape);
   const fb = body.querySelector('.ans-feedback');
   const btnCheck = body.querySelector('.ans-check');
   const btnHint = body.querySelector('.ans-hint');
@@ -100,7 +103,12 @@ export function answerWidget(body, spec, onDone) {
     let r;
     if (formula) {
       // 用的是页面读懂以后的式子（补了乘号、换了上标），学生写的原样记进记录
-      try { r = compareFormula(formula.expected, given, { free: formula.free, scope: formula.scope }); } catch (e) { show('is-bad', e.message); return; }
+      try {
+        if (cells) {
+          const c = compareCells(cells, given, { free: formula.free, scope: formula.scope });
+          r = { ok: c.ok, wrong: c.wrong, powerBan: c.first?.powerBan, msg: c.first ? `第 ${c.first.r + 1} 行第 ${c.first.c + 1} 列${c.wrong.length > 1 ? `（一共 ${c.wrong.length} 格不对）` : ''}：${c.first.msg}` : '', note: c.wrong.length ? `第 ${c.wrong.map((i) => `${Math.floor(i / cells[0].length) + 1},${(i % cells[0].length) + 1}`).join('、')} 格不对` : '' };
+        } else r = compareFormula(formula.expected, given, { free: formula.free, scope: formula.scope });
+      } catch (e) { show('is-bad', e.message); return; }
       // 直接写 A^n 这类「没化简」的：说清楚要怎样写，不算一次
       if (r.powerBan) { input.markAll('is-wrong'); show('is-bad', mdToHtml(r.msg)); return; }
       lastNote = r.note;

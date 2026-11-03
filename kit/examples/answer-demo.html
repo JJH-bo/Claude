@@ -1,7 +1,24 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>答案的新写法</title>
-<script src="la-kit.js"></script>
+<script src="la-kit.js">
+## 含参数的计算、按格写的 $A^n$
+
+```let
+a = param
+A = [[1, 1, a], [1, a, 1], [a, 1, 1]]
+```
+
+$|A| = \calc{det(A)} = \calc{factor(det(A))}$，所以 $a=1$、$a=-2$ 时要单独讨论。
+
+```answer
+id: q-pow
+q: $B=\begin{bmatrix}2&1\\0&2\end{bmatrix}$，求 $B^n$。
+answer: [[2^n, n*2^(n-1)], [0, 2^n]]
+formula: n
+before: B^n =
+```
+</script>
 <script type="text/markdown">
 ---
 subject: 线代
@@ -54,5 +71,22 @@ id: q-fix
 q: $x=-0.1011$，写出 $[x]_补$ 的双符号位形式。
 type: fixed
 answer: 11.0101
+```
+
+## 含参数的计算、按格写的 $A^n$
+
+```let
+a = param
+A = [[1, 1, a], [1, a, 1], [a, 1, 1]]
+```
+
+$|A| = \calc{det(A)} = \calc{factor(det(A))}$，所以 $a=1$、$a=-2$ 时要单独讨论。
+
+```answer
+id: q-pow
+q: $B=\begin{bmatrix}2&1\\0&2\end{bmatrix}$，求 $B^n$。
+answer: [[2^n, n*2^(n-1)], [0, 2^n]]
+formula: n
+before: B^n =
 ```
 </script>

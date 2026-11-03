@@ -420,6 +420,13 @@ table.mx.mx-click td { cursor: pointer; }
 .ti-read.is-right { color: var(--green); }
 /* 写式子的作答框（formulainput.js）：一行字，下面实时写成公式 */
 .fi { display: flex; flex-direction: column; gap: 6px; width: min(360px, 100%); }
+/* 按格写的矩阵答案：每格一个式子框，外面一对方括号 */
+.fi-grid-wrap { position: relative; padding: 6px 14px; width: min(600px, 100%); box-sizing: border-box; }
+.fi-grid-wrap::before, .fi-grid-wrap::after { content: ''; position: absolute; top: 0; bottom: 0; width: 9px; border: 2px solid rgb(var(--chalk-rgb) / 0.7); }
+.fi-grid-wrap::before { left: 0; border-right: none; border-radius: 4px 0 0 4px; }
+.fi-grid-wrap::after { right: 0; border-left: none; border-radius: 0 4px 4px 0; }
+.fi-grid { display: grid; gap: 10px 12px; }
+.fi-grid .fi { width: 100%; }
 .fi-text {
   width: 100%; height: 48px; padding: 0 12px;
   border: 0; border-bottom: 2px dashed rgb(var(--chalk-rgb) / 0.45); border-radius: 10px 10px 2px 2px;

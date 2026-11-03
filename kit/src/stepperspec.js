@@ -389,7 +389,7 @@ export function calcFields(fields, scope = {}) {
   const out = { ...fields };
   for (const [k, v] of Object.entries(fields)) {
     if (TEXT_FIELDS.has(k) || typeof v !== 'string' || !v.includes('\\calc')) continue;
-    const r = expandCalc(v, (e) => exactText(calcValue(e, scope).value), { wrap: false });
+    const r = expandCalc(v, (e) => calcValue(e, scope).text, { wrap: false });
     out[k] = r.tex;
     for (const e of r.errors) errors.push(`${k}: 里的 \\calc{${e.expr.trim().slice(0, 40)}} 算不出来：${e.msg}`);
   }

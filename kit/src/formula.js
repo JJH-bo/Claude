@@ -297,3 +297,43 @@ export function formulaSpec(answer, freeSpec, scope = {}) {
   const names = [...new Set([...freeNames, ...Object.keys(scope).filter((k) => /^[A-Za-z_]\w*$/.test(k))])];
   return { expected, free, scope, names, keys: [...freeNames, ...used], display: shown };
 }
+
+/**
+ * 标准答案是按格写出来的矩阵（[[2^n, n*2^(n-1)], [0, 2^n]]）：拆成每一格的式子 [[…]]；不是这种写法返回 null。
+ * 这时作答框按格给（每格一个式子框），逐格判，指出哪几格不对
+ */
+export function matrixCells(src) {
+  const s = String(src ?? '').trim();
+  if (!/^\[\s*\[/.test(s) || !s.endsWith(']')) return null;
+  const top = splitList(s.slice(1, -1));
+  if (!top || !top.length) return null;
+  const rows = top.map((r) => (r.startsWith('[') && r.endsWith(']') ? splitList(r.slice(1, -1)) : null));
+  if (rows.some((r) => !r || !r.length) || rows.some((r) => r.length !== rows[0].length)) return null;
+  if (rows.length > 4 || rows[0].length > 4) return null;
+  return rows;
+}
+// 按最外层逗号切（括号里的逗号不算）
+function splitList(s) {
+  const out = [];
+  let depth = 0, cur = '';
+  for (const ch of s) {
+    if ('([{'.includes(ch)) depth++;
+    if (')]}'.includes(ch)) depth--;
+    if (depth < 0) return null;
+    if (ch === ',' && depth === 0) { out.push(cur.trim()); cur = ''; } else cur += ch;
+  }
+  if (depth) return null;
+  if (cur.trim()) out.push(cur.trim());
+  return out.some((x) => !x) ? null : out;
+}
+
+/** 逐格比：expected / given 都是 [[式子]]。返回 { ok, wrong: [格的序号（按行数）], first: { r, c, msg } } */
+export function compareCells(expected, given, opts) {
+  const wrong = [];
+  let first = null;
+  expected.forEach((row, r) => row.forEach((e, c) => {
+    const res = compareFormula(e, given[r][c], opts);
+    if (!res.ok) { wrong.push(r * row.length + c); first ??= { r, c, msg: res.msg, powerBan: res.powerBan }; }
+  }));
+  return { ok: !wrong.length, wrong, first };
+}
