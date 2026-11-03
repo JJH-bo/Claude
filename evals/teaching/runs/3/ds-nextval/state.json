@@ -90,7 +90,7 @@
  ],
  "cur": 5,
  "progress": {
-  "k-nv1": 1
+  "k-nv1": 2
  },
  "tries": {
   "q-next1": 1,
@@ -180,6 +180,20 @@
     "ok": true,
     "attempts": 1,
     "detail": "第 10 步",
+    "final": true
+   },
+   {
+    "source": "record",
+    "block": "k-nv1",
+    "step": "b6",
+    "type": "stepper",
+    "engine": "kmp",
+    "title": "ababaab 的 nextval",
+    "q": "nextval[3] 是多少？",
+    "value": "0",
+    "ok": true,
+    "attempts": 1,
+    "detail": "第 11 步",
     "final": true
    }
   ]
@@ -324,6 +338,11 @@
    "role": "claude",
    "seq": 13,
    "text": "对，$T[2]\\ne T[1]$，不白比，停在 $next[2]=1$。接着点「下一步」，后面几格照样先猜，猜的时候说一句你退到了哪。\n"
+  },
+  {
+   "role": "student",
+   "seq": 14,
+   "text": "j=3，next[3]=1，T[3]=a，T[1]=a一样，白比，再退到next[1]=0，停。所以是0。\n[作答] b6 里的 kmp k-nv1「ababaab 的 nextval」：第 11 步，「nextval[3] 是多少？」做对了（共 1 次）\n[动作] b6 里的组件 k-nv1：学生标了「有把握」"
   }
  ],
  "turns": [
@@ -519,8 +538,26 @@
    "notes": [],
    "plan": false,
    "view": "# 第 5 块板「一格格求 nextval」\n\n老师写在板顶的话：对，$T[2]\\ne T[1]$，不白比，停在 $next[2]=1$。接着点「下一步」，后面几格照样先猜，猜的时候说一句你退到了哪。\n\n## 一格格求 nextval\n【演示 kmp k-nv1】ababaab 的 nextval\n  输入：pattern: ababaab\n  第 7 步：T[1..6] = ababaa：最长的相等前后缀是「a」（长 1），所以 next[7] = 1 + 1 = 2。\n  第 8 步：再求 nextval：nextval[1] = 0；j ≥ 2 时，如果 T[j] = T[next[j]]，失配后退到 next[j] 还是会失配，所以 nextval[j] = nextval[next[j]]；不相等就是 next[j]。\n  第 9 步：nextval[1] = 0。\n  第 10 步：T[2] = 'b' 和 T[1] = 'a' 不相等：nextval[2] = next[2] = 1。\n  第 2 / 6 问（走到第 11 步之前）：nextval[3] 是多少？\n  （写出来）\n\n# 常驻栏\n## 口径（王道）\n位置从 1 数；$next[1]=0$；$next[j]$ = $T[1..j-1]$ 最长相等前后缀的长度 $+1$。\n## 白比和停下\n在 $j$ 失配、退到 $k=next[j]$：若 $T[k]=T[j]$，必然失配（白比），接着退；$T[k]\\ne T[j]$ 或退到 0 就停。停下的位置就是 $nextval[j]$。\n\n\n（回复一个 JSON：{\"say\": \"…\", \"acts\": [{\"comp\": \"组件 id\", \"value\": \"…\"}], \"sure\": {\"组件 id\": true/false}}；不会就 {\"comp\": \"…\", \"giveup\": true}）"
+  },
+  {
+   "seq": 14,
+   "role": "student",
+   "say": "j=3，next[3]=1，T[3]=a，T[1]=a一样，白比，再退到next[1]=0，停。所以是0。",
+   "acts": [
+    {
+     "comp": "k-nv1",
+     "ok": true,
+     "type": "stepper"
+    },
+    {
+     "comp": "k-nv1",
+     "ok": true,
+     "type": "sure"
+    }
+   ],
+   "msg": "j=3，next[3]=1，T[3]=a，T[1]=a一样，白比，再退到next[1]=0，停。所以是0。\n[作答] b6 里的 kmp k-nv1「ababaab 的 nextval」：第 11 步，「nextval[3] 是多少？」做对了（共 1 次）\n[动作] b6 里的组件 k-nv1：学生标了「有把握」"
   }
  ],
- "seq": 13,
+ "seq": 14,
  "pendingNotes": []
 }
