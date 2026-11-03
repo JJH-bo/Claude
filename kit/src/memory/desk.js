@@ -7,6 +7,7 @@
 // docs/desk-plan.md 第 1 批（记录能力）：下课时页面算课后报告（report.js）写进 sessions/{编号}/report/main；首页「补记」
 // 学习台外面做的；「备份和用量」导出整个记忆库（backup.js）、看 assets 用了多少。
 // 课程地图、弱点表、以前的课的页面（desk-plan 第 3 批）后面做。
+import { sheetMd } from './sheet.js';
 import { ask, choose } from '../dialog.js';
 import { mdToHtml, escapeHtml } from '../render.js';
 import { session } from '../session.js';
@@ -584,11 +585,14 @@ export async function renderDesk(root, meta) {
       const blocks = Array.isArray(r?.blocks) ? r.blocks.map(String) : [];
       // 以前各节课的题（sessions/{编号}/pack/problems），只要同一块的
       const packs = [];
+      const sheets = []; // 那几节课下课时整理的「这节课的一页」（课后报告里），复现课从它开始
       for (const x of data.sessions.filter((y) => blocks.includes(String(y.block || ''))).slice(-8)) {
-        const snap = await scopeDb(db, x.id).doc('pack/problems').get().catch(() => null);
+        const [snap, rep] = await Promise.all([scopeDb(db, x.id).doc('pack/problems').get().catch(() => null), scopeDb(db, x.id).doc('report/main').get().catch(() => null)]);
         if (snap?.exists) packs.push({ ...snap.data(), block: x.block, session: x.id });
+        const md = rep?.exists ? sheetMd(rep.data().sheet, { max: 3000 }) : '';
+        if (md) sheets.push({ date: x.date || '', title: x.title || '', md });
       }
-      const use = reviewPack(data, b.dataset.rid, { packs });
+      const use = reviewPack(data, b.dataset.rid, { packs, sheets: sheets.slice(-2) });
       await newClass(use.main.block, use);
     } catch (err) {
       toast(`没开成：${err?.message || err}`);

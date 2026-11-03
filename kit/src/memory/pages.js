@@ -1,6 +1,7 @@
 // 学习台给我看的页面（docs/desk-plan.md 第 3 批，统计是第 4 批）：课程地图、弱点表、错题本、以前的课、统计。
 // 都只读、不调用 Claude；数据是首页一直订阅着的那份记忆库（desk.js 传进来），算的部分在 views.js。
 // 地址用 # 区分：#map、#weak、#errors、#classes、#classes/c-…（一节课的报告）、#stats。翻看以前的课的黑板是 #view/c-…（整页刷新进只读的课堂）。
+import { sheetMd } from './sheet.js';
 import { ask } from '../dialog.js';
 import { mdToHtml, escapeHtml } from '../render.js';
 import { toast } from '../record.js';
@@ -181,6 +182,7 @@ export function createPages(host, { getData, db, ops, goto }) {
         <p class="muted">${KIND_TEXT[r.kind]}${r.block ? ` · ${inline(blockName(r.block))}` : ''}${r.minutes !== null ? ` · ${r.minutes} 分钟` : ''}${r.usage?.calls ? ` · 调用 ${r.usage.calls} 轮，${esc(tokenText(r.usage.bytes))}` : ''}</p>
         <div class="mm-acts"><button type="button" class="btn btn-primary" data-goto="${r.status === 'open' ? esc(sid) : `view/${esc(sid)}`}">${r.status === 'open' ? (r.kind === 'class' ? '接着上课' : '进去') : r.kind === 'unit' ? '翻看这个单元' : '翻看这节课的黑板'}</button></div>
         ${sum ? `<div class="dk-memo-sub" role="heading" aria-level="3">下课小结</div><div class="dk-summary">${mdToHtml(sum.text || '')}</div>` : ''}
+        ${rep && sheetMd(rep.sheet) ? `<div class="dk-memo-sub" role="heading" aria-level="3">这节课的一页</div><div class="dk-summary dk-sheet">${mdToHtml(sheetMd(rep.sheet))}</div>` : ''}
         ${rep ? reportHtml(rep) : rep === false ? '<p class="muted">这节课还没有课后报告（下课以后才有；回首页会补写）。</p>' : '<p class="muted">正在读课后报告…</p>'}
         ${obs.filter((o) => o.kind !== 'summary').length ? `<details class="dk-soft"><summary>老师当堂的笔记（${obs.filter((o) => o.kind !== 'summary').length} 条）</summary><ul class="dk-log">${obs.filter((o) => o.kind !== 'summary').map((o) => `<li>${o.kind === 'proposal' ? '<b>提议</b> ' : ''}${inline(o.text)}</li>`).join('')}</ul></details>` : ''}
       </section>`;

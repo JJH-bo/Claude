@@ -37,6 +37,7 @@ import { shouldNudge, stuckText, STUCK_MS } from './stuck.js';
 import { fromEvidence, sayEvidence, draftEvidence, observationRecord, slipRecord, memoryRead } from '../memory/session.js';
 import { callCost, usageOf, usageText } from './usage.js';
 import { reportText } from '../memory/report.js';
+import { lessonSheet, sheetMd } from '../memory/sheet.js';
 import { slipsToFold, blockSwitch, tidyDue, tidyText } from '../memory/memo.js';
 import { spaceOfId } from '../memory/space.js';
 import { textbookForClass, readChunks, searchChunks } from '../books/textbook.js';
@@ -303,6 +304,7 @@ export async function renderClass(root, meta, desk = null) {
         // 分拍播过的板顶那句话：刷新后停在最后一拍（段都已经露出来了），还能倒回去看前面几拍的话
         if (Array.isArray(d.beats) && d.beats.length > 1) Object.assign(p, { beats: d.beats.map(String), beat: d.beats.length - 1, beatFocus: [] });
         if (CANVAS && Array.isArray(d.cols) && d.cols.length) p.cols = d.cols.map(Number);
+        if (d.sheet) p.sheet = String(d.sheet);
         bv.paint(p);
       }
       const docs = st.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.seq || 0) - (b.seq || 0));
@@ -459,7 +461,7 @@ export async function renderClass(root, meta, desk = null) {
   }
 
   function savePage(p) {
-    sink.put('class_pages', { id: pad3(p.n), n: p.n, title: p.title || '', talk: p.talk || '', talkBy: p.talkBy || '', lead: p.lead || '', kind: p.kind || '', body: p.body || '', foot: p.foot || '', ...(p.memo?.length ? { memo: p.memo } : {}), ...(p.beats ? { beats: p.beats } : {}), ...(p.cols ? { cols: p.cols } : {}), at: Date.now() });
+    sink.put('class_pages', { id: pad3(p.n), n: p.n, title: p.title || '', talk: p.talk || '', talkBy: p.talkBy || '', lead: p.lead || '', kind: p.kind || '', body: p.body || '', foot: p.foot || '', ...(p.memo?.length ? { memo: p.memo } : {}), ...(p.beats ? { beats: p.beats } : {}), ...(p.cols ? { cols: p.cols } : {}), ...(p.sheet ? { sheet: p.sheet } : {}), at: Date.now() });
   }
 
   // —— 学习台里改记忆（memory/memo.js）：都直接写进去了，上课时板上什么都不挂（不打扰学生）；
@@ -1994,9 +1996,12 @@ export async function renderClass(root, meta, desk = null) {
       ensureDraft();
       ctl = new AbortController();
       // md、seq、point：下课时把判得了分的题抄进题库（desk.js 的 harvestSession）
-      const steps = () => [...segs.values()].map((x) => ({ id: x.id, page: x.page, title: x.title || x.sec?.querySelector('h2')?.textContent?.trim() || '', place: x.place, md: x.md, seq: x.seq, ...(x.point ? { point: x.point } : {}), ...(x.failed ? { failed: true } : {}) }));
+      const steps = () => [...segs.values()].filter((x) => !String(x.id).startsWith('~')).map((x) => ({ id: x.id, page: x.page, title: x.title || x.sec?.querySelector('h2')?.textContent?.trim() || '', place: x.place, md: x.md, seq: x.seq, ...(x.point ? { point: x.point } : {}), ...(x.failed ? { failed: true } : {}), ...(x.hidden ? { hidden: true } : {}) }));
       // 学习台里：先用代码算一份课后报告放进这次的输入，小结和整理单同一次写（docs/desk-plan.md 4.2，不多调用一次）
-      const report = desk?.makeReport ? await desk.makeReport({ turns: history, steps: steps() }).then(reportText, () => '') : '';
+      const repObj = desk?.makeReport ? await desk.makeReport({ turns: history, steps: steps() }).catch(() => null) : null;
+      const report = repObj ? reportText(repObj) : '';
+      // 这节课的一页（memory/sheet.js）：页面自己拼，写在小结那块板的下面
+      const sheet = sheetMd(repObj?.sheet || lessonSheet({ steps: steps() }));
       const system = buildSystem({ rules: pack.main?.rules, componentDocs: COMPONENT_DOCS, pack: packForPrompt(false), board: boardState(), subject: session.subject, memory: memoryArg(), canvas: CANVAS, ...planArg() });
       // 每几节课（或者某一类到了上限）顺带整理：合并重复的弱点、复现组、关于学生的记录（memo.js 的 tidyDue）
       const sp = spaceOfId(desk?.block || '');
@@ -2040,7 +2045,7 @@ export async function renderClass(root, meta, desk = null) {
       }
       const foot = mock ? `（本地测试：${v.turns} 轮都是模拟老师回放的，没有调用 Claude。）`
         : `这节课 ${v.turns} 轮讲课和小结全部由 Opus 5.5 回答（平台核验）${v.discarded ? `；另有 ${v.discarded} 轮平台换了别的模型，已作废、没有显示` : ''}。`;
-      const p = newPage({ title: '这节课的小结', kind: 'closing', body: summary, foot });
+      const p = newPage({ title: '这节课的小结', kind: 'closing', body: summary, foot, ...(sheet ? { sheet } : {}) });
       const closed = addTurn({ role: 'system', kind: 'closing', text: res.text, modelApplied: res.modelApplied, page: p.n, cost: cost('closing') });
       bv.show(p.n, { animate: true });
       // 整理单：都直接写进去，小结下面只有一行小字（点开能撤销）

@@ -131,7 +131,8 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
     if (p.kind === 'closing') {
       if (!closing) { closing = document.createElement('div'); closing.className = 'class-closing'; p.bodyEl.prepend(closing); }
       // foot：页面自己写的最后一行（这节课由谁讲的），不是 Claude 写的
-      closing.innerHTML = mdToHtml(p.body || '') + (p.foot ? `<p class="class-foot">${escapeHtml(p.foot)}</p>` : '');
+      // sheet：这节课的一页（页面自己拼的记号、重点、做错又改对的题），写在小结下面
+      closing.innerHTML = mdToHtml(p.body || '') + (p.sheet ? `<section class="class-sheet"><h3 class="class-sheet-h">这节课的一页</h3>${mdToHtml(p.sheet)}</section>` : '') + (p.foot ? `<p class="class-foot">${escapeHtml(p.foot)}</p>` : '');
     } else closing?.remove();
     decorate?.(p);
   }

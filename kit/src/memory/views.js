@@ -185,7 +185,8 @@ export function learningStats(mem = {}, { today = toDate(Date.now()), days = 14 
  * 到期的复现组一键开课：这一组的内容、盯的弱点、相关错题原文、相关块的范围，加上以前各节课资料包里同一块的题（packs）。
  * 返回 { main, problems }（和外部写的资料包一样的字段，main 多一个 review）
  */
-export function reviewPack(mem = {}, rid, { packs = [], today = toDate(Date.now()) } = {}) {
+// sheets：以前这一块的课下课时整理的「这节课的一页」[{ date, title, md }]（memory/sheet.js），复现课从它开始
+export function reviewPack(mem = {}, rid, { packs = [], sheets = [], today = toDate(Date.now()) } = {}) {
   const r = live(mem, 'reviews').find((x) => String(x.id) === String(rid));
   if (!r) throw new Error(`复现组里没有 ${rid}`);
   const ws = live(mem, 'weaknesses').filter((w) => list(r.weaknesses).includes(String(w.id)));
@@ -217,6 +218,7 @@ export function reviewPack(mem = {}, rid, { packs = [], today = toDate(Date.now(
       ...cur.map((c) => `${c.id} ${c.title || ''}：${c.scope || ''}${c.exam ? `；考试口径：${c.exam}` : ''}`),
     ].join('\n'),
     plan: [
+      sheets.length ? '0. 资料包里有以前这一块的课整理的一页：从学生当时错的、没拿下的那几处出题（换数、换问法），不要照抄原题。' : '',
       '1. 先出一道这一组的题，不给提示，让学生独立做完、说出理由。',
       '2. 做对了：换一个角度再出一道（换数、换问法），确认不是记住了答案；做错了：先问学生卡在哪，再针对盯的弱点补一小段，最后再出一道同类题。',
       '3. 下课整理单里写 review id=' + r.id + ' result=过 / 没过（依据写那几道题的组件 id），弱点有变化也写。',
@@ -226,6 +228,7 @@ export function reviewPack(mem = {}, rid, { packs = [], today = toDate(Date.now(
       ws.length ? `盯的弱点：${ws.map((w) => `${w.id} ${w.title}（${w.scope}，${w.level}）`).join('；')}` : '',
       errs.length ? `相关错题原文：\n${errs.map((e) => `- ${e.id}${solved.has(String(e.id)) ? '（学生标了已解决）' : ''}：题「${cut(e.q, 200)}」；学生写「${cut(e.mine, 120)}」；错在 ${cut(e.step, 80)}；根因 ${cut(e.cause, 120)}`).join('\n')}` : '',
     ].filter(Boolean).join('\n'),
+    ...(sheets.length ? { '以前这一块整理的一页': sheets.map((x) => `【${x.date} ${x.title}】\n${x.md}`).join('\n\n') } : {}),
     updatedAt: Date.now(),
   };
   return { main, problems: items.length ? { items: items.slice(0, 30) } : null };

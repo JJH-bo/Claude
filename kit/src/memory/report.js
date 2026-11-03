@@ -4,6 +4,7 @@
 //
 // 输入：这节课的 sessions 文档、evidence（这节课的）、observations / slips（这节课的）、课堂轮次 class_turns、黑板的段 steps，
 // 以及上一节课下课以后的补记（src: manual，不属于哪节课，跟着下一份报告一起看）。
+import { lessonSheet } from './sheet.js';
 import { usageOf } from '../class/usage.js';
 
 export const REPORT_VERSION = 1;
@@ -84,6 +85,8 @@ function itemOf(key, list, segs) {
     sure: sureOf(evs),
     ms,
     last: cut(final?.last ?? recs.at(-1)?.value ?? recs.at(-1)?.text ?? '', 200),
+    // 写错的那几次写了什么（选择题记在 wrong 里）：这节课的一页（sheet.js）里「当时是怎么错的」
+    wrongs: uniq([...recs.filter((r) => r.ok === false).map((r) => cut(r.value ?? r.text ?? '', 80)), ...recs.flatMap((r) => (Array.isArray(r.wrong) ? r.wrong.map((w) => cut(w, 80)) : []))].filter(Boolean)).slice(0, 3),
     expected: final?.expected !== undefined ? cut(final.expected, 120) : undefined,
     images: uniq(recs.flatMap((r) => (Array.isArray(r.images) ? r.images : []))),
     turn: Math.min(...list.map((e) => num(e.turn) ?? Infinity)),
@@ -203,6 +206,8 @@ export function buildReport({ session = {}, evidence = [], manual = [], observat
     slips: sl.map((s) => ({ id: s.id, text: cut(s.text, 160) })),
     usage: usageOf(turns),
     verify: session.verify || null,
+    // 这节课的一页：记号、重点框、做错又改对的、还没拿下的（页面自己拼，不调用 Claude）
+    sheet: lessonSheet({ steps, items }),
     at: now,
   };
   return fitReport(report);
