@@ -1,7 +1,26 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>英语组件</title>
-<script src="la-kit.js"></script>
+<script src="la-kit.js">
+## 常见错答和选择式的空
+
+```cloze
+id: c-diag
+title: 关系词和时态
+q: 选关系词，再填动词的正确形式。
+text: My brother, {{[that=逗号后面（非限制性定语从句）不用 that|*who|which=which 指物，这里指人]}} lives in Beijing, {{has worked|has been working|!works=since 2010 要用现在完成时|!worked=一直到现在还在做：用现在完成时}} (work) there since 2010.
+explain: 逗号后面是非限制性定语从句，指人用 who；since + 过去的时间点，用现在完成时。
+```
+
+```errfind
+id: e-diag
+text: Neither of the answers are correct.
+wrong: are
+fix: is | !were=还是复数：neither of … 做主语，谓语用单数
+decoys: Neither=neither 本身没错，看谓语
+explain: neither of 做主语，谓语用单数。
+```
+</script>
 <script type="text/markdown">
 ---
 mode: guided

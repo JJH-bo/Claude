@@ -7,6 +7,7 @@ import { parseFields } from '../parse.js';
 import { widget, mdToHtml, escapeHtml } from './common.js';
 import {
   ROLES, matchText, textHint, parseCloze, tokenizeSentence, findWrong, parseAlts, parseBrackets, judgeSpans, spanText, spansHint, parseRoles, parseDrill, joinWords,
+  parseAnswer, diagnose, parseDecoys,
 } from '../entext.js';
 
 const inline = (s) => mdToHtml(String(s ?? ''), { inline: true });
@@ -18,14 +19,17 @@ const verdict = (ok, text) => `<div class="q-verdict">${ok ? '✓ 对了' : '✗
 
 export function cloze(el, src) {
   const { fields } = parseFields(src);
-  const { parts, blanks } = parseCloze(fields.text || '');
+  const { parts, blanks, specs } = parseCloze(fields.text || '');
   const title = fields.title || '填空';
   const opts = { caseSensitive: on(fields.case) };
   const body = widget(el, { title, cls: 'en-cloze' });
   const width = (alts) => Math.max(4, Math.min(28, Math.max(...alts.map((a) => a.length)) + 2));
   body.innerHTML = `
     ${fields.q ? `<div class="w-q">${mdToHtml(fields.q)}</div>` : ''}
-    <div class="en-text">${parts.map((p) => (p.text !== undefined ? inline(p.text).replace(/\n/g, '<br>') : `<input class="en-blank" data-i="${p.blank}" size="${width(p.alts)}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="第 ${p.blank + 1} 个空">`)).join('')}</div>
+    <div class="en-text">${parts.map((p) => (p.text !== undefined ? inline(p.text).replace(/\n/g, '<br>')
+    // 选择式的空（{{[that|*which]}}）：下拉选；打字的空：输入框
+    : p.choices ? `<select class="en-blank en-choice" data-i="${p.blank}" aria-label="第 ${p.blank + 1} 个空"><option value="">选…</option>${p.choices.map((c) => `<option value="${escapeHtml(c.text)}">${escapeHtml(c.text)}</option>`).join('')}</select>`
+      : `<input class="en-blank" data-i="${p.blank}" size="${width(p.alts)}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="第 ${p.blank + 1} 个空">`)).join('')}</div>
     <div class="ans-actions"><button type="button" class="btn btn-primary en-check">检查</button><button type="button" class="btn en-show" hidden>看答案</button></div>
     <div class="q-feedback" hidden></div>`;
   const inputs = [...body.querySelectorAll('.en-blank')];
@@ -39,7 +43,7 @@ export function cloze(el, src) {
     if (closed) return;
     closed = true;
     done();
-    inputs.forEach((x) => { x.readOnly = true; });
+    inputs.forEach((x) => { x.readOnly = true; if (x.tagName === 'SELECT') x.disabled = true; });
     session.record({ type: 'cloze', final: true, title, q, ok, attempts, revealed: revealed || undefined, value: values().join(' | '), expected: blanks.map((b) => b[0]).join(' | '), el });
   };
   const check = () => {
@@ -47,17 +51,21 @@ export function cloze(el, src) {
     attempts++;
     lastChecked = values().join(' | ');
     const res = inputs.map((x, i) => matchText(x.value, blanks[i], opts));
+    // 常见错答：学生看到针对的那句提示，记录里写给老师「页面看出来」
+    const diags = inputs.map((x, i) => (res[i].ok ? null : diagnose(x.value, specs[i].wrongs, opts)));
     res.forEach((r, i) => { inputs[i].classList.toggle('is-right', r.ok); inputs[i].classList.toggle('is-wrong', !r.ok); });
     const ok = res.every((r) => r.ok);
-    session.record({ type: 'cloze', liveOnly: true, title, q, value: lastChecked, ok, attempts, detail: ok ? '' : res.map((r, i) => (r.ok ? '' : `第 ${i + 1} 空${textHint(r, { what: '' })}`)).filter(Boolean).join('；'), el });
+    const why = (r, i) => (diags[i]?.why ? diags[i].why : specs[i].choices ? (r.empty ? '还没选' : '选得不对') : textHint(r, { what: '' }) || '不对');
+    const misread = diags.map((d, i) => (d ? `第 ${i + 1} 空写成「${d.text}」${d.why ? `：${d.why}` : '（常见错答）'}` : '')).filter(Boolean).join('；');
+    session.record({ type: 'cloze', liveOnly: true, title, q, value: lastChecked, ok, attempts, detail: ok ? '' : res.map((r, i) => (r.ok ? '' : `第 ${i + 1} 空${specs[i].choices || diags[i] ? `：${why(r, i)}` : textHint(r, { what: '' })}`)).filter(Boolean).join('；'), misread: misread || undefined, el });
     fb.hidden = false;
     fb.className = `q-feedback ${ok ? 'is-ok' : 'is-bad'}`;
-    fb.innerHTML = verdict(ok, ok ? '' : res.map((r, i) => (r.ok ? '' : `第 ${i + 1} 空：${textHint(r, { what: '' }) || '不对'}`)).filter(Boolean).join('；')) + (ok && fields.explain ? mdToHtml(fields.explain) : '');
+    fb.innerHTML = verdict(ok, ok ? '' : res.map((r, i) => (r.ok ? '' : `第 ${i + 1} 空：${why(r, i)}`)).filter(Boolean).join('；')) + (ok && fields.explain ? mdToHtml(fields.explain) : '');
     if (ok) finish(true);
     else if (attempts >= 2) body.querySelector('.en-show').hidden = false;
   };
   body.querySelector('.en-check').addEventListener('click', check);
-  inputs.forEach((x) => x.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); }));
+  inputs.forEach((x) => x.addEventListener('keydown', (e) => { if (e.key === 'Enter' && x.tagName !== 'SELECT') check(); }));
   body.querySelector('.en-show').addEventListener('click', () => {
     inputs.forEach((x, i) => { x.value = blanks[i][0]; x.classList.remove('is-wrong'); x.classList.add('is-answer'); });
     fb.hidden = false;
@@ -75,7 +83,9 @@ export function errfind(el, src) {
   const text = fields.text || '';
   const toks = tokenizeSentence(text);
   const wrongAt = findWrong(text, fields.wrong);
-  const fixes = parseAlts(fields.fix || '');
+  // fix: 对的改法 | !常见的错改法=提示；decoys: 常见的点错的词=为什么它没错（第 2 批：错法诊断）
+  const { alts: fixes, wrongs: fixWrongs } = parseAnswer(fields.fix || '');
+  const decoys = parseDecoys(text, fields.decoys);
   const title = fields.title || '改错';
   const body = widget(el, { title, cls: 'en-errfind' });
   body.innerHTML = `
@@ -111,11 +121,14 @@ export function errfind(el, src) {
     const spot = pick === wrongAt;
     const fixR = spot && fixIn ? matchText(fixIn.value, fixes) : { ok: true };
     const ok = spot && fixR.ok;
-    session.record({ type: 'errfind', liveOnly: true, title, q: short(text, 200), value: tried, ok, attempts, detail: spot ? (fixR.ok ? '' : '找对了，改得不对') : '这个词没错', el });
+    const decoy = spot ? null : decoys.find((d) => d.i === pick);
+    const badFix = spot && !fixR.ok && fixIn ? diagnose(fixIn.value, fixWrongs) : null;
+    const misread = decoy ? `点了常见的错处「${decoy.w}」：${decoy.why}` : badFix ? `改成了常见的错法「${badFix.text}」${badFix.why ? `：${badFix.why}` : ''}` : '';
+    session.record({ type: 'errfind', liveOnly: true, title, q: short(text, 200), value: tried, ok, attempts, detail: spot ? (fixR.ok ? '' : '找对了，改得不对') : '这个词没错', misread: misread || undefined, el });
     body.querySelectorAll('.en-word').forEach((x) => { x.classList.toggle('is-wrong', +x.dataset.i === pick && !spot); x.classList.toggle('is-right', +x.dataset.i === pick && spot); });
     fb.hidden = false;
     fb.className = `q-feedback ${ok ? 'is-ok' : 'is-bad'}`;
-    fb.innerHTML = verdict(ok, ok ? '' : !spot ? `「${word(pick)}」用得没错，错的是别的词` : fixR.empty ? '找对了，写一下改成什么' : '找对了，改得不对') + (ok && fields.explain ? mdToHtml(fields.explain) : '');
+    fb.innerHTML = verdict(ok, ok ? '' : !spot ? `「${word(pick)}」用得没错${decoy ? `：${decoy.why}` : '，错的是别的词'}` : fixR.empty ? '找对了，写一下改成什么' : `找对了，改得不对${badFix?.why ? `：${badFix.why}` : ''}`) + (ok && fields.explain ? mdToHtml(fields.explain) : '');
     if (ok) finish(true);
     else if (attempts >= 2) body.querySelector('.en-show').hidden = false;
   };
@@ -311,12 +324,13 @@ export function drill(el, src) {
     attempts++;
     lastChecked = input.value.trim();
     const r = matchText(input.value, items[k].alts, opts);
+    const d = r.ok ? null : diagnose(input.value, items[k].wrongs, opts);
     input.classList.toggle('is-right', r.ok);
     input.classList.toggle('is-wrong', !r.ok);
-    session.record({ type: 'drill', liveOnly: true, title, q: short(items[k].q, 200), value: lastChecked, ok: r.ok, attempts, detail: r.ok ? '' : textHint(r), el });
+    session.record({ type: 'drill', liveOnly: true, title, q: short(items[k].q, 200), value: lastChecked, ok: r.ok, attempts, detail: r.ok ? '' : textHint(r), misread: d ? `写成了常见的错法${d.why ? `：${d.why}` : ''}` : undefined, el });
     fb.hidden = false;
     fb.className = `q-feedback ${r.ok ? 'is-ok' : 'is-bad'}`;
-    fb.innerHTML = verdict(r.ok, r.ok ? '' : textHint(r)) + (r.ok && items[k].alts.length > 1 ? `<div class="muted">也可以：${items[k].alts.filter((a) => matchText(a, [input.value], opts).ok === false).map(escapeHtml).join(' / ')}</div>` : '');
+    fb.innerHTML = verdict(r.ok, r.ok ? '' : d?.why || textHint(r)) + (r.ok && items[k].alts.length > 1 ? `<div class="muted">也可以：${items[k].alts.filter((a) => matchText(a, [input.value], opts).ok === false).map(escapeHtml).join(' / ')}</div>` : '');
     if (r.ok) settle(true);
     else if (attempts >= 2) body.querySelector('.en-show').hidden = false;
   };

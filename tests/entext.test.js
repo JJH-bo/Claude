@@ -77,3 +77,32 @@ test('句型操练：一行一题，=> 后面是答案', () => {
   assert.equal(d[1].alts.length, 2);
   assert.throws(() => parseDrill(['nothing']), /一行一题/);
 });
+
+test('常见错答 !x=说明、选择式的空、errfind 的 decoys（docs/english-plan.md 第 2、3 批）', async () => {
+  const { parseCloze, parseAnswer, diagnose, parseChoices, parseDecoys, parseDrill } = await import('../kit/src/entext.js');
+  const { actionText } = await import('../kit/src/class/prompt.js');
+  const a = parseAnswer('had started | !has started=用成了现在完成时 | !started');
+  assert.deepEqual(a.alts, ['had started']);
+  assert.deepEqual(a.wrongs, [{ text: 'has started', why: '用成了现在完成时' }, { text: 'started', why: '' }]);
+  assert.deepEqual(diagnose('Has  Started', a.wrongs), a.wrongs[0], '和对的答案一样宽松地比');
+  assert.equal(diagnose('had begun', a.wrongs), null);
+  assert.throws(() => parseAnswer('went | !went=x'), /和对的答案一样/);
+  assert.throws(() => parseAnswer('went | !=x'), /! 后面写常见的错答/);
+  const ch = parseChoices('that=逗号后面不用 that|*who|which');
+  assert.deepEqual(ch.map((c) => [c.text, c.ok, c.why]), [['that', false, '逗号后面不用 that'], ['who', true, ''], ['which', false, '']]);
+  assert.throws(() => parseChoices('that|who'), /用 \* 标出对的/);
+  assert.throws(() => parseChoices('*that'), /至少要两个选项/);
+  const c = parseCloze('A, {{[that=不用 that|*who]}} b {{has lived|!lives=要完成时}}.');
+  assert.deepEqual(c.blanks, [['who'], ['has lived']]);
+  assert.equal(c.specs[0].choices.length, 2);
+  assert.deepEqual(c.specs[0].wrongs, [{ text: 'that', why: '不用 that' }]);
+  assert.deepEqual(c.specs[1].wrongs, [{ text: 'lives', why: '要完成时' }]);
+  assert.throws(() => parseCloze('x {{[a|b]}}'), /第 1 个空：选择式的空要用 \*/);
+  const d = parseDecoys('Neither of the answers are correct.', 'Neither=neither 本身没错; the=冠词没错');
+  assert.deepEqual(d.map((x) => [x.i, x.w]), [[0, 'Neither'], [2, 'the']]);
+  assert.throws(() => parseDecoys('Neither of them is.', 'Neither'), /词=为什么它没错/);
+  const items = parseDrill(['- They built it. => It was built. | !It built.=少了 be']);
+  assert.deepEqual(items[0].wrongs, [{ text: 'It built.', why: '少了 be' }]);
+  const t = actionText({ source: 'record', type: 'cloze', block: 'c1', step: 'b2', value: 'that | lives', ok: false, attempts: 1, detail: '第 1 空：不用 that', misread: '第 1 空写成「that」：不用 that' });
+  assert.match(t, /页面看出来：第 1 空写成「that」/);
+});

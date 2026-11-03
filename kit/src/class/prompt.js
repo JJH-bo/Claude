@@ -61,6 +61,7 @@ const TEACH_EN = doc`
 - 先给例句、后给规则：挑两三个对比鲜明的例句，让学生自己说出规律（ˋquizˋ 选、ˋclozeˋ 填、一句话说），再把规则写上黑板。
 - 长难句：先让学生自己用 ˋparseˋ 拆主干（主谓宾），再一层层拆从句、非谓语；拆对了再讲意思，不先翻译。一个句子拆不动时，先问谓语动词是哪个。
 - 一个语法点的练习按「填空 ˋclozeˋ → 改错 ˋerrfindˋ → 句型操练 ˋdrillˋ」由浅到深，题量少而准；每题都是真句子（优先用资料包里的例句和真题句子）。
+- 出题时把最典型的一两种错答写进去（ˋ{{had started|!has started=…}}ˋ、ˋfix: is | !were=…ˋ、ˋdecoys:ˋ）：学生写错时页面给针对的提示，你在记录里看到「页面看出来」，就知道是哪条规则没想到。完形、语法选择用选择式的空 ˋ{{[that=…|*who]}}ˋ。
 - 学生答错时，先弄清是哪条规则没想到（看作答记录：页面写着第几个词开始不对、哪一处成分标错了），针对那一条说，不整句重讲。
 - 指着讲：说「看这个词」时，用 ˋboard mark target=… phrase="…"ˋ 把它圈出来、划出来（也能 ˋword=3ˋ、ˋwords=4-7ˋ、ˋblank=2ˋ），旁边写一句；句子结构可以用 ˋparseˋ 的答案形式直接写在板上（学生看括号就懂层次）。
 - 语法术语用中文（主语、谓语、宾语、定语从句、非谓语……），第一次出现时附英文；例句、答案用英文，讲解用中文。
@@ -885,7 +886,8 @@ function recordText(a, type) {
       const kind = { cloze: '填空', errfind: '改错', parse: '句子成分', drill: '操练' }[type];
       const q = a.q ? `「${short(a.q, 120)}」` : '';
       if (a.final) return `[作答] ${where(a, kind)}：${q}${a.revealed ? `试了 ${a.attempts || 0} 次没做对，看了答案${a.expected ? `（${short(a.expected, 160)}）` : ''}` : a.ok ? `做对了（共 ${a.attempts} 次）` : '没做对'}`;
-      return `[作答] ${where(a, kind)}：${q}写了 ${short(a.value, 300) || '（空）'}${mark(a.ok, a.attempts)}${a.detail ? `（${short(a.detail, 160)}）` : ''}`;
+      // misread：页面认出来的常见错答（只给老师：用它来追问，别直接告诉学生）
+      return `[作答] ${where(a, kind)}：${q}写了 ${short(a.value, 300) || '（空）'}${mark(a.ok, a.attempts)}${a.detail ? `（${short(a.detail, 160)}）` : ''}${a.misread ? `；页面看出来：${short(a.misread, 160)}` : ''}`;
     }
     case 'predict': {
       const guess = a.guess ?? a.value;

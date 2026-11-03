@@ -2384,6 +2384,10 @@ g.sv-new.sv-flash > rect, g.sv-new.sv-flash > circle, g.sv-new.sv-flash > path {
 .en-blank.is-right, .dr-in.is-right, .en-fix-in.is-right { border-color: var(--green); color: var(--green); }
 .en-blank.is-wrong, .dr-in.is-wrong, .en-fix-in.is-wrong { border-color: var(--coral); color: var(--coral); }
 .en-blank.is-answer { color: rgb(var(--blue-rgb)); border-bottom-color: rgb(var(--blue-rgb) / 0.6); }
+/* 选择式的空（{{[that|*which]}}）：下拉，样子和打字的空一样；iPad 上点开是系统的选项列表 */
+.en-choice { min-height: 44px; border-radius: 6px 6px 0 0; cursor: pointer; appearance: auto; }
+.en-choice option { color: initial; background: initial; }
+.en-choice:disabled { opacity: 1; cursor: default; }
 .en-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 4px; margin: 6px 0 12px; font: 18px/1.6 var(--sans); }
 .en-word, .pz-w { min-height: 44px; min-width: 36px; padding: 4px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--chalk); font: inherit; cursor: pointer; }
 .en-word:hover, .pz-w:hover { border-color: rgb(var(--chalk-rgb) / 0.25); }

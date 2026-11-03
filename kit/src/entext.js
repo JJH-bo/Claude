@@ -61,10 +61,54 @@ export function textHint(r, { what = '答案' } = {}) {
   return `从第 ${r.at} 个词开始不对`;
 }
 
-// —— 填空 cloze：{{went}}、{{has lived|has been living}} ——
+// —— 常见错答（docs/english-plan.md 第 2 批）：「had started | !has started=用成了现在完成时」——
+// 对的几种写法照旧用 | 隔开；! 开头的是常见的错答，= 后面是针对它的一句提示（学生看到，记录里也写给老师：页面看出来像是哪种错法）
+
+/** 一个答案的写法 → { alts（对的）, wrongs: [{ text, why }]（常见错答）}。opts 用来查「错答和对的一样」 */
+export function parseAnswer(s, opts = {}) {
+  const alts = [];
+  const wrongs = [];
+  for (const part of parseAlts(s)) {
+    if (!part.startsWith('!')) { alts.push(part); continue; }
+    const body = part.slice(1);
+    const i = body.indexOf('=');
+    const text = (i < 0 ? body : body.slice(0, i)).trim();
+    const why = i < 0 ? '' : body.slice(i + 1).trim();
+    if (!text) throw new Error(`「${part}」：! 后面写常见的错答，比如 !has started=用成了现在完成时`);
+    wrongs.push({ text, why });
+  }
+  for (const w of wrongs) if (alts.some((a) => normText(a, opts) === normText(w.text, opts))) throw new Error(`常见错答「${w.text}」和对的答案一样，不用列`);
+  return { alts, wrongs };
+}
+
+/** 学生写的是不是哪一种常见错答：{ text, why } 或 null */
+export function diagnose(input, wrongs = [], opts = {}) {
+  const g = normText(input, opts);
+  return g ? wrongs.find((w) => normText(w.text, opts) === g) || null : null;
+}
 
 /**
- * 「By the time we arrived, the film {{had started}} (start).」→ { parts: [{ text } | { blank: i, alts }], blanks: [alts] }。
+ * 选择式的空（第 3 批）：「that=逗号后面不用 that|*which|who」→ [{ text, ok, why }]。* 是对的（可以不止一个），= 后面是选了它时的提示
+ */
+export function parseChoices(inner) {
+  const opts = parseAlts(inner).map((p) => {
+    const ok = p.startsWith('*');
+    const body = ok ? p.slice(1) : p;
+    const i = body.indexOf('=');
+    return { text: (i < 0 ? body : body.slice(0, i)).trim(), ok, why: i < 0 ? '' : body.slice(i + 1).trim() };
+  }).filter((o) => o.text);
+  if (opts.length < 2) throw new Error('选择式的空至少要两个选项：{{[that|*which|who]}}');
+  if (!opts.some((o) => o.ok)) throw new Error('选择式的空要用 * 标出对的选项：{{[that|*which|who]}}');
+  const seen = new Set();
+  for (const o of opts) { const k = normText(o.text); if (seen.has(k)) throw new Error(`选项「${o.text}」写了两遍`); seen.add(k); }
+  return opts;
+}
+
+// —— 填空 cloze：{{went}}、{{has lived|has been living}}、{{[that|*which]}} ——
+
+/**
+ * 「By the time we arrived, the film {{had started}} (start).」→ { parts: [{ text } | { blank: i, alts, wrongs, choices }], blanks: [alts], specs }。
+ * 打字的空：alts 对的写法、wrongs 常见错答；选择式的空 {{[that|*which]}}：choices 选项（alts 是对的那几个）。
  * 没有空、空里什么都没写都报错
  */
 export function parseCloze(text) {
@@ -75,16 +119,24 @@ export function parseCloze(text) {
   let last = 0, m;
   while ((m = re.exec(src))) {
     if (m.index > last) parts.push({ text: src.slice(last, m.index) });
-    const alts = parseAlts(m[1]);
-    if (!alts.length) throw new Error(`第 ${blanks.length + 1} 个空 {{}} 里没写答案`);
-    parts.push({ blank: blanks.length, alts });
-    blanks.push(alts);
+    const k = blanks.length + 1;
+    const inner = m[1].trim();
+    let spec;
+    try {
+      if (/^\[.*\]$/s.test(inner)) {
+        const choices = parseChoices(inner.slice(1, -1));
+        spec = { alts: choices.filter((c) => c.ok).map((c) => c.text), wrongs: choices.filter((c) => !c.ok && c.why).map((c) => ({ text: c.text, why: c.why })), choices };
+      } else spec = { ...parseAnswer(inner), choices: null };
+    } catch (e) { throw new Error(`第 ${k} 个空：${e.message}`); }
+    if (!spec.alts.length) throw new Error(`第 ${k} 个空 {{}} 里没写答案`);
+    parts.push({ blank: blanks.length, ...spec });
+    blanks.push(spec.alts);
     last = re.lastIndex;
   }
   if (last < src.length) parts.push({ text: src.slice(last) });
   if (/\{\{|\}\}/.test(parts.filter((p) => p.text).map((p) => p.text).join(''))) throw new Error('{{ 和 }} 没有配对');
   if (!blanks.length) throw new Error('text 里要有空：把答案写成 {{答案}}，几种写法都对时 {{a|b}}');
-  return { parts, blanks };
+  return { parts, blanks, specs: parts.filter((p) => p.blank !== undefined) };
 }
 
 // —— 切词：errfind、parse 用 ——
@@ -146,6 +198,21 @@ export function findWrong(text, wrong) {
   if (hits.length > 1 && !nth) throw new Error(`「${w}」在句子里出现了 ${hits.length} 次：写 wrong: ${w}#2 指第几次`);
   if (nth && !hits[nth - 1]) throw new Error(`「${w}」只出现了 ${hits.length} 次，没有第 ${nth} 次`);
   return hits[(nth || 1) - 1].i;
+}
+
+/**
+ * errfind 的 decoys:（常见的点错的词）：「Neither=neither 本身没错，看谓语; the#2=…」→ [{ i（第几个记号）, w, why }]
+ */
+export function parseDecoys(text, src) {
+  const out = [];
+  for (const part of String(src ?? '').split(/[;；\n]/).map((x) => x.trim()).filter(Boolean)) {
+    const i = part.indexOf('=');
+    const w = (i < 0 ? part : part.slice(0, i)).trim();
+    const why = i < 0 ? '' : part.slice(i + 1).trim();
+    if (!why) throw new Error(`decoys 里「${part}」：写成 词=为什么它没错，比如 Neither=neither 本身没错，看谓语`);
+    out.push({ i: findWrong(text, w), w: w.replace(/#\d+$/, ''), why });
+  }
+  return out;
 }
 
 // —— 成分标注 parse：[S The man [RC who lives next door]] [V gave] [O me] [O a book] ——
@@ -250,9 +317,9 @@ export function parseDrill(lines) {
   for (const raw of Array.isArray(lines) ? lines : String(lines ?? '').split('\n')) {
     const m = /^\s*[-*]\s+(.*?)\s*(?:=>|⇒|→)\s*(.+)$/.exec(raw);
     if (!m) continue;
-    const alts = parseAlts(m[2]);
+    const { alts, wrongs } = parseAnswer(m[2], { sentence: true });
     if (!m[1] || !alts.length) continue;
-    items.push({ q: m[1], alts });
+    items.push({ q: m[1], alts, wrongs });
   }
   if (!items.length) throw new Error('drill 要一行一题：- 原句 => 答案（几种都对时 a | b）');
   return items;
