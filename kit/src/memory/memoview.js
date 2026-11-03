@@ -61,7 +61,10 @@ export function createMemoView({ db, ops }) {
     if (mode === 'line') {
       s.el.innerHTML = `<button type="button" class="mm-toggle" aria-expanded="${s.open}">${escapeHtml(memoLine(pds))}<span class="mm-chev" aria-hidden="true">${s.open ? '收起' : '点开'}</span></button><div class="mm-pop"${s.open ? '' : ' hidden'}>${items}</div>`;
     } else {
-      s.el.innerHTML = `${title ? `<div class="mm-head" role="heading" aria-level="3">${escapeHtml(title)}</div>` : ''}${items}`;
+      // 等确认的多了（比如一次整理规则）：一个按钮全部确认，不用一条条点
+      const open = pds.filter((p) => p.status === 'open').length;
+      const all = open >= 3 ? `<div class="mm-acts mm-all"><button type="button" class="btn btn-sm mm-okall">全部确认（${open} 条）</button></div>` : '';
+      s.el.innerHTML = `${title ? `<div class="mm-head" role="heading" aria-level="3">${escapeHtml(title)}</div>` : ''}${all}${items}`;
     }
     // 重画以后，正在改的、点开了证据的照旧开着
     if (editing) openEdit(s.el.querySelector(`.mm-item[data-id="${CSS.escape(editing)}"]`));
@@ -88,6 +91,15 @@ export function createMemoView({ db, ops }) {
     const t = e.target.closest('button');
     if (!t) return;
     if (t.classList.contains('mm-toggle')) { s.open = !s.open; paint(s); return; }
+    if (t.classList.contains('mm-okall')) {
+      const open = list(s).filter((p) => p.status === 'open');
+      if (!confirm(`这 ${open.length} 条都确认写进记忆库？写进去的 ${UNDO_DAYS} 天内还能一条条撤销。`)) return;
+      t.disabled = true;
+      let ok = 0;
+      for (const pd of open) { try { await ops.confirm(pd); ok++; } catch (err) { toast(`${cut(pendingTitle(pd), 30)} 没成：${err?.message || err}`); } }
+      toast(`写进去了 ${ok} 条`);
+      return;
+    }
     const box = t.closest('.mm-item');
     const pd = box && docs.get(box.dataset.id);
     if (!pd) return;

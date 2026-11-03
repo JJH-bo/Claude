@@ -4,12 +4,14 @@
 //
 // 四种角色：chat（对话里的 Claude，用 ArtifactData 写）、class（课堂里的 Claude）、page（页面自己的代码）、
 // me（我自己：在页面上点了「确认」、自己改、撤销。docs/desk-plan.md 第 4 节）。
-// 课堂里的 Claude 改记忆分三档（memo.js）：直接写（偏好、它的失误、观察）用 class；我确认才写（错题、弱点、复现组、位置）
-// 由我点「确认」时以 me 的身份写进去（log 里 by 还是 class，note 写我哪天确认的）；掌握、规则只能提议。
+// 学习台自己管自己（docs/autonomy-plan.md）：外部 Claude 只做开发，课堂里的 Claude 管记忆。改记忆分档（memo.js）：
+// 直接写（偏好、失误、守则、观察、待办、错题、弱点、复现组、位置）用 class，写完我能撤销；规则要我确认，
+// 我点「确认」时以 me 的身份写进去（log 里 by 还是 class，note 写我哪天确认的）；掌握由页面按证据算、我确认，课堂不能写。
+// chat 留着：以前的 log 里有 by: chat，开发那边修数据也用它。
 // 两种性质：history（只增不改：写错了追加一条更正）、state（可以改，每次改都在 log 里记一条）；meta 是页面自己的。
 
 export const ROLES = ['chat', 'class', 'page', 'me'];
-export const ROLE_TEXT = { chat: '对话里的 Claude', class: '课堂里的 Claude', page: '页面', me: '我（在页面上点的）' };
+export const ROLE_TEXT = { chat: '开发那边（以前的对话里的 Claude）', class: '课堂里的 Claude', page: '页面', me: '我（在页面上点的）' };
 // 写进去以后多久之内还能撤销（docs/desk-plan.md 4.3；我还没定，先和自检提醒保留的天数一样）
 export const UNDO_DAYS = 7;
 
@@ -23,7 +25,8 @@ export const isDate = (s) => typeof s === 'string' && DATE_RE.test(s) && !Number
  */
 export const COLLECTIONS = {
   rules: {
-    label: '规则', kind: 'state', writers: ['chat'],
+    // 课堂里的 Claude 写的规则要我确认（memo.js 的 confirm 档），确认时以 me 的身份写
+    label: '规则', kind: 'state', writers: ['chat', 'me'],
     id: { re: /^rule-[A-Za-z0-9_-]+$/, eg: 'rule-01、rule-redline-3' },
     required: ['cat', 'text', 'since', 'source'],
     // for：给谁看（课堂里的 Claude 只带 class、both 的；不写当 both）；space：只管一科时写（不写全科都带）
@@ -33,12 +36,13 @@ export const COLLECTIONS = {
     tracked: ['text', 'status'],
   },
   profile: {
-    // 课堂里的 Claude 只能直接写 topic 是「讲法」「习惯」的（memo.js 拦着）；撤销时 status 改成 void
+    // 课堂里的 Claude 直接写（新的一条、改说法、并掉重复的 merged + into）；撤销时 status 改成 void
     label: '我（和教学有关的）', kind: 'state', writers: ['chat', 'class', 'me'],
     id: { re: /^p-[A-Za-z0-9_-]+$/, eg: 'p-goal、p-device' },
     required: ['topic', 'text'],
-    enums: { status: ['active', 'void'], space: ['math', 'cs', 'en'] },
+    enums: { status: ['active', 'merged', 'void'], space: ['math', 'cs', 'en'] },
     dates: ['since'],
+    refs: { into: 'profile' },
     tracked: [],
   },
   curriculum: {
@@ -62,12 +66,13 @@ export const COLLECTIONS = {
     label: '课堂观察', kind: 'history', writers: ['class', 'page', 'me'],
     id: { re: /^ob-[A-Za-z0-9_-]+$/, eg: '页面自动编号' },
     required: ['kind', 'text', 'at'],
-    enums: { kind: ['note', 'summary', 'proposal'] },
+    // todo：课上被问到教案以外的内容，先记下来，下次备课补（不在课上查教材补讲，那会多跑轮）
+    enums: { kind: ['note', 'summary', 'proposal', 'todo'], status: ['open', 'done'] },
     refs: { block: 'curriculum', session: 'sessions', corrects: 'observations' },
     tracked: [],
   },
   errors: {
-    label: '错题档案', kind: 'history', writers: ['chat', 'me'],
+    label: '错题档案', kind: 'history', writers: ['chat', 'class', 'me'],
     id: { re: /^(?:[A-Z]{2}-)?L\d+-T?\d+$/, eg: 'L2-07、L2-T03；别的门课带前缀：DS-L2-03、EN-L1-02' },
     required: ['source', 'q', 'mine', 'step', 'cause', 'date'],
     dates: ['date'],
@@ -75,12 +80,13 @@ export const COLLECTIONS = {
     tracked: [],
   },
   weaknesses: {
-    label: '弱点表', kind: 'state', writers: ['chat', 'me'],
+    label: '弱点表', kind: 'state', writers: ['chat', 'class', 'me'],
     id: { re: /^W\d+$/, eg: 'W19' },
     required: ['title', 'scope', 'level'],
-    enums: { scope: ['通用', '链条', '局部'], level: ['L0', 'L1', 'L2', 'L3'], status: ['active', 'closed', 'void'], space: ['math', 'cs', 'en'] },
+    // merged：并进了别的一条（into），摘要和页面都不再带
+    enums: { scope: ['通用', '链条', '局部'], level: ['L0', 'L1', 'L2', 'L3'], status: ['active', 'closed', 'merged', 'void'], space: ['math', 'cs', 'en'] },
     dates: ['last'],
-    refs: { errors: 'errors', blocks: 'curriculum' },
+    refs: { errors: 'errors', blocks: 'curriculum', into: 'weaknesses' },
     tracked: ['level', 'scope', 'status'],
   },
   mastery: {
@@ -93,17 +99,17 @@ export const COLLECTIONS = {
     tracked: ['state', 'tier'],
   },
   reviews: {
-    label: '复现组', kind: 'state', writers: ['chat', 'me'],
+    label: '复现组', kind: 'state', writers: ['chat', 'class', 'me'],
     id: { re: /^R\d+$/, eg: 'R3' },
     required: ['title', 'tier'],
-    // paused：我暂停了（不算到期）；done：停掉了；void：撤销了的新组
-    enums: { status: ['active', 'paused', 'done', 'void'], space: ['math', 'cs', 'en'] },
+    // paused：我暂停了（不算到期）；done：停掉了；merged：并进了别的一组（into）；void：撤销了的新组
+    enums: { status: ['active', 'paused', 'done', 'merged', 'void'], space: ['math', 'cs', 'en'] },
     dates: ['last'],
-    refs: { weaknesses: 'weaknesses', blocks: 'curriculum' },
-    tracked: ['tier', 'last', 'result'],
+    refs: { weaknesses: 'weaknesses', blocks: 'curriculum', into: 'reviews' },
+    tracked: ['tier', 'last', 'result', 'status'],
   },
   position: {
-    label: '当前位置', kind: 'state', writers: ['chat', 'me'],
+    label: '当前位置', kind: 'state', writers: ['chat', 'class', 'me'],
     // 每科一条：now（数学）、now-cs（408）、now-en（英语）
     id: { re: /^now(?:-(?:cs|en))?$/, eg: 'now（数学）、now-cs（408）、now-en（英语）' },
     required: ['block', 'next'],
@@ -157,8 +163,8 @@ export const COLLECTIONS = {
     label: '改动单', kind: 'state', writers: ['class', 'page', 'me'],
     id: { re: /^pd-[A-Za-z0-9_-]+$/, eg: '页面自动编号' },
     required: ['kind', 'coll', 'op', 'status', 'at'],
-    // by: page 是页面自己按证据算的提议（掌握、练习后的复现组结果），一样等我确认
-    enums: { op: ['add', 'update'], status: ['open', 'done', 'rejected', 'undone'], tier: ['direct', 'confirm', 'me'], by: ['class', 'me', 'page'] },
+    // by: page 是页面自己按证据算的提议（掌握、练习后的复现组结果），一样等我确认；by: chat 是开发那边整理数据时提的（比如一次整理规则），也等我确认
+    enums: { op: ['add', 'update'], status: ['open', 'done', 'rejected', 'undone'], tier: ['direct', 'confirm', 'me'], by: ['class', 'me', 'page', 'chat'] },
     refs: { session: 'sessions' },
     tracked: ['status'],
   },
@@ -180,7 +186,7 @@ export function assertWrite(role, coll) {
   const c = COLLECTIONS[coll];
   const who = ROLE_TEXT[role] || role;
   const owners = (c?.writers || []).map((r) => ROLE_TEXT[r]).join('、');
-  throw new Error(`${who}不能写 ${coll}（${c?.label || coll}）：这一类只有${owners}能写${role === 'class' ? '。看到的情况写进 observations（kind: proposal），由对话里的 Claude 采纳' : ''}`);
+  throw new Error(`${who}不能写 ${coll}（${c?.label || coll}）：这一类只有${owners}能写${role === 'class' ? '。规则要学生确认才写，掌握由页面按证据算' : ''}`);
 }
 
 // —— 日期 ——

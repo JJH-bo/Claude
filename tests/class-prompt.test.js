@@ -104,7 +104,7 @@ test('默认红线：需求 2.3 第 1 条逐条都在', () => {
     '三轮', '换一道同类的题',
     '没把握', '按没过处理',
     '已经掌握',
-    '资料包里没有的教材内容不讲', '这个课后问对话里的 Claude',
+    '资料包里没有的教材内容不讲', '这个下次课讲',
     '话要短', '主要内容写在黑板上',
     '拖、点', '预测', '长段文字',
   ];
@@ -222,7 +222,7 @@ test('资料包：空的时候注明只讲最基本的', () => {
   for (const p of [null, undefined, {}, { main: null, problems: null }, { main: { rules: '只有规则', updatedAt: 1 } }, { main: { unit: '  ' }, problems: { items: [] } }]) {
     const r = packText(p);
     assert.equal(r.empty, true, JSON.stringify(p));
-    assert.match(r.text, /还没有资料包：只讲最基本的、不确定的内容说课后问对话里的 Claude/);
+    assert.match(r.text, /还没有资料包：只讲最基本的、不确定的内容说「这个下次课讲」/);
   }
   assert.match(buildSystem({ pack: null }), /还没有资料包/);
   assert.equal(packText({ problems: { items: [{ q: 1 }] } }).empty, false, '只有题也算有资料包');

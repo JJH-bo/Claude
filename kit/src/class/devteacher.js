@@ -139,7 +139,7 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
   // 学习台里下课：小结后面接着写整理单（memo 块），依据用课后报告里的第一道题
   if (/下课|小结/.test(said)) return { kind: 'closing', text: closingText(conv) + (/整理单/.test(said) ? `\n${closingMemo(said)}` : '') };
 
-  // 学习台里改记忆：memo 块的三档都写一条，再故意写两条不对的（掌握只能提议、偏好没写依据）
+  // 学习台里改记忆：每一档都写一条（直接写的、等确认的规则、待办），再故意写三条不对的（掌握不收、偏好没写依据、和 W19 一样的新弱点）
   if (!isSystem && /测试\s*[:：]?\s*整理/.test(said)) {
     const n = nextSeq(turns, memo);
     return {
@@ -162,8 +162,11 @@ export function devReply(input, memo = { seq: 0, broken: 0 }, { images = 0 } = {
           'note text="（模拟老师）问到形状时犹豫了很久" about=W19',
           'error q="（模拟）βᵀα 是几行几列" mine="3×3" step="判断形状" cause="（模拟老师）把内积当外积" weakness=W19 basis=say',
           'weakness id=W19 level=L0 basis=say',
+          'todo text="（模拟老师）学生问了 βᵀα 为什么叫内积，资料包里没有"',
+          'rule cat=讲解 text="（模拟老师）出一组题之前，先把要用到的规则都讲完" basis=say',
           'mastery id=L2.2.2 state=基础题过',
           'pref topic=习惯 text="（模拟老师）没写依据的偏好"',
+          'weakness title="内积和外积分不清" scope=链条 level=L0 basis=say',
         ].join('\n')),
       ),
     };
@@ -697,9 +700,11 @@ function closingText(conv) {
   ].join('\n\n') + '\n';
 }
 
-// 下课整理单（模拟）：依据用课后报告里列的第一道题，报告里没有题就用学生说的话
+// 下课整理单（模拟）：依据用课后报告里列的第一道题，报告里没有题就用学生说的话。
+// 提示词里有「顺带整理记忆」（每 5 节一次、或者到了上限）时，再把 R5 并进 R3、p-lang 并进 p-goal（示例记忆里的编号）
 function closingMemo(said) {
   const comp = said.match(/^- ([A-Za-z][\w-]*)（/m)?.[1] || 'say';
+  const tidy = /顺带整理记忆/.test(said) ? ['review id=R5 status=merged into=R3', 'pref id=p-lang status=merged into=p-goal'] : [];
   return board('memo', [
     `error q="（模拟）βᵀα 是几行几列" mine="3×3" step="判断 βᵀα 的形状" cause="（模拟老师）把 βᵀα 当成 3×3 矩阵" weakness=W19 basis=${comp}`,
     `weakness id=W19 level=L2 basis=${comp}`,
@@ -707,6 +712,7 @@ function closingMemo(said) {
     'position next="（模拟老师）先收形状判断的同类题，再推 Aⁿ" debts="形状判断的同类题"',
     'lesson text="（模拟老师）下课前留一道题让学生用自己的话说一遍" why="下课前没让学生口述，看不出懂没懂" topic=检验',
     'lesson id=T-1 text="（模拟老师）出一组练习之前，先把整组题读一遍，逐题列出要用到的规则，没讲过的先讲完；讲不了的那题不出" slips=S-1-1',
+    ...tidy,
   ].join('\n')) + '\n';
 }
 

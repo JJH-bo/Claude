@@ -15,14 +15,14 @@ import { VERSION, KIT_URL } from '../version.js';
 import { COLLECTIONS, MEMORY_COLLECTIONS, ROLE_TEXT, UNDO_DAYS, assertWrite, toDate } from './schema.js';
 import { sessionId, isSessionId, scopeDb, manualEvidence, SESSION_SCOPED, SESSION_KINDS, kindOf } from './session.js';
 import { buildReport, reportLine } from './report.js';
-import { backupFile, backupName, BOARD_COLLECTIONS, SESSION_EXTRA } from './backup.js';
+import { backupFile, backupName, restorePlan, BOARD_COLLECTIONS, SESSION_EXTRA } from './backup.js';
 import { createManualForm } from './manual.js';
 import { usageText } from '../class/usage.js';
 import { createMemOps } from './memops.js';
 import { createMemoView } from './memoview.js';
 import { resolvedErrors, voidedIds, activeLessons } from './memo.js';
 import { createPages } from './pages.js';
-import { reviewPack, handoffText, deskBrief, briefId } from './views.js';
+import { reviewPack, deskBrief, briefId } from './views.js';
 import { readOnlyDb } from './session.js';
 import { SPACES, SPACE_KEYS, DEFAULT_SPACE, filterSpace, spaceOfDoc, spaceOfId, subjectOf, positionId, packIds } from './space.js';
 import { dueList } from './schema.js';
@@ -84,7 +84,7 @@ export async function renderDesk(root, meta) {
     <section class="dk-card dk-class" hidden><h2 class="dk-h">上课</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-today" hidden><h2 class="dk-h">今天</h2><div class="dk-body"></div></section>
     <section class="dk-card dk-drill" hidden><h2 class="dk-h">练一练</h2><p class="dk-sub muted">页面从以前课上的题里挑几道，不同块混着做，页面判分，不调用 Claude。</p><div class="dk-body"></div></section>
-    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">课堂里的 Claude 提的错题、弱点、复现组、下一节，页面按证据算的掌握、练习后的复现结果：点「确认」才写进记忆库。写进去的 7 天内能撤销。</p><div class="dk-popen"></div><div class="dk-memo-sub" role="heading" aria-level="3">最近写进去的</div><div class="dk-pdone"></div></section>
+    <section class="dk-card dk-pending" hidden><h2 class="dk-h">待确认</h2><p class="dk-sub muted">课堂里的 Claude 定的规则、页面按证据算的掌握和练习后的复现结果：点「确认」才写进记忆库。错题、弱点、复现组、下一节它直接写，在「最近写进去的」里看，7 天内能撤销。</p><div class="dk-popen"></div><div class="dk-memo-sub" role="heading" aria-level="3">最近写进去的</div><div class="dk-pdone"></div></section>
     <section class="dk-card dk-manual" hidden><h2 class="dk-h">补记</h2><p class="dk-sub muted">在学习台外面做的（纸上、Notability、对话里）：写一句、贴张截图，下一节课的课后报告会列出来。</p><div class="dk-body"></div><div class="dk-mlist"></div></section>
     </div>
     <div class="dk-col dk-col-side">
@@ -284,15 +284,10 @@ export async function renderDesk(root, meta) {
       <div class="dk-next">${main ? `<p><span class="dk-k">备好的课</span>${inline(main.unit || '（资料包没写 unit）')}${block ? `<span class="muted">（${escapeHtml(block)}）</span>` : ''}${main.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>${main.goal ? `<p class="dk-goal muted" title="点一下看全文">${inline(main.goal)}</p>` : ''}`
         : `<p class="muted">${SPACES[space].label}还没有备好的课：在下面选一块，让 Claude 备课（也可以直接开课：课堂里的 Claude 带着记忆，但没有这节课的安排）。</p>`}
         ${blocksHere.length ? planner.prepHtml({ suggested: main?.block || suggestBlock(blocksHere, mine.position.find((d) => d.id === positionId(space))), blocks: blocksHere, main, busy: prepBusy, msg: prepMsg }) : ''}
-        <button type="button" class="btn ${open || !main ? '' : 'btn-primary'} dk-new"${prepBusy ? ' disabled' : ''}>开新课</button></div>
-      <div class="dk-mrow dk-handoff"><button type="button" class="btn btn-sm dk-copy-handoff">复制给外部 Claude 的启动语</button><span class="muted">贴进任何一个对话，它就知道去哪读说明、学到哪了、要做什么。</span></div>`;
+        <button type="button" class="btn ${open || !main ? '' : 'btn-primary'} dk-new"${prepBusy ? ' disabled' : ''}>开新课</button></div>`;
     // 资料包的目标常常很长：先收成三行，点一下展开
     box.querySelector('.dk-goal')?.addEventListener('click', (e) => e.currentTarget.classList.toggle('is-open'));
     box.querySelector('.dk-to-pending')?.addEventListener('click', (e) => { e.preventDefault(); $('.dk-pending').scrollIntoView({ behavior: 'smooth' }); });
-    box.querySelector('.dk-copy-handoff').addEventListener('click', async () => {
-      const text = handoffText(sv(), { kitUrl: KIT_URL, deskUrl: deskUrl(), pack: pack.main, space });
-      try { await navigator.clipboard.writeText(text); toast('复制好了，去对话里粘贴'); } catch { prompt('没能自动复制，长按全选后复制：', text); }
-    });
     box.querySelectorAll('.dk-go').forEach((b) => b.addEventListener('click', (e) => goto(e.currentTarget.dataset.sid)));
     // 挂着没下课的旧课：直接结束（不写小结、不调用 Claude），课后报告由 fixReports 用代码补上，证据就有了归处
     box.querySelectorAll('.dk-close').forEach((b) => b.addEventListener('click', async (e) => {
@@ -467,8 +462,10 @@ export async function renderDesk(root, meta) {
           <label class="dk-check-row"><input type="checkbox" class="dk-bev" checked> 带上证据（每次作答、说的话）</label>
           <label class="dk-check-row"><input type="checkbox" class="dk-bboard"> 带上各节课的黑板和课堂记录（文件会大很多）</label>
         </div>
-        <div class="dk-mrow"><span class="dk-bnote muted" role="status">存成一个 JSON 文件。要恢复时把文件交给项目对话里的 Claude（说明书第七节「备份和恢复」）。</span><button type="button" class="btn dk-bgo">导出备份</button></div>`;
+        <div class="dk-mrow"><span class="dk-bnote muted" role="status">存成一个 JSON 文件。要恢复时点「从备份恢复」选那个文件。</span><button type="button" class="btn dk-bgo">导出备份</button>
+          <label class="btn dk-brestore">从备份恢复<input type="file" accept="application/json,.json" hidden></label></div>`;
       box.querySelector('.dk-bgo').addEventListener('click', (e) => exportBackup(e.currentTarget));
+      box.querySelector('.dk-brestore input').addEventListener('change', (e) => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) restoreBackup(f); });
     }
     box.querySelector('.dk-usage').innerHTML = usage;
   }
@@ -482,7 +479,7 @@ export async function renderDesk(root, meta) {
     btn.textContent = '正在整理…';
     try {
       const dl = await getDownloads();
-      if (!dl) throw new Error('这个学习台发布时没有声明 downloads，存不了文件：让对话里的 Claude 照说明书第七节重新发布一次');
+      if (!dl) throw new Error('这个学习台发布时没有声明 downloads，存不了文件：让开发那边重新发布一次');
       // 每节课下面的：pack、课后报告总是带；黑板、课堂记录看勾没勾
       const sessions = {};
       for (const x of data.sessions) {
@@ -507,6 +504,25 @@ export async function renderDesk(root, meta) {
     }
   }
   const mb = (b) => `${((Number(b) || 0) / 1048576).toFixed(1)} MB`;
+
+  // 从备份恢复（backup.js 的 restorePlan）：页面自己写回，不调用 Claude。默认只补缺的，覆盖要我再点一次
+  async function restoreBackup(file) {
+    const note = $('.dk-backup .dk-bnote');
+    try {
+      const b = JSON.parse(await file.text());
+      const have = new Set(MEMORY_COLLECTIONS.flatMap((c) => data[c].map((d) => `${c}/${d.id}`)));
+      const all = restorePlan(b, { have, overwrite: true });
+      if (!confirm(`备份里有 ${all.total} 条（${b.today || ''}）。现在的记忆库里已经有其中 ${all.clash} 条。\n确定恢复？下一步问要不要覆盖已有的。`)) return;
+      const overwrite = all.clash > 0 && confirm(`已有的 ${all.clash} 条用备份里的覆盖吗？\n点「取消」只补缺的（不会冲掉这段时间新写的）。`);
+      const { writes } = overwrite ? all : restorePlan(b, { have });
+      note.textContent = `正在写回 ${writes.length} 条…`;
+      let n = 0;
+      for (const w of writes) { await db.doc(w.path).set(w.data); n++; if (n % 50 === 0) note.textContent = `正在写回 ${n} / ${writes.length} 条…`; }
+      note.textContent = `恢复好了：写回 ${n} 条${overwrite ? '' : `，已有的 ${all.clash} 条没动`}。`;
+    } catch (err) {
+      note.textContent = `没恢复：${err?.message || err}`;
+    }
+  }
 
   // 开一节新课：sessions/{编号}，资料包抄一份进 sessions/{编号}/pack（以后对话里的 Claude 备下一节、改 pack/main，不影响这一节）
   // use：复现课用页面自己拼的资料包（views.js 的 reviewPack），不用 pack/main

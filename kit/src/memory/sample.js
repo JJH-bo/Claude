@@ -6,7 +6,7 @@ export function sampleMemory(today) {
   const d = (n) => addDays(today, n);
   return {
     rules: [
-      { id: 'rule-01', cat: '红线', text: '课堂不能宣布我「掌握了」：掌握只由对话里的 Claude 按证据判断。', since: d(-30), source: `我 ${d(-30)} 在对话里定的`, status: 'active' },
+      { id: 'rule-01', cat: '红线', text: '课堂不能宣布我「掌握了」：掌握由页面按证据算、我确认。', since: d(-30), source: `我 ${d(-30)} 在对话里定的`, status: 'active' },
       { id: 'rule-02', cat: '教法', text: '交互优先：能拖、能猜的先让我动手，再讲结论。', since: d(-20), source: `我 ${d(-20)} 说的`, status: 'active' },
     ],
     profile: [

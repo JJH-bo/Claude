@@ -7,16 +7,19 @@
 //   slip text="一次出了两道题" lesson="一块板一件事"
 //   lesson id=T-3 again="b7 又一次没讲就出题"
 //   ````
-// 一行一条。页面读懂后按三档处理（TIERS）：
-//   直接写（direct）：偏好（profile，topic 只能是「讲法」「习惯」）、它自己的失误（slips）、教学守则（lessons）、观察 / 提议（observations）
-//   我确认才写（confirm）：错题（errors）、弱点（weaknesses）、复现组（reviews）、下一节从哪接（position）
-//   只能提议：掌握（mastery）、规则（rules）——写了就拒绝，告诉它写成 propose
+// 一行一条。学习台自己管自己（docs/autonomy-plan.md）：课堂里的 Claude 就是学习台的管理者。页面读懂后按档处理：
+//   直接写（direct）：偏好（profile）、失误（slips）、教学守则（lessons）、观察 / 提议 / 待办（observations）、
+//                     错题（errors）、弱点（weaknesses）、复现组（reviews）、下一节从哪接（position）——写完我在整理单上事后看，不对就撤销
+//   我确认才写（confirm）：规则（rules）——每一轮都整段带着，写错一条每节课都受影响
+//   不收：掌握（mastery）——页面按证据算、我确认（我的红线：课堂不能宣布掌握）
+// 不冗杂（docs/autonomy-plan.md 第 4 节）：新弱点、复现组、偏好、规则和已有的几乎一样就不收（similarity），每一类有条数上限（CAPS），
+// 到了上限新的不收、下课整理时先合并（status=merged into=…）。
 // 每一条先变成一张改动单（pending）。直接写的马上执行；我确认才写的等我在页面上点「确认」（能先改再确认）或「不要」。
 // 写进去以后 UNDO_DAYS 天内能撤销：状态类按改动单记下的旧值退回去（退回也记 log），历史类追加一条作废的更正，原条不动。
 // 我在页面上自己改（偏好、错题标已解决、复现组暂停）也走同一条路（tier: me），一样能撤销。
 import { COLLECTIONS, UNDO_DAYS, assertWrite, applyChange, nextTier, toDate, daysBetween, same } from './schema.js';
 import { tokenize } from '../tokens.js';
-import { courseOf, prefixOf, positionId, spaceOfId, sharedFor } from './space.js';
+import { courseOf, prefixOf, positionId, spaceOfId, spaceOfDoc, sharedFor } from './space.js';
 
 export const MEMO_KINDS = {
   pref: { tier: 'direct', coll: 'profile', label: '偏好' },
@@ -24,21 +27,46 @@ export const MEMO_KINDS = {
   lesson: { tier: 'direct', coll: 'lessons', label: '守则' },
   note: { tier: 'direct', coll: 'observations', label: '观察' },
   propose: { tier: 'direct', coll: 'observations', label: '提议' },
-  error: { tier: 'confirm', coll: 'errors', label: '错题' },
-  weakness: { tier: 'confirm', coll: 'weaknesses', label: '弱点' },
-  review: { tier: 'confirm', coll: 'reviews', label: '复现组' },
-  position: { tier: 'confirm', coll: 'position', label: '下一节' },
+  todo: { tier: 'direct', coll: 'observations', label: '待办' },
+  error: { tier: 'direct', coll: 'errors', label: '错题' },
+  weakness: { tier: 'direct', coll: 'weaknesses', label: '弱点' },
+  review: { tier: 'direct', coll: 'reviews', label: '复现组' },
+  position: { tier: 'direct', coll: 'position', label: '下一节' },
+  rule: { tier: 'confirm', coll: 'rules', label: '规则' },
   // 这节课改讲别的块（学生临时改了计划）：页面改 sessions 和之后证据挂的块，不进改动单（classroom.js 先拿出来，blockSwitch 查）
   block: { tier: 'page', coll: 'sessions', label: '这节课的块' },
 };
-// 只能提议的：拒绝时告诉它怎么写
-const PROPOSE_ONLY = { mastery: '掌握状态', rule: '规则', rules: '规则' };
+// 不收的：拒绝时告诉它为什么
+const NOT_YOURS = { mastery: '掌握状态由页面按证据算、学生确认（课堂不能宣布掌握），你不写；看到的情况写成 note', rules: '写 rule（单数）' };
+// 偏好的 topic 写什么都行；这两种最常见（课堂里看得出来的讲法、习惯）
 export const PREF_TOPICS = ['讲法', '习惯'];
-// 要写依据的几种（偏好、提议、错题、弱点、复现组）：依据是证据，结论才站得住
-const NEED_BASIS = new Set(['pref', 'propose', 'error', 'weakness', 'review']);
+// 要写依据的几种：依据是证据（规则的依据通常是 say：学生说的那句话），结论才站得住
+const NEED_BASIS = new Set(['pref', 'propose', 'error', 'weakness', 'review', 'rule']);
 const LIST_KEYS = new Set(['basis', 'about', 'errors', 'blocks', 'weaknesses', 'debts', 'first', 'slips']);
 // 一科最多几条守则（没退役的）：再多就要先合并，守则不会越积越多
 export const LESSONS_MAX = 20;
+// 规则的分类（和学生的项目指令一样）
+export const RULE_CATS = ['红线', '掌握', '检验', '来源', '讲解', '细则', '教法', '黑板'];
+// 每一类在用的最多几条（弱点、复现组按科，偏好、规则全科共用）：到了上限新的不收，下课整理时先合并。
+// 2026-11-03 量的真数据：弱点 数学 20 / 408 11 / 英语 3，复现组 12 / 6 / 2，偏好 27，规则 68（docs/autonomy-plan.md）
+export const CAPS = { weaknesses: 20, reviews: 12, profile: 30, rules: 70, lessons: LESSONS_MAX };
+// 还在用的（没合并、没关、没作废、没退役）
+const LIVE = { weaknesses: ['active'], reviews: ['active', 'paused'], profile: ['active'], rules: ['active'], lessons: ['active'] };
+/** coll 里这一科（共用的几类不分科）还在用的几条 */
+export function liveDocs(mem = {}, coll, space = '') {
+  const docs = (Array.isArray(mem[coll]) ? mem[coll] : []).filter((d) => d && (LIVE[coll] || ['active']).includes(d.status || 'active'));
+  if (!space) return docs;
+  if (coll === 'weaknesses' || coll === 'reviews') return docs.filter((d) => spaceOfDoc(coll, d, mem) === space);
+  return sharedFor(docs, space);
+}
+/** 到了上限的几类：[{ coll, n, max }]（下课整理时要先合并） */
+export function overCaps(mem = {}, space = '') {
+  return Object.entries(CAPS).map(([coll, max]) => ({ coll, n: liveDocs(mem, coll, ['weaknesses', 'reviews', 'lessons'].includes(coll) ? space : '').length, max })).filter((x) => x.n >= x.max);
+}
+// 新的一条和已有的哪一条几乎一样（拦照抄；换个说法的重复靠下课时合并）
+function nearest(text, docs, field = 'text') {
+  return docs.map((d) => ({ d, s: similarity(text, d[field]) })).sort((x, y) => y.s - x.s)[0] || null;
+}
 // 板放不下页面量得出来、会自动分屏，不用课堂 Claude 记成失误（2026-11-02 一节课 27 条失误里 20 条是这个，把真正的教学失误挤掉了）
 const LAYOUT_SLIP = /超出一屏|一屏(?:放|装)不下|放不下一屏|上下滚|要滚动|往下滚/;
 /** 这条失误只是在说板放不下（去掉讲放不下的那几句，剩下的没什么了） */
@@ -70,7 +98,7 @@ export function parseMemoLines(body) {
     const head = toks[0];
     const kind = head && !head.key ? head.value.toLowerCase() : '';
     if (!kind) { errors.push(`「${cut(line, 40)}」：开头要写这一条是什么（${Object.keys(MEMO_KINDS).join(' / ')}）`); continue; }
-    if (PROPOSE_ONLY[kind]) { errors.push(`「${cut(line, 40)}」：${PROPOSE_ONLY[kind]}你只能提议，写成 propose text="…" about=… basis=…，由对话里的 Claude 或学生决定`); continue; }
+    if (NOT_YOURS[kind]) { errors.push(`「${cut(line, 40)}」：${NOT_YOURS[kind]}`); continue; }
     if (!MEMO_KINDS[kind]) { errors.push(`「${cut(line, 40)}」：不认识「${head.value}」，只认 ${Object.keys(MEMO_KINDS).join(' / ')}`); continue; }
     const attrs = {};
     const stray = [];
@@ -126,6 +154,36 @@ export function slipsToFold(mem = {}, space = '', { max = 40 } = {}) {
   const rows = left.slice(-max).map((x) => `- ${x.id}（${x.date || ''}）${cut(x.text, 220)}${x.lesson ? ` → ${cut(x.lesson, 120)}` : ''}`);
   return `【还没归纳进守则的教学失误（${left.length} 条${left.length > max ? `，这里列最近的 ${max} 条` : ''}）】\n${rows.join('\n')}`;
 }
+
+// 每一科每上几节课，下课整理时顺带合并一次重复的记忆（不另外调用 Claude，docs/autonomy-plan.md 第 4 节）
+export const TIDY_EVERY = 5;
+
+/**
+ * 这节课下课时要不要顺带整理（合并重复的弱点、复现组、关于学生的记录）：这一科上完的课（算上这一节）凑够 TIDY_EVERY 节，
+ * 或者某一类到了上限（overCaps）。返回原因（中文），不用整理返回 ''。sid：这节课的编号
+ */
+export function tidyDue(mem = {}, space = '', sid = '') {
+  const over = overCaps(mem, space);
+  if (over.length) return `${over.map((x) => `${COLLECTIONS[x.coll]?.label || x.coll}到了上限（${x.n} / ${x.max}）`).join('、')}`;
+  const done = (Array.isArray(mem.sessions) ? mem.sessions : []).filter((x) => x && x.id !== sid && (x.kind || 'class') === 'class' && x.status === 'closed' && spaceOfDoc('sessions', x, mem) === space).length;
+  return (done + 1) % TIDY_EVERY === 0 ? `这一科上完第 ${done + 1} 节了（每 ${TIDY_EVERY} 节整理一次）` : '';
+}
+
+/**
+ * 整理用的目录：这一科还在用的弱点、复现组，关于学生的记录（全科共用的），一条一行。放进下课的提示词，让课堂里的 Claude 合并重复的。
+ * 规则不列（前面记忆里已经有全文），守则在「归纳教学失误」那段里管
+ */
+export function tidyText(mem = {}, space = '') {
+  const w = liveDocs(mem, 'weaknesses', space).sort((a, b) => cmpNum(a.id, b.id));
+  const r = liveDocs(mem, 'reviews', space).sort((a, b) => cmpNum(a.id, b.id));
+  const p = liveDocs(mem, 'profile', space);
+  const rows = [];
+  if (w.length) rows.push(`弱点（${w.length} / ${CAPS.weaknesses}）`, ...w.map((x) => `- ${x.id} ${cut(x.title, 90)}［${x.scope || ''} ${x.level || ''}${(x.errors || []).length ? `，${x.errors.length} 道错题` : ''}${x.last ? `，最近 ${x.last}` : ''}］`));
+  if (r.length) rows.push(`复现组（${r.length} / ${CAPS.reviews}）`, ...r.map((x) => `- ${x.id} ${cut(x.title, 70)}${x.family ? `［${cut(x.family, 30)}］` : ''}（第 ${x.tier || 1} 天那档${x.result ? `，上次${x.result}` : ''}${x.status === 'paused' ? '，学生暂停了' : ''}${(x.weaknesses || []).length ? `，盯 ${x.weaknesses.join('、')}` : ''}）`));
+  if (p.length) rows.push(`关于学生（${p.length} / ${CAPS.profile}）`, ...p.map((x) => `- ${x.id}［${cut(x.topic, 12)}］${cut(x.text, 90)}`));
+  return rows.join('\n');
+}
+const cmpNum = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
 
 /**
  * 这节课改讲别的块：memo 的 block id=EN-L1.1.1。查一下课程地图里有没有、是不是同一科。
@@ -204,7 +262,9 @@ export function planEntry(entry, ctx = {}) {
   const find = (c, id) => get(c).find((d) => String(d.id) === String(id));
   const { ids: basis, missing } = resolveBasis(a.basis, ctx);
   if (missing.length) return { error: `basis 里的 ${missing.join('、')} 找不到（写证据 id、记忆里的编号、黑板上的组件 id 或段 id，或者 say 指学生刚说的话）` };
-  if (NEED_BASIS.has(kind) && !basis.length) return { error: `${spec.label}要写依据：basis=组件 id / 证据 id / say（没有依据的结论不记）` };
+  // 整理（合并、作废、停掉、退役）和改偏好的说法不用依据；新的结论、改证据级要
+  const tidy = ['merged', 'void', 'retired', 'done'].includes(a.status);
+  if (NEED_BASIS.has(kind) && !basis.length && !tidy && !(kind === 'pref' && a.id)) return { error: `${spec.label}要写依据：basis=组件 id / 证据 id / say（没有依据的结论不记）` };
   const reason = cut(a.reason || a.why || '', 300);
   const base = { kind, tier: spec.tier, coll: spec.coll, basis, reason, label: spec.label };
   const enumOk = (coll, field, v) => v === undefined || COLLECTIONS[coll].enums?.[field]?.includes(v);
@@ -212,9 +272,70 @@ export function planEntry(entry, ctx = {}) {
 
   switch (kind) {
     case 'pref': {
-      if (!PREF_TOPICS.includes(a.topic)) return { error: `偏好的 topic 只能是 ${PREF_TOPICS.join(' / ')}（别的关于学生的事由对话里的 Claude 写）` };
-      if (!a.text) return { error: '偏好要写 text' };
-      return { ...base, op: 'add', target: `p-c${newId()}`, data: { topic: a.topic, text: cut(a.text, 600), since: date, source: `课堂 ${sid || ''}`.trim(), basis, status: 'active' } };
+      // 关于学生的事（讲法、习惯、目标……）：新的一条、改写已有的一条（id + text）、并掉（status=merged into=…）、不要了（status=void why=…）
+      const old = a.id ? find('profile', a.id) : null;
+      if (a.id && !old) return { error: `关于学生的记录里没有 ${a.id}：新的一条不写 id` };
+      if (old) {
+        if ((old.status || 'active') !== 'active') return { error: `${old.id} 已经${old.status === 'merged' ? `并进了 ${old.into || '别的一条'}` : '不用了'}` };
+        const patch = {};
+        if (a.status) {
+          if (!['merged', 'void'].includes(a.status)) return { error: 'status 只能写 merged（并进别的一条，写 into=）或 void（不用了，写 why=）' };
+          if (a.status === 'merged') {
+            const to = find('profile', a.into);
+            if (!to || a.into === old.id || (to.status || 'active') !== 'active') return { error: `into=${a.into || ''} 要写一条还在用的别的偏好` };
+            patch.into = a.into;
+          } else if (!a.why) return { error: '不用了要写 why=' };
+          patch.status = a.status;
+          if (a.why) patch.why = cut(a.why, 200);
+          return { ...base, op: 'update', target: old.id, patch };
+        }
+        if (a.text && cut(a.text, 600) !== old.text) patch.text = cut(a.text, 600);
+        if (a.topic && a.topic !== old.topic) patch.topic = cut(a.topic, 20);
+        if (!Object.keys(patch).length) return { error: `${old.id} 没有要改的：改说法写 text="…"，并掉写 status=merged into=…` };
+        return { ...base, op: 'update', target: old.id, patch };
+      }
+      if (!a.topic || !a.text) return { error: `偏好要写 topic（${PREF_TOPICS.join(' / ')}、目标……）和 text` };
+      const live = liveDocs(mem, 'profile');
+      const near = nearest(a.text, live);
+      if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.text, 40)}）说的是同一件事：改写那一条（pref id=${near.d.id} text="…"），不新加` };
+      if (live.length >= CAPS.profile) return { error: `关于学生的已经有 ${live.length} 条（最多 ${CAPS.profile}）：先把重复的并掉（pref id=… status=merged into=…）` };
+      return { ...base, op: 'add', target: `p-c${newId()}`, data: { topic: cut(a.topic, 20), text: cut(a.text, 600), since: date, source: `课堂 ${sid || ''}`.trim(), basis, status: 'active', ...(a.space && ['math', 'cs', 'en'].includes(a.space) ? { space: a.space } : {}) } };
+    }
+    case 'todo': {
+      // 课上被问到教案以外的内容：不现场查教材补讲（会多跑轮），记下来下次备课补
+      if (!a.text) return { error: '待办要写 text（学生问了什么、要补什么）' };
+      return { ...base, op: 'add', target: `ob-${newId()}`, data: { kind: 'todo', text: cut(a.text, 600), status: 'open', session: sid, block: a.block || ctx.block || null, at: Date.now(), by: 'class' } };
+    }
+    case 'rule': {
+      // 规则：学生在课上定下的、改了的（「以后都……」）。要学生在页面上点确认才写：每一轮都整段带着，写错一条每节课都受影响
+      const old = a.id ? find('rules', a.id) : null;
+      if (a.id && !old) return { error: `规则里没有 ${a.id}：新的一条不写 id` };
+      if (a.cat && !RULE_CATS.includes(a.cat)) return { error: `cat 只能是 ${RULE_CATS.join(' / ')}` };
+      if (a.for && !['class', 'both', 'chat'].includes(a.for)) return { error: 'for 只能是 class（只给课堂）/ both' };
+      if (a.space && !['math', 'cs', 'en'].includes(a.space)) return { error: 'space 只能是 math / cs / en（只管一科时写）' };
+      if (old) {
+        if (old.status === 'void') return { error: `${old.id} 已经作废了` };
+        const patch = {};
+        if (a.status) {
+          if (a.status !== 'void') return { error: 'status 只能写 void（作废，写 why=，被新的一条取代就写 by=新规则的编号）' };
+          if (!a.why) return { error: '作废规则要写 why=' };
+          patch.status = 'void';
+          patch.note = cut(a.why, 200);
+          if (a.by) patch.voidedBy = a.by;
+          return { ...base, op: 'update', target: old.id, patch };
+        }
+        if (a.text && cut(a.text, 800) !== old.text) patch.text = cut(a.text, 800);
+        for (const k of ['cat', 'for', 'space']) if (a[k] && a[k] !== old[k]) patch[k] = a[k];
+        if (!Object.keys(patch).length) return { error: `${old.id} 没有要改的` };
+        return { ...base, op: 'update', target: old.id, patch };
+      }
+      if (!a.text) return { error: '新规则要写 text（学生定下的做法，照原话的意思写）' };
+      const live = liveDocs(mem, 'rules');
+      const near = nearest(a.text, live);
+      if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.text, 40)}）说的是同一件事：改写那一条（rule id=${near.d.id} text="…"），不新加` };
+      if (live.length >= CAPS.rules) return { error: `规则已经有 ${live.length} 条（最多 ${CAPS.rules}）：先把重复的改写成一条、另一条作废（rule id=… status=void why=… by=…）` };
+      const n = maxNum(get('rules').map((r) => r.id), /^rule-c(\d+)$/) + 1;
+      return { ...base, op: 'add', target: `rule-c${n}`, data: { cat: a.cat || '教法', text: cut(a.text, 800), since: date, source: `课堂 ${sid || ''} 学生定的`.replace(/\s+/g, ' '), status: 'active', ...(a.for ? { for: a.for } : {}), ...(a.space ? { space: a.space } : {}), basis } };
     }
     case 'slip': {
       if (!a.text) return { error: '失误要写 text' };
@@ -283,6 +404,15 @@ export function planEntry(entry, ctx = {}) {
       if (id && find('errors', id)) return { error: `错题 ${id} 已经有了：错题只增不改，换一个新编号，或者不写 id` };
       if (a.weakness && !find('weaknesses', a.weakness)) return { error: `weakness=${a.weakness} 在弱点表里没有` };
       if (block && get('curriculum').length && !find('curriculum', block)) return { error: `block=${block} 在课程地图里没有` };
+      // 同一道题（同一个组件的同一步）已经记过、没作废：不另记一条
+      const evs = ctx.evidence || [];
+      const keyOf = (eid) => { const e = evs.find((x) => x.id === eid); return e && e.comp ? `${e.comp}|${e.step ?? ''}` : ''; };
+      const keys = new Set(basis.map(keyOf).filter(Boolean));
+      if (keys.size) {
+        const gone = voidedIds(mem);
+        const dup = get('errors').find((x) => !x.corrects && !gone.has(`errors/${x.id}`) && (x.evidence || []).some((eid) => keys.has(keyOf(eid))));
+        if (dup) return { error: `这道题已经记过 ${dup.id}：同一道题不另记；又错了说明弱点没修好，改弱点（weakness id=… level=L0 errors=${dup.id}）` };
+      }
       id ||= nextErrorId(get('errors'), block);
       return { ...base, op: 'add', target: id, data: { source: cut(a.source || `课堂 ${sid || ''}`, 120), q: cut(q, 800), mine: cut(mine, 400), step: cut(a.step, 200), cause: cut(a.cause, 300), ...(a.weakness ? { weakness: a.weakness } : {}), ...(block ? { block } : {}), evidence: basis.filter((x) => x.startsWith('ev-')), date, session: sid } };
     }
@@ -290,9 +420,15 @@ export function planEntry(entry, ctx = {}) {
       const old = a.id ? find('weaknesses', a.id) : null;
       for (const [f, v] of [['level', a.level], ['scope', a.scope], ['status', a.status]]) if (!enumOk('weaknesses', f, v) || v === 'void') return { error: `${f} 只能是 ${COLLECTIONS.weaknesses.enums[f].filter((x) => x !== 'void').join(' / ')}` };
       const errs = a.errors || [];
-      for (const e of errs) if (!find('errors', e)) return { error: `errors 里的 ${e} 在错题档案里没有（新错题要等学生确认了才有编号，先不挂）` };
+      for (const e of errs) if (!find('errors', e)) return { error: `errors 里的 ${e} 在错题档案里没有（这一轮新记的错题，写在 error 行的 weakness= 上挂）` };
       if (old) {
+        if (['merged', 'void'].includes(old.status)) return { error: `${old.id} 已经${old.status === 'merged' ? `并进了 ${old.into || '别的一条'}` : '作废了'}` };
         const patch = {};
+        if (a.status === 'merged') {
+          const to = find('weaknesses', a.into);
+          if (!to || a.into === old.id || ['merged', 'void', 'closed'].includes(to.status)) return { error: `into=${a.into || ''} 要写一条还在用的别的弱点` };
+          return { ...base, op: 'update', target: old.id, patch: { status: 'merged', into: a.into, last: date } };
+        }
         if (a.level && a.level !== old.level) patch.level = a.level;
         if (a.scope && a.scope !== old.scope) patch.scope = a.scope;
         if (a.status && a.status !== old.status) patch.status = a.status;
@@ -308,12 +444,32 @@ export function planEntry(entry, ctx = {}) {
       if (a.id && !COLLECTIONS.weaknesses.id.re.test(a.id)) return { error: `弱点编号「${a.id}」不对，像 W19；新弱点不写 id 页面自动编` };
       if (a.id) return { error: `弱点表里没有 ${a.id}：新弱点不写 id（页面自动编），要改的写已有的编号` };
       if (!a.title || !a.scope || !a.level) return { error: '新弱点要写 title、scope（通用 / 链条 / 局部）、level（L0～L3）' };
+      {
+        const space = spaceOfId(a.blocks?.[0] || ctx.block || '');
+        const live = liveDocs(mem, 'weaknesses', space);
+        const near = nearest(a.title, live, 'title');
+        if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.title, 40)}）是同一个弱点：改那一条（weakness id=${near.d.id} level=… errors=…），不新加` };
+        if (live.length >= CAPS.weaknesses) return { error: `这一科的弱点已经有 ${live.length} 条（最多 ${CAPS.weaknesses}）：先把重复的并掉（weakness id=… status=merged into=…）、修好的关掉，再加新的` };
+      }
       return { ...base, op: 'add', target: nextWeaknessId(get('weaknesses')), data: { title: cut(a.title, 120), scope: a.scope, level: a.level, last: date, errors: errs, blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], status: 'active', basis, ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
     }
     case 'review': {
       const old = a.id ? find('reviews', a.id) : null;
       if (a.id && !old) return { error: `复现组里没有 ${a.id}：新的一组不写 id（页面自动编）` };
       if (old) {
+        if (['merged', 'void', 'done'].includes(old.status)) return { error: `${old.id} 已经${old.status === 'merged' ? `并进了 ${old.into || '别的一组'}` : old.status === 'done' ? '停掉了' : '作废了'}` };
+        if (a.status) {
+          if (a.status === 'merged') {
+            const to = find('reviews', a.into);
+            if (!to || a.into === old.id || ['merged', 'void', 'done'].includes(to.status)) return { error: `into=${a.into || ''} 要写一组还在用的别的复现组` };
+            return { ...base, op: 'update', target: old.id, patch: { status: 'merged', into: a.into } };
+          }
+          if (a.status === 'done') {
+            if (!a.why) return { error: '停掉一组要写 why=（比如盯的弱点都修好了）' };
+            return { ...base, op: 'update', target: old.id, patch: { status: 'done', why: cut(a.why, 200) } };
+          }
+          return { error: 'status 只能写 merged（并进别的一组，写 into=）或 done（停掉，写 why=）；暂停由学生在页面上点' };
+        }
         const patch = {};
         if (a.add) patch.content = [...(Array.isArray(old.content) ? old.content : old.content ? [String(old.content)] : []), cut(a.add, 300)];
         if (a.result) {
@@ -331,6 +487,13 @@ export function planEntry(entry, ctx = {}) {
         return { ...base, op: 'update', target: old.id, patch };
       }
       if (!a.title) return { error: '新复现组要写 title（还有 family、content、weaknesses、blocks）' };
+      {
+        const space = spaceOfId(a.blocks?.[0] || ctx.block || '');
+        const live = liveDocs(mem, 'reviews', space);
+        const near = nearest(`${a.title} ${a.family || ''}`, live.map((r) => ({ ...r, tf: `${r.title || ''} ${r.family || ''}` })), 'tf');
+        if (near && near.s >= SIMILAR) return { error: `和 ${near.d.id}（${cut(near.d.title, 40)}）是同一组：往那一组加题（review id=${near.d.id} add="…"），不新开` };
+        if (live.length >= CAPS.reviews) return { error: `这一科的复现组已经有 ${live.length} 组（最多 ${CAPS.reviews}）：先把同一机制族的并掉（review id=… status=merged into=…）` };
+      }
       for (const w of a.weaknesses || []) if (!find('weaknesses', w)) return { error: `weaknesses 里的 ${w} 在弱点表里没有` };
       // 新的一组：从明天开始（档位 1 天，last 是今天）
       return { ...base, op: 'add', target: nextReviewId(get('reviews')), data: { title: cut(a.title, 120), ...(a.family ? { family: cut(a.family, 120) } : {}), content: a.content ? [cut(a.content, 300)] : [], weaknesses: a.weaknesses || [], blocks: a.blocks?.length ? a.blocks : ctx.block ? [ctx.block] : [], tier: 1, last: date, status: 'active', ...(ctx.block ? { space: spaceOfId(ctx.block) } : {}) } };
@@ -373,7 +536,7 @@ export function pendingRecord(change, { session = null, turn = null, by = 'class
   };
 }
 
-const logMeta = (pd, date, note) => ({ date, by: pd.by === 'me' ? 'me' : pd.by === 'page' ? 'page' : 'class', basis: (pd.basis || []).filter(Boolean), note });
+const logMeta = (pd, date, note) => ({ date, by: ['me', 'page', 'chat'].includes(pd.by) ? pd.by : 'class', basis: (pd.basis || []).filter(Boolean), note });
 
 /**
  * 执行一张改动单（直接写的那档马上执行；我确认才写的，我点「确认」时执行）。
@@ -385,10 +548,9 @@ export function applyPending(pd, mem = {}, { date = toDate(Date.now()), edits = 
   // 谁的名义写：直接写那档是课堂里的 Claude；要我确认的、我自己改的是我
   const role = pd.tier === 'direct' ? 'class' : 'me';
   assertWrite(role, pd.coll);
-  if (pd.coll === 'profile' && pd.tier === 'direct' && !PREF_TOPICS.includes(pd.data?.topic)) throw new Error('课堂里的 Claude 只能写「讲法」「习惯」');
   const docs = Array.isArray(mem[pd.coll]) ? mem[pd.coll] : [];
   const old = docs.find((d) => String(d.id) === String(pd.target));
-  const note = pd.tier === 'confirm' ? `${pd.by === 'page' ? '页面按证据算的，' : ''}我确认于 ${date}` : pd.tier === 'me' ? '我在学习台上改的' : `课堂 ${pd.session || ''}`.trim();
+  const note = pd.tier === 'confirm' ? `${pd.by === 'page' ? '页面按证据算的，' : pd.by === 'chat' ? '开发那边整理的，' : ''}我确认于 ${date}` : pd.tier === 'me' ? '我在学习台上改的' : `课堂 ${pd.session || ''}`.trim();
   const isState = COLLECTIONS[pd.coll].kind === 'state';
   let doc, applied;
   if (pd.op === 'add') {
@@ -430,7 +592,7 @@ export function canUndo(pd, today = toDate(Date.now())) {
  * 后来又被别人改过的字段不退（不然会把后来的改动冲掉），抛出原因。
  */
 export function undoPending(pd, mem = {}, { date = toDate(Date.now()), now = Date.now() } = {}) {
-  if (!canUndo(pd, date)) throw new Error(pd?.status === 'done' ? `写进去超过 ${UNDO_DAYS} 天了，不能撤：要改请回对话里说` : '这一条没有写进去，不用撤');
+  if (!canUndo(pd, date)) throw new Error(pd?.status === 'done' ? `写进去超过 ${UNDO_DAYS} 天了，不能撤：要改在课上说，或者在「我改记忆」里改` : '这一条没有写进去，不用撤');
   assertWrite('me', pd.coll);
   const get = (c) => (Array.isArray(mem[c]) ? mem[c] : []);
   const cur = get(pd.coll).find((d) => String(d.id) === String(pd.target));
@@ -472,13 +634,13 @@ function voidCorrection(coll, orig, all, { date, pd }) {
   return { id: `ob-${newId()}`, kind: 'note', text: `（作废）${cut(orig.text, 200)}`, corrects: String(orig.id), void: true, note, at: Date.now(), by: 'me', ...(orig.session ? { session: orig.session } : {}) };
 }
 
-/** 被作废的条目（status: void，或者有一条 void 的更正指向它）：摘要、页面列表都不再当真 */
+/** 被作废的条目（status: void，或者有一条 void 的更正指向它）、并进别的一条的（status: merged）：摘要、页面列表都不再当真 */
 export function voidedIds(mem = {}) {
   const out = new Set();
   for (const c of ['errors', 'slips', 'observations', 'profile', 'weaknesses', 'reviews', 'lessons', 'mastery']) {
     for (const d of mem[c] || []) {
       if (!d) continue;
-      if (d.status === 'void') out.add(`${c}/${d.id}`);
+      if (d.status === 'void' || d.status === 'merged') out.add(`${c}/${d.id}`);
       if (d.void && d.corrects) { out.add(`${c}/${d.corrects}`); out.add(`${c}/${d.id}`); }
     }
   }
@@ -539,18 +701,20 @@ export function resolvedErrors(mem = {}) {
 export function pendingTitle(pd) {
   const d = pd.data || {}, p = pd.patch || {};
   const what = {
-    pref: () => `${d.topic ? `［${d.topic}］` : ''}${d.text || p.text || ''}`,
+    pref: () => (p.status === 'merged' ? `${pd.target} 并进 ${p.into}` : p.status === 'void' ? `${pd.target} 不用了` : `${d.topic ? `［${d.topic}］` : ''}${d.text || p.text || ''}`),
+    todo: () => d.text,
+    rule: () => (pd.op === 'add' ? `［${d.cat || ''}］${d.text}` : p.status === 'void' ? `${pd.target} 作废：${p.note || ''}` : `${pd.target} 改成：${p.text || Object.entries(p).map(([k, v]) => `${k}=${v}`).join(' ')}`),
     slip: () => d.text,
     lesson: () => (pd.op === 'add' ? d.text : p.status === 'retired' ? `${pd.target} ${p.into ? `并进 ${p.into}` : '不用了'}` : p.text ? `${pd.target} 改写：${p.text}` : p.recent ? `${pd.target} 又犯一次：${String(p.recent.at(-1)).slice(6)}` : `${pd.target} 归纳了 ${(p.slips || []).length} 条失误`),
     note: () => d.text,
     propose: () => d.text,
     error: () => (d.resolved ? `${d.corrects} 已解决` : `${pd.target}：${d.cause || d.q || ''}`),
-    weakness: () => (pd.op === 'add' ? `${pd.target} ${d.title}（${d.scope}，${d.level}）` : `${pd.target} ${Object.entries(p).filter(([k]) => k !== 'last').map(([k, v]) => `${k} → ${Array.isArray(v) ? v.join('、') : v}`).join('，')}`),
-    review: () => (pd.op === 'add' ? `${pd.target} ${d.title}` : `${pd.target} ${p.status ? (p.status === 'paused' ? '暂停' : '恢复') : p.result ? `${p.result}，下次 ${p.tier} 天后` : p.content ? `加题：${p.content.at(-1)}` : '改了'}`),
+    weakness: () => (pd.op === 'add' ? `${pd.target} ${d.title}（${d.scope}，${d.level}）` : p.status === 'merged' ? `${pd.target} 并进 ${p.into}` : `${pd.target} ${Object.entries(p).filter(([k]) => k !== 'last').map(([k, v]) => `${k} → ${Array.isArray(v) ? v.join('、') : v}`).join('，')}`),
+    review: () => (pd.op === 'add' ? `${pd.target} ${d.title}` : `${pd.target} ${p.status ? ({ paused: '暂停', merged: `并进 ${p.into}`, done: `停掉：${p.why || ''}` }[p.status] || '恢复') : p.result ? `${p.result}，下次 ${p.tier} 天后` : p.content ? `加题：${p.content.at(-1)}` : '改了'}`),
     position: () => p.next || d.next || (p.block ? `学到 ${p.block}` : '改了'),
     mastery: () => { const st = p.state || d.state; const t = p.tier ?? d.tier; return `${pd.target} → ${st}${st === '复现通过' && t ? `（第 ${t} 天那档）` : ''}`; },
   }[pd.kind];
-  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${pd.op === 'update' && !['weakness', 'review', 'lesson', 'mastery'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
+  return `${pd.label || MEMO_KINDS[pd.kind]?.label || pd.kind}${pd.op === 'update' && !['weakness', 'review', 'lesson', 'mastery', 'rule', 'pref'].includes(pd.kind) ? ` ${pd.target}` : ''}：${cut(what ? what() : '', 80)}`;
 }
 
 /** 这一轮记了什么（板顶那句话下面的小字）：「记下了：偏好 1 条；待你确认：错题 1 条」 */

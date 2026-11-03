@@ -153,7 +153,7 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   // 失误：已经归纳进守则的不再带（守则里有了），只带还没归纳的，最近的在前
   const absorbed = absorbedSlips(mem.lessons);
   const slips = get('slips').filter((s) => !absorbed.has(String(s.id))).sort(byDate('date'));
-  sections.push({ coll: 'slips', head: '## 还没归纳进守则的教学失误（最近的在前；下课时并进守则）', limit: SLIPS_FULL, items: slips.map((s) => ({ key: `slips/${s.id}`, text: `- ${s.id}（${s.date || ''}，${s.by === 'class' ? '课堂里的 Claude' : '对话里的 Claude'}）${one(s.text, 300)}${s.lesson ? ` → ${one(s.lesson, 200)}` : ''}` })) });
+  sections.push({ coll: 'slips', head: '## 还没归纳进守则的教学失误（最近的在前；下课时并进守则）', limit: SLIPS_FULL, items: slips.map((s) => ({ key: `slips/${s.id}`, text: `- ${s.id}（${s.date || ''}，${s.by === 'class' ? '课堂里的 Claude' : '以前对话里的 Claude'}）${one(s.text, 300)}${s.lesson ? ` → ${one(s.lesson, 200)}` : ''}` })) });
   // 还在等学生确认的改动（memo 写的错题、弱点、复现组、位置）：已经提过了，别再提
   const open = (Array.isArray(mem.pending) ? mem.pending : []).filter((p) => p && p.status === 'open').sort((a, b) => (a.at || 0) - (b.at || 0));
   sections.push({ coll: 'pending', head: '## 已经提了、等学生确认的改动（不用再提）', items: open.map((p) => ({ text: `- ${one(pendingTitle(p), 160)}` })) });
@@ -166,7 +166,7 @@ export function memoryDigest(mem0 = {}, { block = '', budget = 24 * 1024, sessio
   sections.push({ coll: 'source', head: '## 这一块的原文（curriculum）', items: src });
 
   // —— 先给目录留出位置，全文按优先级往剩下的预算里装：一条放不下，它和后面的全都不放（从后往前截）——
-  const intro = `这节课在学习台里上${session ? `（${session}）` : ''}。下面是学习台记忆库里你能看的部分，由项目对话里的 Claude 维护；你只能读，不能改（掌握、弱点、错题、复现都由它课后看证据判断）。前面是和这节课直接有关的**全文**，最后是记忆库里其余东西的**目录**（一条一行）。`;
+  const intro = `这节课在学习台里上${session ? `（${session}）` : ''}。下面是学习台记忆库里和你有关的部分。**记忆由你管**：错题、弱点、复现组、下一节从哪接你直接写（memo 块），规则要学生确认，掌握由页面按证据算。前面是和这节课直接有关的**全文**，最后是记忆库里其余东西的**目录**（一条一行）。`;
   const reserve = Math.min(CATALOG_MAX, Math.floor(budget * 0.3));
   const room = budget - reserve;
   let used = utf8(intro);
