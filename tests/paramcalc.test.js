@@ -59,3 +59,22 @@ test('formula: a 的答案用到含参数 a 的量（answer: det(A)，A 里有 a
   assert.ok(compareFormula(f.expected, normalizeFormula('-a^3+3a-2', { names: f.names }), f).ok);
   assert.match(compareFormula(f.expected, normalizeFormula('(a-1)^2(a+2)', { names: f.names }), f).msg, /应该是/);
 });
+
+test('form:：值对了再看写法：kA（数 × 矩阵名）、factored（因式分解）；formula: - 没有变量', async () => {
+  const { compareFormula, normalizeFormula, checkForm } = await import('../kit/src/formula.js');
+  const A = toExact([[2, 1, 1], [4, 2, 2], [-2, -1, -1]]);
+  const f = formulaSpec('3^9*A', '-', { A });
+  assert.deepEqual(f.free, []);
+  const read = (x, sp) => normalizeFormula(x, { names: sp.names });
+  for (const g of ['3^9A', '19683A']) { assert.ok(compareFormula(f.expected, read(g, f), f).ok); assert.ok(checkForm(read(g, f), 'kA', f).ok, g); }
+  assert.ok(compareFormula(f.expected, read('A^10', f), f).ok, '值是对的');
+  assert.match(checkForm(read('A^10', f), 'kA', f).msg, /数 × 矩阵名/);
+  const v = withParam();
+  v.M = calcValue('[[1, 1, a], [1, a, 1], [a, 1, 1]]', v).value;
+  const g = formulaSpec('det(M)', 'a', v);
+  assert.ok(checkForm(read('-(a-1)^2(a+2)', g), 'factored', g).ok);
+  assert.ok(checkForm(read('(1-a)(a-1)(a+2)', g), 'factored', g).ok);
+  assert.match(checkForm(read('-a^3+3a-2', g), 'factored', g).msg, /因式分解/);
+  assert.ok(!checkForm(read('-(a^2-2a+1)(a+2)', g), 'factored', g).ok);
+  assert.throws(() => checkForm(read('a', g), 'nice', g), /kA.*factored/);
+});

@@ -154,6 +154,8 @@ function startsWithDigit(n) {
 const greekNames = (t) => String(t ?? '').replace(/[αβγδλμθξη]/g, (c) => ` ${GREEK[c]} `);
 
 export function parseFree(spec) {
+  // formula: -：式子作答、没有变量（3^9A 这种：页面比值，配 form: 要求写成什么样）
+  if (/^\s*(-|none|无|没有)\s*$/i.test(String(spec ?? ''))) return [];
   const parts = greekNames(spec).split(/[,，;；]/).map((x) => x.trim()).filter(Boolean);
   if (!parts.length) throw new Error('formula: 后面写式子里的变量，比如 formula: n');
   return parts.map((p) => {
@@ -303,7 +305,7 @@ export function formulaSpec(answer, freeSpec, scope = {}) {
   const self = compareFormula(ast, ast, { free, scope });
   if (!self.ok) throw new Error(`answer: ${src} 代不进去：${self.msg}`);
   // 只在一两个值上算得出来，比不出对错（比如 A^(1/n)）
-  if (self.checked < 2) throw new Error(`answer: ${src} 代不进去：只有 ${self.checked} 组值算得出来，检查式子或 formula: 的范围`);
+  if (self.checked < Math.min(2, free.length ? 2 : 1)) throw new Error(`answer: ${src} 代不进去：只有 ${self.checked} 组值算得出来，检查式子或 formula: 的范围`);
   const names = [...new Set([...freeNames, ...Object.keys(scope).filter((k) => /^[A-Za-z_]\w*$/.test(k))])];
   return { expected, free, scope, names, keys: [...freeNames, ...used], display: shown };
 }
@@ -347,3 +349,44 @@ export function compareCells(expected, given, opts) {
   }));
   return { ok: !wrong.length, wrong, first };
 }
+
+// —— form:：答案要写成什么样（值对了以后再看写法；考研「写出最简形式」的题）——
+//   form: kA        一个数乘一个矩阵的名字（3^9A、-2^(n-1)A）：不能写成乘开的矩阵、不能留 A^10
+//   form: factored  因式分解（每个因式是一次的，可以带次方：-(a-1)^2(a+2)）：不能是展开的多项式
+export const FORMS = { ka: '数 × 矩阵', factored: '因式分解' };
+
+/** 写法对不对：given 是读懂以后的式子。返回 { ok, msg } */
+export function checkForm(given, form, { free = [], scope = {} } = {}) {
+  const f = String(form ?? '').trim().toLowerCase();
+  if (!f) return { ok: true, msg: '' };
+  if (!FORMS[f]) throw new Error(`form: 写 kA（数 × 矩阵）或 factored（因式分解）（现在是「${form}」）`);
+  const ast = typeof given === 'string' ? parse(given) : given;
+  // 拆成连乘的几个因式（负号、除以数、整数次方都算在因式里）
+  const factors = [];
+  const walk = (n) => {
+    if (n.t === 'neg') return walk(n.a);
+    if (n.t === 'bin' && n.op === '*') { walk(n.a); walk(n.b); return; }
+    if (n.t === 'bin' && n.op === '/' && isConstAst(n.b)) { walk(n.a); return; }
+    factors.push(n);
+  };
+  walk(ast);
+  const at = (n, v) => { const vars = { ...scope }; for (const x of free) vars[x.name] = Q.int(v); return calcValue(n, vars).value; };
+  if (f === 'ka') {
+    const mats = factors.filter((n) => { try { return Array.isArray(at(n, 2)); } catch { return false; } });
+    const ok = mats.length === 1 && mats[0].t === 'var';
+    return { ok, msg: ok ? '' : '值对了，但要写成「一个数 × 矩阵名」的样子（比如 $3^9A$），不要乘开、也不要留着矩阵的幂。' };
+  }
+  // factored：每个不是常数的因式都是一次的（底数一次、整数次方）
+  const name = free[0]?.name;
+  const linear = (n) => {
+    const base = n.t === 'bin' && n.op === '^' && isConstAst(n.b) ? n.a : n;
+    if (!name) return true;
+    try {
+      const y = [0, 1, 2, 3].map((v) => Number(toFloat(at(base, v))));
+      return Math.abs(y[2] - 2 * y[1] + y[0]) < 1e-9 && Math.abs(y[3] - 2 * y[2] + y[1]) < 1e-9;
+    } catch { return false; }
+  };
+  const ok = factors.every(linear);
+  return { ok, msg: ok ? '' : '值对了，但要写成因式分解的样子（每个因式是一次的，比如 $-(a-1)^2(a+2)$）。' };
+}
+const isConstAst = (n) => n.t === 'num' || (n.t === 'neg' && isConstAst(n.a)) || (n.t === 'bin' && isConstAst(n.a) && isConstAst(n.b));

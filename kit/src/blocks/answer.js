@@ -12,7 +12,7 @@ import { photoPicker, readFinal, flatFinal, photoError, transcriptHtml } from '.
 import { FEATURES } from '../features.js';
 import { markDraft } from '../drafts.js';
 import { formulaInput, formulaGrid } from '../formulainput.js';
-import { formulaSpec, formulaTeX, compareFormula, matrixCells, compareCells } from '../formula.js';
+import { formulaSpec, formulaTeX, compareFormula, matrixCells, compareCells, checkForm } from '../formula.js';
 import { textAnswerInput } from '../textinput.js';
 import { parseConditions, checkConditions, refConditions } from '../anscheck.js';
 import { textAnswerSpec } from '../textspec.js';
@@ -108,6 +108,8 @@ export function answerWidget(body, spec, onDone) {
           const c = compareCells(cells, given, { free: formula.free, scope: formula.scope });
           r = { ok: c.ok, wrong: c.wrong, powerBan: c.first?.powerBan, msg: c.first ? `第 ${c.first.r + 1} 行第 ${c.first.c + 1} 列${c.wrong.length > 1 ? `（一共 ${c.wrong.length} 格不对）` : ''}：${c.first.msg}` : '', note: c.wrong.length ? `第 ${c.wrong.map((i) => `${Math.floor(i / cells[0].length) + 1},${(i % cells[0].length) + 1}`).join('、')} 格不对` : '' };
         } else r = compareFormula(formula.expected, given, { free: formula.free, scope: formula.scope });
+        // form:：值对了，再看写成什么样（3^9A、因式分解）
+        if (r.ok && spec.form) { const fm = checkForm(given, spec.form, formula); if (!fm.ok) r = { ok: false, msg: fm.msg, note: `值对了，写法不是要的样子（${spec.form}）` }; }
       } catch (e) { show('is-bad', e.message); return; }
       // 直接写 A^n 这类「没化简」的：说清楚要怎样写，不算一次
       if (r.powerBan) { input.markAll('is-wrong'); show('is-bad', mdToHtml(r.msg)); return; }
@@ -248,6 +250,12 @@ export function answer(el, src) {
   const scope = letScope(cmds, session.vars);
   // formula: n —— 答案是含 n 的式子：学生写式子，页面代几组 n 比较
   const formula = fields.formula ? formulaSpec(fields.answer, fields.formula, scope) : null;
+  // form: 要求写成什么样：标准答案自己先要满足
+  if (fields.form && !formula) session.problem(el, 'answer', 'form:（要求写成什么样）要配 formula:（没有变量写 formula: -）');
+  // 标准答案写成 det(A) 这种（页面算）就不查写法，只查写出来的式子
+  if (fields.form && formula && !/[A-Za-z]{2,}\s*\(/.test(formula.expected)) {
+    try { const fm = checkForm(formula.expected, fields.form, formula); if (!fm.ok) session.problem(el, 'answer', `answer: 写的标准答案自己不是 form: ${fields.form} 要的样子`); } catch (e) { session.problem(el, 'answer', e.message); }
+  }
   const text = textAnswerSpec(fields.type, fields.answer, { scope, width: fields.width });
   // ans(编号)：引用前面那道题学生写的答案（没做时按那道题的标准答案）。answer: 里引用了，就按条件判（ans == 那个式子）
   const refs = !formula && !text ? refConditions(fields.answer, fields.check) : null;
