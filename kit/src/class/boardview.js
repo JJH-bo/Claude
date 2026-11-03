@@ -87,6 +87,8 @@ export function createBoardView({ root, unitHtml = '', stageExtra = '', isBusy =
     if (!p) return;
     p.sec.remove();
     pages.delete(n);
+    // 拿掉的是最新的一块（边写边显示时先开的板，这一轮作废了）：板号退回去，下一块新板还用这个号
+    if (n === pageSeq) pageSeq = Math.max(0, ...pages.keys());
     if (viewPage === n) show(curPage, { scroll: false });
     else syncNav();
   }

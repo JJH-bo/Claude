@@ -43,7 +43,7 @@ import { textbookForClass, readChunks, searchChunks } from '../books/textbook.js
 import { planLocal, markFired, reactNote, armedText, rebuildRules, dropForSeg } from './react.js';
 import { beatPlan, shouldPlay, DEFERRED_OPS } from './beats.js';
 import { ENGINES } from '../engines/registry.js';
-import { ROWS as CV_ROWS, COLS as CV_COLS, MAX_ROW as CV_MAX, placeBlock, defaultSize, mapText, atText, rowsFor } from './canvas.js';
+import { bandsOf, layoutText } from './canvas.js';
 
 export const MODEL = 'claude-opus-5-5';
 // 学生明确要求：讲课只能是 Opus 5.5、effort high；modelTier 只是平台要求的退路（退路的输出会被丢弃）
@@ -162,6 +162,9 @@ export async function renderClass(root, meta, desk = null) {
   // 被函数声明用到、而 restore() 在函数定义之前就会调到那些函数：要在这里先有值（let / const 有暂时性死区）
   let raf = 0, pendingText = ''; // 草稿：一帧最多画一次
   let firstAt = 0; // 这一次调用黑板上出现第一个字的时候（performance.now）
+  let stream = null; // 边写边显示：这一轮先画出来的段（streamOps）
+  let streamPage = null; // 核验过了：先开的那块新板留着，finishTurn 的 board new 直接用它
+  let committing = false; // finishTurn 正在把先画出来的段换成正式的：正式的不再播淡入（不闪一下）
   let lastVerify = { turns: 0, discarded: 0 }; // 学习台里：上次写进 sessions/{编号} 的核验轮数
   let lastUsage = ''; // 学习台里：上次写进 sessions/{编号} 的花费
   let turnMemos = []; // 这一轮 memo 块里读懂的条目（执行完黑板指令、记下这一轮以后再写进记忆库）
@@ -171,8 +174,6 @@ export async function renderClass(root, meta, desk = null) {
   let opTurn = { seq: 0, by: '' }; // 正在执行的这一轮（预案记它是哪一轮、谁写的）
   // 拍子（beats.js）：正在播的这一轮。{ page, n（几拍）, max（播到第几拍）, segs: 拍 → [段 id], deferred: [{ b, op }], told（这一轮的记录）}
   let beat = null;
-  let cvRow = 80, cvGap = 12, cvCell = null; // 版面：一格多高、格子间距、一格约多大（给 Claude 看）
-  let cvMoving = new Set(); // 这一轮后面还要 move 的段：先当它们已经让开了（同一轮里两块对调，前一块不会被后一块挡住）
 
   // 察觉卡住的开关（学生在「⋯」里可以开；记在这台设备上）。每提醒一次就是一整轮调用，默认关（docs/desk-plan.md 第 7 节）。
   // 本地试用带 ?stuck=秒数 时自动开
@@ -199,11 +200,6 @@ export async function renderClass(root, meta, desk = null) {
     onHome: desk?.onHome || null,
   });
   bv.attachBar(bar);
-  if (CANVAS) {
-    sizeCanvas();
-    let t = 0;
-    window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { cvCell = null; sizeCanvas(); }, 150); });
-  }
   if (readOnly) {
     bar.setEnabled(false);
     bar.setStatus('notice', '这是以前的课：只能翻看。作答不会记下来，也不调用 Claude。');
@@ -295,6 +291,7 @@ export async function renderClass(root, meta, desk = null) {
         Object.assign(p, { title: String(d.title || ''), talk: String(d.talk || ''), talkBy: d.talkBy || '', lead: d.lead || '', kind: d.kind || '', body: String(d.body || ''), foot: String(d.foot || ''), memo: Array.isArray(d.memo) ? d.memo.map(String) : [] });
         // 分拍播过的板顶那句话：刷新后停在最后一拍（段都已经露出来了），还能倒回去看前面几拍的话
         if (Array.isArray(d.beats) && d.beats.length > 1) Object.assign(p, { beats: d.beats.map(String), beat: d.beats.length - 1, beatFocus: [] });
+        if (CANVAS && Array.isArray(d.cols) && d.cols.length) p.cols = d.cols.map(Number);
         bv.paint(p);
       }
       const docs = st.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.seq || 0) - (b.seq || 0));
@@ -310,12 +307,12 @@ export async function renderClass(root, meta, desk = null) {
           Object.assign(bv.ensurePage(page), { lead: d.id, title: d.title || '' });
         }
         if (page) bv.ensurePage(page);
-        const seg = { id: d.id, seq: d.seq || 0, page, place, title: d.title || '', md: String(d.md || ''), hidden: !!d.hidden, held: !!d.held, failed: !!d.failed, pending: false, sec: null, ...(d.point ? { point: d.point } : {}), ...(d.at && CANVAS ? { at: d.at } : {}) };
+        const seg = { id: d.id, seq: d.seq || 0, page, place, title: d.title || '', md: String(d.md || ''), hidden: !!d.hidden, held: !!d.held, failed: !!d.failed, pending: false, sec: null, ...(d.point ? { point: d.point } : {}), ...(CANVAS && d.col !== undefined ? { col: d.col } : {}), ...(Number.isFinite(d.ord) ? { ord: d.ord } : {}) };
         segs.set(seg.id, seg);
         if (old) legacy.push(seg);
         if (!seg.hidden) mountRestored(seg);
       }
-      for (const p of pages.values()) bv.paint(p);
+      for (const p of pages.values()) { bv.paint(p); layoutPage(p.n); }
       // 旧版的段分好板就存回去：以后新开的板接在它们后面，下次打开顺序也不变
       for (const seg of legacy) { saveSeg(seg); savePage(pages.get(seg.page)); }
       tu.docs.map((d) => d.data()).filter((t) => Number.isFinite(t?.seq)).sort((a, b) => a.seq - b.seq).forEach((t) => { history.push(t); turnSeq = Math.max(turnSeq, t.seq); });
@@ -437,8 +434,19 @@ export async function renderClass(root, meta, desk = null) {
     return p;
   }
 
+  // 边写边显示时先开好的那块新板：核验过了就是它（不再另开一块）
+  function adoptPage(p, op) {
+    Object.assign(p, { title: op.title || '', ...(CANVAS ? { cols: op.cols || [1] } : {}) });
+    delete p.preview;
+    streamPage = null;
+    bv.cur = p.n;
+    bv.paint(p);
+    savePage(p);
+    return p;
+  }
+
   function savePage(p) {
-    sink.put('class_pages', { id: pad3(p.n), n: p.n, title: p.title || '', talk: p.talk || '', talkBy: p.talkBy || '', lead: p.lead || '', kind: p.kind || '', body: p.body || '', foot: p.foot || '', ...(p.memo?.length ? { memo: p.memo } : {}), ...(p.beats ? { beats: p.beats } : {}), at: Date.now() });
+    sink.put('class_pages', { id: pad3(p.n), n: p.n, title: p.title || '', talk: p.talk || '', talkBy: p.talkBy || '', lead: p.lead || '', kind: p.kind || '', body: p.body || '', foot: p.foot || '', ...(p.memo?.length ? { memo: p.memo } : {}), ...(p.beats ? { beats: p.beats } : {}), ...(p.cols ? { cols: p.cols } : {}), at: Date.now() });
   }
 
   // —— 学习台里改记忆（memory/memo.js）：都直接写进去了，上课时板上什么都不挂（不打扰学生）；
@@ -640,7 +648,7 @@ export async function renderClass(root, meta, desk = null) {
   function renderSeg(seg) {
     const idx = session.stages.length;
     const sec = document.createElement('section');
-    sec.className = `stage live-step class-seg class-pending${seg.place === 'pin' ? ' class-pin' : ''}`;
+    sec.className = `stage live-step class-seg class-pending${seg.place === 'pin' ? ' class-pin' : ''}${committing ? ' no-anim' : ''}`;
     sec.dataset.step = seg.id;
     sec.dataset.stage = idx;
     sec.innerHTML = '<div class="stage-body"></div>';
@@ -673,7 +681,6 @@ export async function renderClass(root, meta, desk = null) {
     sec.classList.remove('class-pending');
     if (seg.held) sec.hidden = true;
     seg.sec = sec;
-    if (CANVAS && seg.at) applyAt(seg);
   }
 
   function failedSec(seg) {
@@ -749,7 +756,7 @@ export async function renderClass(root, meta, desk = null) {
           // new：擦掉黑板换一块新板，这一段是新板的第一段（标题就是板的标题）。
           // add / replace 一个没见过的 id：加在当前板上；还没有板、或者当前板是下课小结，就开一块新的
           const cur = pages.get(bv.cur);
-          page = op.op === 'new' || !cur || cur.kind === 'closing' ? newPage({ lead: op.id, title: op.title || '' }).n : bv.cur;
+          page = op.op === 'new' || !cur || cur.kind === 'closing' ? (op.op === 'new' && streamPage && streamPage.lead === op.id && pages.get(streamPage.n) === streamPage ? adoptPage(streamPage, op) : newPage({ lead: op.id, title: op.title || '', ...(CANVAS && op.op === 'new' ? { cols: op.cols || [1] } : {}) })).n : bv.cur;
         }
         seg = { id: op.id, seq: ++segSeq, page, place: toPin ? 'pin' : 'board', title: '', md: '', hidden: false, failed: false, pending: false, sec: null };
       }
@@ -788,10 +795,12 @@ export async function renderClass(root, meta, desk = null) {
       Object.assign(seg, next, { sec, hidden: false, held, failed: false, pending: false, softNotes: soft.length ? soft.map((p) => p.msg) : undefined });
       if (held) sec.hidden = true;
       // 版面：放在 at= 写的地方（replace 不写就留在原处；new / add 不写就找空处）
-      if (CANVAS && seg.place !== 'pin') layoutSeg(seg, op.at || (isNew ? null : seg.at), notes, { auto: isNew && !op.at });
+      if (CANVAS && seg.place !== 'pin') seg.col = colFor(seg, op);
       // 改写了：之前几轮挂在这一段组件上的预案作废（这一轮后面再写的 react 照常挂上）
       if (!isNew) dropForSeg(reacts, seg.id, opTurn.seq);
       segs.set(seg.id, seg);
+      // 版面：登记好了再排（排的时候按 segs 里这块板上的段搭结构）
+      if (CANVAS && seg.place !== 'pin') layoutPage(seg.page);
       rewrites.delete(seg.id);
       saveSeg(seg);
       // 板的第一段改了标题：板头跟着改
@@ -815,10 +824,22 @@ export async function renderClass(root, meta, desk = null) {
       const seg = segs.get(op.id);
       if (!CANVAS) return { op: 'move', id: op.id, ok: false, error: '这节课没开版面，move 用不了' };
       if (!seg?.sec || seg.place === 'pin') return { op: 'move', id: op.id, ok: false, error: seg ? `${op.id} 在常驻栏里，不能挪` : `黑板上没有 ${op.id}` };
-      cvMoving.delete(seg.id);
-      const r = layoutSeg(seg, op.at, notes);
+      // 挪到那一栏的最下面（同一栏里按先后从上往下）
+      seg.col = op.col;
+      seg.ord = Math.max(0, ...[...segs.values()].filter((x) => x.page === seg.page).map(ordOf)) + 1;
       saveSeg(seg);
-      return { op: 'move', id: op.id, ok: true, at: atText(r.at), page: seg.page || undefined };
+      layoutPage(seg.page);
+      return { op: 'move', id: op.id, ok: true, col: op.col, page: seg.page || undefined };
+    }
+    // 版面：换当前板的分栏
+    if (op.op === 'layout') {
+      const pg = pages.get(bv.cur);
+      if (!CANVAS) return { op: 'layout', ok: false, error: '这节课没开版面，layout 用不了' };
+      if (!pg || pg.kind === 'closing') return { op: 'layout', ok: false, error: '还没有板（或者当前是下课小结）：先 board new' };
+      pg.cols = op.cols;
+      savePage(pg);
+      layoutPage(pg.n);
+      return { op: 'layout', ok: true, cols: op.cols, page: pg.n };
     }
     // 揭开藏着的段（add … hold）或撤回过的段
     if (op.op === 'show') {
@@ -830,7 +851,6 @@ export async function renderClass(root, meta, desk = null) {
       seg.sec.hidden = false;
       seg.sec.classList.add('beat-in');
       // 版面：藏着时不占地方，揭开时放回它写的 at=（被别的段长过去占了，就放到最近的空处）
-      if (CANVAS && seg.at && seg.place !== 'pin') layoutSeg(seg, seg.at, notes);
       saveSeg(seg);
       return { op: 'show', id: op.id, ok: true, page: seg.page || undefined };
     }
@@ -852,97 +872,58 @@ export async function renderClass(root, meta, desk = null) {
     return { op: op.op, ok: false, error: '看不懂的指令' };
   }
 
-  // —— 版面（canvas.js）：段按 at= 摆进格子；比格子大先缩小，还放不下就在块里滑；记下实际要几行给 Claude 看 ——
+  // —— 版面（canvas.js）：Claude 说结构（这块板分几栏、每段放第几栏），页面按真实内容排：同一栏从上往下接，
+  // 栏和栏之间一道竖线（不估高度、不写坐标；阅读顺序由结构定：一栏从上往下读，左右是两件事）——
   const WIDE_NO = new Set(['scene', 'graph', 'space', 'image', 'sketch', 'predict']);
   const ZOOMABLE = new Set([...WIDE_NO, 'matrix', 'derive', 'code', 'trace', 'frames']);
   function langsOf(md) { return [...String(md).matchAll(/^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*([A-Za-z][\w-]*)/gm)].map((m) => m[1].toLowerCase()); }
-  function layoutSeg(seg, want, notes, { auto = false } = {}) {
-    const others = [...segs.values()].filter((s) => s !== seg && s.page === seg.page && s.place !== 'pin' && !s.hidden && !s.pending && s.at && s.sec && !cvMoving.has(s.id));
-    const r = placeBlock(others.map((s) => s.at), want, defaultSize(langsOf(seg.md), seg.md.length));
-    if (r.moved) notes?.push(`${seg.id} 的 at=${atText(want)} 和板上别的段重叠，页面挪到了 at=${atText(r.at)}（要换地方先 move 或 hide 挡着的段）。`);
-    else if (auto && r.auto) notes?.push(`${seg.id} 没写 at=，页面放在了 at=${atText(r.at)}。`);
-    seg.at = r.at;
-    applyAt(seg);
-    return r;
+  function ordOf(s) { return s.ord ?? s.seq; }
+  // 一段放第几栏：写了就用；没写就接着这块板上一段的栏（顺着往下写）；这块板的第一段放第 1 栏
+  function colFor(seg, op) {
+    if (op?.col !== undefined) return op.col;
+    if (seg.col !== undefined) return seg.col;
+    const prev = [...segs.values()].filter((x) => x !== seg && x.page === seg.page && x.place !== 'pin' && x.col !== undefined).sort((x, y) => ordOf(x) - ordOf(y)).at(-1);
+    return prev ? prev.col : 1;
   }
-  function applyAt(seg) {
-    const sec = seg.sec;
-    if (!sec || !seg.at) return;
-    sec.style.gridColumn = `${seg.at.c1} / ${seg.at.c2 + 1}`;
-    sec.style.gridRow = `${seg.at.r1} / ${seg.at.r2 + 1}`;
-    // ⤢ 只给图、演示这类要看细节、要拖的块（字和题不用放大，角上不多一个钮）
-    const zoomable = langsOf(seg.md).some((l) => ZOOMABLE.has(l) || ENGINES[l]);
-    if (zoomable && !sec.querySelector(':scope > .cv-zoom')) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'cv-zoom';
-      b.setAttribute('aria-label', '放大这一块');
-      b.textContent = '⤢';
-      b.addEventListener('click', () => zoomSeg(seg));
-      sec.appendChild(b);
-    }
-    // 图、公式常常画完一帧以后才定下高度：内容一变就重新量（量完自己设的缩放不算变化）
-    if (!sec._cvObs && window.ResizeObserver) {
-      const body = sec.querySelector(':scope > .stage-body');
-      let raf = 0;
-      sec._cvObs = new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (Math.abs((body?.getBoundingClientRect().height || 0) - (seg.fitH || 0)) > 2) fitSeg(seg); }); });
-      if (body) sec._cvObs.observe(body);
-      sec._cvObs.observe(sec);
-    }
-    requestAnimationFrame(() => fitSeg(seg));
+  // 按结构把段放进一层层、一栏栏里。结构没变就不动 DOM（学生正在某个输入框里打字时不被打断）
+  function layoutPage(n) {
+    const p = pages.get(n);
+    if (!CANVAS || !p || p.kind === 'closing') return;
+    const cols = p.cols?.length ? p.cols : [1];
+    const list = [...segs.values()].filter((x) => x.page === n && x.place !== 'pin' && x.sec?.isConnected !== false && x.sec).sort((x, y) => ordOf(x) - ordOf(y));
+    const bands = bandsOf(list.map((x) => ({ id: x.id, col: x.col ?? 1 })), cols);
+    const sig = JSON.stringify([cols, bands]);
+    for (const x of list) ensureZoom(x);
+    if (p.cvSig === sig && list.every((x) => x.sec.parentElement?.closest('.cv-band'))) return;
+    p.cvSig = sig;
+    const body = p.bodyEl;
+    const made = bands.map((b) => {
+      const el = document.createElement('div');
+      el.className = `cv-band${b.kind === 'all' ? ' is-all' : ''}`;
+      if (b.kind === 'all') { el.appendChild(segs.get(b.id).sec); return el; }
+      if (b.cols.length > 1) el.style.gridTemplateColumns = cols.slice(0, b.cols.length).map((w) => `minmax(0, ${w}fr)`).join(' ');
+      for (const ids of b.cols) {
+        const c = document.createElement('div');
+        c.className = 'cv-col';
+        for (const id of ids) c.appendChild(segs.get(id).sec);
+        el.appendChild(c);
+      }
+      return el;
+    });
+    body.querySelectorAll(':scope > .cv-band').forEach((x) => x.remove());
+    body.append(...made);
   }
-  function fitSeg(seg) {
+  // ⤢ 只给图、演示这类要看细节、要拖的块（字和题不用放大，角上不多一个钮）
+  function ensureZoom(seg) {
     const sec = seg.sec;
-    const body = sec?.querySelector(':scope > .stage-body');
-    if (!body || !sec.isConnected || sec.classList.contains('is-zoomed')) return;
-    body.style.zoom = '';
-    sec.classList.remove('cv-scroll');
-    const cs = getComputedStyle(sec);
-    const avail = sec.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 2;
-    const need = body.getBoundingClientRect().height;
-    if (!(avail > 0) || !(need > 0)) return; // 藏着的段量不出来，露出来时再量
-    // 估小了、下面又空着：先往下加长（一屏以内），加长了不够再缩小
-    const want = rowsFor(need + (sec.clientHeight - avail), cvRow, cvGap);
-    const rows = seg.at.r2 - seg.at.r1 + 1;
-    // 藏着的段占着它的位置（那是老师给下一步留的地方）：别的段不往那里长
-    const others = want > rows ? [...segs.values()].filter((x) => x !== seg && x.page === seg.page && x.place !== 'pin' && !x.hidden && x.at).map((x) => x.at) : [];
-    const free = (a) => !others.some((o) => o.c1 <= a.c2 && a.c1 <= o.c2 && o.r1 <= a.r2 && a.r1 <= o.r2);
-    // 字多的段（推导、步骤、题）旁边空着：先往旁边加宽，变矮了就不用往下长（图按比例画，加宽反而更高，不加宽）
-    if (want > rows && !seg.widened && !langsOf(seg.md).some((l) => WIDE_NO.has(l))) {
-      let { c1, c2 } = seg.at;
-      while (c2 < CV_COLS && free({ ...seg.at, c1: c2 + 1, c2: c2 + 1 })) c2++;
-      while (c1 > 1 && free({ ...seg.at, c1: c1 - 1, c2: c1 - 1 })) c1--;
-      seg.widened = true;
-      if (c2 - c1 > seg.at.c2 - seg.at.c1) {
-        seg.at = { ...seg.at, c1, c2 };
-        seg.grew = true;
-        sec.style.gridColumn = `${c1} / ${c2 + 1}`;
-        saveSeg(seg);
-        requestAnimationFrame(() => fitSeg(seg));
-        return;
-      }
-    }
-    if (want > rows && seg.at.r2 < CV_MAX) {
-      // 往下长可以超出一屏（学生滑一下），比缩小、在块里滑好读
-      let r2 = seg.at.r2;
-      while (r2 < Math.min(CV_MAX, seg.at.r1 + want - 1) && !others.some((o) => o.c1 <= seg.at.c2 && seg.at.c1 <= o.c2 && o.r1 <= r2 + 1 && r2 + 1 <= o.r2)) r2++;
-      if (r2 > seg.at.r2) {
-        seg.at = { ...seg.at, r2 };
-        seg.grew = true;
-        sec.style.gridRow = `${seg.at.r1} / ${seg.at.r2 + 1}`;
-        saveSeg(seg);
-        requestAnimationFrame(() => fitSeg(seg));
-        return;
-      }
-    }
-    let scale = 1;
-    if (need > avail + 2) {
-      scale = Math.max(0.72, avail / need);
-      body.style.zoom = String(scale);
-      if (body.getBoundingClientRect().height > avail + 2) sec.classList.add('cv-scroll');
-    }
-    seg.fit = { need: rowsFor(need, cvRow, cvGap), scale: Math.round(scale * 100) / 100, ...(sec.classList.contains('cv-scroll') ? { scroll: true } : {}) };
-    seg.fitH = body.getBoundingClientRect().height;
+    if (!sec || sec.querySelector(':scope > .cv-zoom') || !langsOf(seg.md).some((l) => ZOOMABLE.has(l) || ENGINES[l])) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cv-zoom';
+    b.setAttribute('aria-label', '放大这一块');
+    b.textContent = '⤢';
+    b.addEventListener('click', () => zoomSeg(seg));
+    sec.appendChild(b);
   }
   // 点 ⤢：这一块铺满整块黑板（大的交互图在大屏上拖），再点一下回去
   function zoomSeg(seg) {
@@ -952,39 +933,27 @@ export async function renderClass(root, meta, desk = null) {
     const btn = sec.querySelector(':scope > .cv-zoom');
     btn.textContent = on ? '×' : '⤢';
     btn.setAttribute('aria-label', on ? '缩回去' : '放大这一块');
-    const body = sec.querySelector(':scope > .stage-body');
-    if (on && body) body.style.zoom = '';
     window.dispatchEvent(new Event('resize'));
-    if (!on) requestAnimationFrame(() => fitSeg(seg));
   }
-  // 一格多高：一屏（扣掉板头、板顶的话、底部的条）分成 CV_ROWS 行。屏幕变了全部重新量
-  function sizeCanvas() {
-    if (!CANVAS) return;
-    const barH = bar?.height || 110;
-    // 格子从板头、板顶那句话下面开始（量当前板；还没有板时按 130 估）
-    const bodyEl = pages.get(bv.cur)?.bodyEl;
-    const top = bodyEl?.isConnected && !pages.get(bv.cur).sec.hidden ? bodyEl.getBoundingClientRect().top + window.scrollY : 130;
-    const rowH = Math.max(56, Math.floor((window.innerHeight - top - barH - 12 - cvGap * (CV_ROWS - 1)) / CV_ROWS));
-    if (rowH === cvRow && cvCell) return;
-    cvRow = rowH;
-    document.documentElement.style.setProperty('--cv-row', `${cvRow}px`);
-    document.documentElement.style.setProperty('--cv-gap', `${cvGap}px`);
-    document.documentElement.style.setProperty('--cv-bottom', `${barH + 12}px`);
-    const body = pages.get(bv.cur)?.bodyEl;
-    const w = body?.clientWidth || window.innerWidth - 300;
-    cvCell = { w: Math.round((w - cvGap * (CV_COLS - 1)) / CV_COLS), h: cvRow };
-    for (const s of segs.values()) if (s.at && s.sec?.isConnected) fitSeg(s);
-  }
-  // 黑板现状里的版面图：当前板上看得见（和藏着、等着播的）段占的格子
+  // 黑板现状里的「版式」：几栏、每栏从上往下是哪几段、各多高，整块板比一屏长多少
   function canvasState() {
     if (!CANVAS) return null;
-    if (!cvCell) sizeCanvas();
-    const blocks = [...segs.values()].filter((s) => s.page === bv.cur && s.place !== 'pin' && !s.hidden && s.at).map((s) => ({ id: s.id, at: s.at }));
-    return { map: mapText(blocks), cell: cvCell };
+    const p = pages.get(bv.cur);
+    if (!p || p.kind === 'closing') return { text: '版面：整块横屏，这块板分几栏由你定（board new 的 cols=）。' };
+    const cols = p.cols?.length ? p.cols : [1];
+    const list = [...segs.values()].filter((x) => x.page === p.n && x.place !== 'pin' && !x.hidden && x.sec).sort((x, y) => ordOf(x) - ordOf(y));
+    const bands = bandsOf(list.map((x) => ({ id: x.id, col: x.col ?? 1 })), cols);
+    const band = p.bodyEl.querySelector(':scope > .cv-band:not(.is-all)');
+    const widths = band ? [...band.children].map((c) => c.getBoundingClientRect().width) : [p.bodyEl.clientWidth];
+    const top = p.bodyEl.getBoundingClientRect().top + window.scrollY;
+    const screen = window.innerHeight - top - (bar?.height || 110);
+    const total = p.sec.hidden ? 0 : p.bodyEl.getBoundingClientRect().height;
+    const info = (id) => { const x = segs.get(id); return { h: x?.sec && !x.sec.hidden ? x.sec.getBoundingClientRect().height : 0, held: !!x?.held }; };
+    return { text: layoutText({ cols, bands, info, widths, screen, total }) };
   }
 
   function saveSeg(seg) {
-    sink.put('steps', { id: seg.id, seq: seg.seq, page: seg.page || 0, place: seg.place || 'board', md: seg.md, title: seg.title || '', hidden: !!seg.hidden, failed: !!seg.failed, ...(seg.held ? { held: true } : {}), ...(seg.at ? { at: seg.at } : {}), ...(seg.point ? { point: seg.point } : {}), by: 'class', at: Date.now() });
+    sink.put('steps', { id: seg.id, seq: seg.seq, page: seg.page || 0, place: seg.place || 'board', md: seg.md, title: seg.title || '', hidden: !!seg.hidden, failed: !!seg.failed, ...(seg.held ? { held: true } : {}), ...(seg.col !== undefined ? { col: seg.col } : {}), ...(Number.isFinite(seg.ord) ? { ord: seg.ord } : {}), ...(seg.point ? { point: seg.point } : {}), by: 'class', at: Date.now() });
   }
 
   function refresh() {
@@ -1038,7 +1007,7 @@ export async function renderClass(root, meta, desk = null) {
       const text = texText(seg.sec?.querySelector('.stage-body > p'));
       const summary = [clipTex(text, 140), seg.softNotes?.length ? `（${seg.softNotes.join('；')}）` : ''].filter(Boolean).join(' ');
       const segMarks = seg.hidden ? [] : [...marks.values()].filter((m) => m.seg === seg.id).map((m) => markText(m.id, m.spec));
-      return { id: seg.id, page: seg.page || 0, place: seg.place || 'board', title: seg.title || seg.sec?.querySelector('h2')?.textContent?.trim() || '', summary, hidden: seg.hidden, held: !!seg.held, ...(CANVAS && seg.at && seg.place !== 'pin' ? { at: atText(seg.at), fit: seg.fit, ...(seg.grew ? { grew: true } : {}) } : {}), pending: !!seg.pending, failed: !!seg.failed, blocks, marks: segMarks.length ? segMarks : undefined };
+      return { id: seg.id, page: seg.page || 0, place: seg.place || 'board', title: seg.title || seg.sec?.querySelector('h2')?.textContent?.trim() || '', summary, hidden: seg.hidden, held: !!seg.held,  pending: !!seg.pending, failed: !!seg.failed, blocks, marks: segMarks.length ? segMarks : undefined };
     });
     const vw = window.innerWidth, vh = window.innerHeight;
     // 这节课的量（let 块）：课堂说明被压缩成摘要以后，Claude 也知道有哪些量、值是多少
@@ -1306,11 +1275,14 @@ export async function renderClass(root, meta, desk = null) {
         res = await teacher.call(fit.turns, opts);
       } catch (e) {
         clearDraft();
+        dropPreviews({ rollback: true });
         failTurn(e, '这一轮', cost('failed'));
         return false;
       }
       clearDraft();
       if (res?.modelApplied !== MODEL) {
+        // 边写边显示先画上去的：作废的轮一样都不留
+        dropPreviews({ rollback: true });
         // 平台换了退路模型：整段作废（不显示、不执行、不进对话历史），只留一条记录
         addTurn({ role: 'system', kind: 'fallback', discarded: true, text: 'Opus 5.5 不可用，这一轮作废', modelApplied: res?.modelApplied || null, modelTierApplied: res?.modelTierApplied || null, cost: cost('failed') });
         bar.setStatus('error', 'Opus 5.5 暂时用不了，稍后点重试。');
@@ -1318,7 +1290,10 @@ export async function renderClass(root, meta, desk = null) {
       }
       budgetLevel = 0;
       saveNotes(staged);
-      const out = finishTurn(res, staged.calls, { keepTalk: rewriting, cost: cost(why) });
+      streamPage = dropPreviews();
+      committing = true;
+      let out;
+      try { out = finishTurn(res, staged.calls, { keepTalk: rewriting, cost: cost(why) }); } finally { committing = false; streamPage = null; }
       // 要它重写的段、它用 view_handwriting 要看的原图：再要一轮
       const wantImages = staged.images.length > 0 && !followed;
       if (round === MAX_ROUNDS - 1 && (out.retry.length || wantImages)) {
@@ -1394,9 +1369,8 @@ export async function renderClass(root, meta, desk = null) {
     opTurn = { seq: turnSeq + 1, by: mock ? 'mock' : res.modelApplied || '' };
     // 拍子（beats.js）：说一句、写一段、再说一句……一拍一拍地播。重写写错的段那一轮不播
     const opSegs = segments.filter(isOp);
-    cvMoving = new Set(opSegs.filter((s) => s.op.op === 'move').map((s) => s.op.id));
     const plan = beatPlan(segments, isOp);
-    const play = FEATURES.beats && !keepTalk && shouldPlay(plan, opSegs.map((s) => s.op));
+    const play = FEATURES.beats && !FEATURES.stream && !keepTalk && shouldPlay(plan, opSegs.map((s) => s.op));
     const deferred = []; // 到了那一拍才执行的指令 { b, op }
     const beatSegs = new Map(); // 拍 → 这一拍写的段 id（先藏着）
     // 一轮最多开一块新板（2026-11-03 我说：一下子给好几块板、每块一点点，很影响学习）：同一轮第二个 board new 起都并到这块板上
@@ -1454,11 +1428,8 @@ export async function renderClass(root, meta, desk = null) {
         if (t.getBoundingClientRect().top < 0) t.scrollIntoView({ behavior: smooth, block: 'start' });
       }
     }
-    cvMoving = new Set();
     const told = addTurn({ role: 'claude', text: res.text, boardOps, page: bv.cur || undefined, talkPage, modelApplied: res.modelApplied, truncated: !!res.truncated, tools: toolCalls.length ? toolCalls : undefined, cost });
     if (beat) { beat.told = told; focusBeat(pages.get(beat.page), 0, { scroll: false }); }
-    // 版面：板顶那句话变长变短，格子跟着一屏重新分（下一轮的黑板现状里写着）
-    if (CANVAS) requestAnimationFrame(() => { cvCell = null; sizeCanvas(); });
     if (turnMemos.length) runMemo(turnMemos.splice(0), told.seq, talkPage || bv.cur);
     // Claude 又说了话：重新计「停了多久」
     nudged = false;
@@ -1584,7 +1555,9 @@ export async function renderClass(root, meta, desk = null) {
         if (!firstAt && (talk || segments.some((s) => s.type === 'board'))) firstAt = performance.now();
         d.talk.hidden = !talk;
         if (talk) d.talk.innerHTML = mdToHtml(previewMd(talk));
-        const ops = segments.filter((s) => s.type === 'board');
+        // 边写边显示：写完了的段先画上黑板（核验之前学生看得到、点不了）；还在写的、圈画这类到最后才做的，照旧列成一行提示
+        const shown = FEATURES.stream && !d.keepTalk ? streamOps(segments) : new Set();
+        const ops = segments.filter((s, i) => s.type === 'board' && !shown.has(s));
         d.ops.hidden = !ops.length;
         if (ops.length) d.ops.innerHTML = ops.map(opChip).join('');
         bv.scheduleFit();
@@ -1608,6 +1581,68 @@ export async function renderClass(root, meta, desk = null) {
   function previewMd(md) {
     const dollars = (md.replace(/\\\$/g, '').match(/\$/g) || []).length;
     return dollars % 2 ? md.slice(0, md.lastIndexOf('$')) + ' …' : md;
+  }
+
+  // —— 边写边显示（features.js 的 stream）：这一轮写完了的段先画出来；核验是 Opus 5.5 以后由 finishTurn 照常执行（换成正式的），
+  // 不是就全部撤掉。stream：{ done（处理过的块）, list（先画出来的段）, page（先开的新板）, prev（开新板前的当前板）, hidden（被改写、先藏起来的原段）} ——
+  function streamOps(segments) {
+    const out = new Set();
+    if (!stream) stream = { done: new Map(), list: [], page: null, prev: bv.cur, hidden: [] };
+    let i = 0;
+    for (const s of segments) {
+      if (!isOp(s)) continue;
+      const key = `${i++}`;
+      if (!['new', 'add', 'replace'].includes(s.op.op)) continue;
+      if (stream.done.has(key)) { if (stream.done.get(key)) out.add(s); continue; }
+      const ok = previewSeg(s.op, s.body);
+      stream.done.set(key, ok);
+      if (ok) out.add(s);
+    }
+    return out;
+  }
+  function previewSeg(op, body) {
+    const existing = segs.get(op.id);
+    if (op.op !== 'replace' && existing && !existing.pending) return false; // 撞了 id：交给最后的自检
+    if (op.op === 'replace' && !existing?.sec) return false;
+    let page = existing?.page;
+    if (op.op === 'new' && !stream.page) {
+      const p = bv.addPage({ lead: op.id, title: op.title || '', ...(CANVAS ? { cols: op.cols || [1] } : {}) });
+      p.preview = true;
+      stream.page = p;
+      bv.show(p.n, { animate: true });
+    }
+    if (!page) page = stream.page?.n || (pages.get(bv.cur)?.kind === 'closing' ? 0 : bv.cur);
+    if (!page) return false;
+    const seg = { id: `~${op.id}`, preview: true, seq: (existing?.seq ?? segSeq + 1) + 0.001 * (stream.list.length + 1), page, place: 'board', title: op.title ?? existing?.title ?? '', md: body || '', hidden: false, failed: false, pending: false, sec: null };
+    if (CANVAS) seg.col = op.col ?? existing?.col ?? colFor(seg, null);
+    const r = renderSeg(seg);
+    if (r.errors.length) { dropScenesOf(r.sec); r.sec.remove(); return false; }
+    r.sec.classList.remove('class-pending');
+    r.sec.classList.add('is-preview');
+    seg.sec = r.sec;
+    segs.set(seg.id, seg);
+    stream.list.push(seg);
+    if (op.op === 'replace' && existing.sec) { existing.sec.hidden = true; stream.hidden.push(existing.sec); }
+    if (CANVAS) layoutPage(page);
+    if (op.op !== 'new') {
+      const rect = r.sec.getBoundingClientRect();
+      if (rect.bottom > window.innerHeight - bar.height) r.sec.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest' });
+    }
+    return true;
+  }
+  // 先画出来的段拿掉（核验过了要换成正式的；或者这一轮作废了）
+  function dropPreviews({ rollback = false } = {}) {
+    if (!stream) return;
+    for (const seg of stream.list) { dropScenesOf(seg.sec); seg.sec.remove(); segs.delete(seg.id); }
+    for (const sec of stream.hidden) sec.hidden = false;
+    if (rollback && stream.page) {
+      bv.cur = stream.prev;
+      bv.removePage(stream.page.n);
+      bv.show(bv.cur, { scroll: false });
+    }
+    const page = stream.page;
+    stream = null;
+    return rollback ? null : page;
   }
 
   function clearDraft() {

@@ -1,82 +1,77 @@
-// 版面（docs/canvas-plan.md）：课堂里的 Claude 自己排板。黑板是一整块横屏，上面一张看不见的格子
-// （COLS 列 × ROWS 行正好一屏），每一段写 at=列-列/行-行 说放在哪、占多大；页面按格子摆，放不下先缩小，
-// 每一轮把「版面图」（哪格被哪段占了、哪里空）写进黑板现状，它据此决定下一块写哪、擦哪、挪哪。
-// 没有模板：放哪、多大都由它看内容定。纯函数，不碰 DOM（tests/class-canvas.test.js）。
+// 版面（docs/board-plan.md 第 4 节）：课堂里的 Claude 自己排板，但不写坐标——它说结构，页面按真实内容排。
+// 一块板 = 从上往下几「层」：分栏的一层（cols=7/5：两栏，宽 7:5），或者横跨整块板的一段（col=all）。
+// 每一段说放第几栏（col=2），同一栏里按先后从上往下接；页面量出每段多高，栏和栏之间画一道分隔线。
+// 这样阅读顺序由结构决定（一栏从上往下读，左右两栏是两件事），也不用它估「这块要几行」。
+// 纯函数，不碰 DOM（tests/class-canvas.test.js）。
 
-export const COLS = 12;
-export const ROWS = 8; // 一屏的行数；再往下学生要滑
-export const MAX_ROW = 24;
+export const MAX_COLS = 3;
 
-/** at=7-12/1-5（第 7～12 列、第 1～5 行）；一列 / 一行可以只写一个数：at=3/2。返回 { c1, c2, r1, r2 } 或 { error } */
-export function parseAt(v) {
-  const s = String(v ?? '').trim().replace(/[，,]/, '/').replace(/[－—–~～]/g, '-').replace(/\s+/g, '');
-  const m = s.match(/^(\d+)(?:-(\d+))?\/(\d+)(?:-(\d+))?$/);
-  if (!m) return { error: `at「${v}」看不懂：写成 列-列/行-行，比如 at=7-12/1-5（第 7～12 列、第 1～5 行）` };
-  let [c1, c2, r1, r2] = [m[1], m[2] ?? m[1], m[3], m[4] ?? m[3]].map(Number);
-  if (c1 > c2) [c1, c2] = [c2, c1];
-  if (r1 > r2) [r1, r2] = [r2, r1];
-  if (c1 < 1 || c2 > COLS) return { error: `at「${v}」：列只有 1～${COLS}` };
-  if (r1 < 1 || r2 > MAX_ROW) return { error: `at「${v}」：行从 1 数，一屏 ${ROWS} 行，最多到第 ${MAX_ROW} 行` };
-  return { c1, c2, r1, r2 };
+/** cols=7/5、cols=1/1/1、cols=2（两栏等宽）。返回 [权重…] 或 { error } */
+export function parseCols(v) {
+  const s = String(v ?? '').trim().replace(/[：:，,|｜]/g, '/');
+  if (/^[1-3]$/.test(s)) return Array(Number(s)).fill(1);
+  const parts = s.split('/').map((x) => x.trim()).filter(Boolean);
+  if (!parts.length || parts.some((x) => !/^\d+(\.\d+)?$/.test(x) || Number(x) <= 0)) return { error: `cols「${v}」看不懂：写几栏的宽度比，比如 cols=7/5（两栏，左宽右窄）、cols=1/1/1（三栏等宽），或者 cols=2` };
+  if (parts.length > MAX_COLS) return { error: `cols「${v}」：最多 ${MAX_COLS} 栏` };
+  return parts.map(Number);
 }
 
-export const atText = (a) => (a ? `${a.c1}-${a.c2}/${a.r1}-${a.r2}` : '');
-export const sizeOf = (a) => ({ w: a.c2 - a.c1 + 1, h: a.r2 - a.r1 + 1 });
-export const overlaps = (a, b) => a.c1 <= b.c2 && b.c1 <= a.c2 && a.r1 <= b.r2 && b.r1 <= a.r2;
-
-// 没写 at= 时按内容估一个大小：要拖、要看的图和演示给大地方，题中等，几行字小
-const BIG = new Set(['scene', 'graph', 'space', 'matrix', 'derive', 'sketch', 'image', 'predict', 'code', 'trace', 'frames']);
-const MID = new Set(['steps', 'practice', 'elim', 'parse', 'chunk']);
-export function defaultSize(kinds = [], textLen = 0) {
-  if (kinds.some((k) => BIG.has(k))) return { w: 7, h: 5 };
-  if (kinds.some((k) => MID.has(k))) return { w: 6, h: 4 };
-  if (kinds.length) return { w: 5, h: 3 }; // answer、quiz、演示组件以外的小组件
-  return textLen > 160 ? { w: 5, h: 2 } : { w: 4, h: 2 };
+/** col=2 / col=all。返回 1…3、'all' 或 { error } */
+export function parseCol(v) {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (s === 'all' || s === '全' || s === '通栏') return 'all';
+  if (/^[1-3]$/.test(s)) return Number(s);
+  return { error: `col「${v}」看不懂：写第几栏（col=1、col=2），横跨整块板写 col=all` };
 }
 
-/** 从上往下、从左往右找第一块放得下 w×h 的空处（placed：已有的 at） */
-export function findFree(placed = [], w, h) {
-  const ww = Math.min(COLS, Math.max(1, w));
-  for (let r = 1; r + h - 1 <= MAX_ROW; r++) {
-    for (let c = 1; c + ww - 1 <= COLS; c++) {
-      const a = { c1: c, c2: c + ww - 1, r1: r, r2: r + h - 1 };
-      if (!placed.some((p) => overlaps(p, a))) return a;
-    }
-  }
-  return { c1: 1, c2: ww, r1: MAX_ROW - h + 1, r2: MAX_ROW };
-}
+export const colsText = (cols) => (Array.isArray(cols) && cols.length > 1 ? cols.join('/') : '1');
 
 /**
- * 一段要放进 want（没写就按 size 找空处）。和别的段重叠时不叠上去：同样大小挪到最近的空处。
- * 返回 { at, moved?（原位置被占，挪了）, auto?（没写 at，页面找的）}
+ * 一块板分成几层。segs：这块板上的段，按先后排好 [{ id, col }]（col：1…n 或 'all'，超出栏数的放最后一栏）。
+ * 返回 [{ kind: 'cols', cols: [[id…], [id…]] } | { kind: 'all', id }]。col=all 的段自己一层，前后的段各成一层分栏。
  */
-export function placeBlock(placed = [], want = null, size = { w: 5, h: 3 }) {
-  if (!want) return { at: findFree(placed, size.w, size.h), auto: true };
-  if (!placed.some((p) => overlaps(p, want))) return { at: want };
-  const { w, h } = sizeOf(want);
-  return { at: findFree(placed, w, h), moved: true };
+export function bandsOf(segs = [], cols = [1]) {
+  const n = Math.max(1, Math.min(MAX_COLS, Array.isArray(cols) ? cols.length : 1));
+  const out = [];
+  let cur = null;
+  for (const s of segs) {
+    if (s.col === 'all' || n === 1) {
+      if (n === 1 && s.col !== 'all') {
+        if (!cur) { cur = { kind: 'cols', cols: [[]] }; out.push(cur); }
+        cur.cols[0].push(s.id);
+        continue;
+      }
+      out.push({ kind: 'all', id: s.id });
+      cur = null;
+      continue;
+    }
+    if (!cur) { cur = { kind: 'cols', cols: Array.from({ length: n }, () => []) }; out.push(cur); }
+    const c = Math.max(1, Math.min(n, Number(s.col) || 1));
+    cur.cols[c - 1].push(s.id);
+  }
+  return out;
 }
+
+const COL_NAME = (i, n) => (n === 2 ? ['左栏', '右栏'][i] : n === 3 ? ['左栏', '中栏', '右栏'][i] : '');
 
 /**
- * 版面图：每格写着占它的段 id（三个字宽），· 是空的。blocks：[{ id, at }]。至少画满一屏（ROWS 行）。
- *       1  2  3 …
- *   1  b1 b1 ·  …
+ * 黑板现状里的「版式」：几栏、每栏从上往下是哪几段、各多高，整块板比一屏长多少。
+ * bands：bandsOf 的结果；info(id) → { h（像素）, held, hidden }；widths：每栏大约多宽（像素）；screen：一屏能看多高；total：内容一共多高
  */
-export function mapText(blocks = []) {
-  const list = blocks.filter((b) => b?.at);
-  const rows = Math.max(ROWS, ...list.map((b) => b.at.r2));
-  const cell = (s) => String(s).slice(0, 3).padEnd(3);
-  const out = ['    ' + Array.from({ length: COLS }, (_, i) => cell(i + 1)).join('')];
-  for (let r = 1; r <= rows; r++) {
-    let line = String(r).padStart(2) + '  ';
-    for (let c = 1; c <= COLS; c++) {
-      const b = list.find((x) => x.at.c1 <= c && c <= x.at.c2 && x.at.r1 <= r && r <= x.at.r2);
-      line += cell(b ? b.id : '·');
-    }
-    out.push(line.trimEnd() + (r === ROWS && rows > ROWS ? '   ← 一屏到这里，下面要滑' : ''));
-  }
-  return out.join('\n');
+export function layoutText({ cols = [1], bands = [], info = () => ({}), widths = [], screen = 0, total = 0 } = {}) {
+  const n = Array.isArray(cols) ? cols.length : 1;
+  const lines = [];
+  const seg = (id) => {
+    const x = info(id) || {};
+    return `${id}${x.held ? '（藏着）' : x.h ? `（高约 ${Math.round(x.h)}）` : ''}`;
+  };
+  lines.push(n > 1 ? `当前板分 ${n} 栏，宽 ${colsText(cols)}${widths.length ? `（${widths.map((w, i) => `${COL_NAME(i, n)}约 ${Math.round(w)}`).join('、')} 像素）` : ''}。` : `当前板是一栏（整块板宽${widths[0] ? `约 ${Math.round(widths[0])} 像素` : ''}）。`);
+  bands.forEach((b, i) => {
+    const head = bands.length > 1 ? `第 ${i + 1} 层` : '';
+    if (b.kind === 'all') { lines.push(`- ${head ? `${head}：` : ''}横跨整块板 ${seg(b.id)}`); return; }
+    if (b.cols.length === 1) { lines.push(`- ${head ? `${head}：` : ''}从上往下 ${b.cols[0].map(seg).join(' → ') || '（空）'}`); return; }
+    lines.push(`- ${head ? `${head}（分栏）：` : ''}${b.cols.map((c, k) => `${COL_NAME(k, b.cols.length)} ${c.map(seg).join(' → ') || '（空）'}`).join('；')}`);
+  });
+  if (screen > 0 && total > 0) lines.push(total > screen + 24 ? `内容一共高约 ${Math.round(total)}，一屏能看约 ${Math.round(screen)}：学生要往下滑${total > screen * 1.6 ? '好几下' : '一下'}。` : `内容一共高约 ${Math.round(total)}，一屏放得下（约 ${Math.round(screen)}）。`);
+  return lines.join('\n');
 }
-
-/** 一段实际需要几行：内容高 need 像素、一行 rowH 像素、行间 gap */
-export const rowsFor = (need, rowH, gap = 0) => Math.max(1, Math.ceil((need + gap) / (rowH + gap)));

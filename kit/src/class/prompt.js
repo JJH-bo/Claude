@@ -356,18 +356,19 @@ explain: $A\mathbf x = (2, 4)$，还在 $(1, 2)$ 这条线上。
 export const CANVAS_DOC = doc`
 ### 版面：你自己排板
 
-这节课的黑板是**一整块横屏**，上面一张看不见的格子：**12 列 × 8 行正好一屏**（一格多大写在黑板现状里）。没有模板：每一段放在哪、占多大，由你看内容定，像老师站在黑板前安排板书。
+这节课的黑板是**一整块横屏**。没有模板，也不用写坐标：你说这块板的**结构**，页面按真实内容排（每段多高页面量，不用你估）。
 
-- ˋnewˋ / ˋaddˋ / ˋreplaceˋ 加 ˋat=列-列/行-行ˋ：ˋboard add id=b4 at=7-12/1-5ˋ 是第 7～12 列、第 1～5 行。不写 at= 页面找空处、按内容估个大小；replace 不写就留在原处。
-- ˋboard move id=b3 at=1-4/6-8ˋ：挪到别处、改大小，不重画（学生的作答都在）。
-- 怎么排：
-  - 先想这块板的主角：要拖的图、会动的矩阵、演示过程、推导给大地方（6～8 列、4～7 行）；一行式子、结论、记号 2～4 列、1～2 行；题 4～6 列、2～4 行。
-  - 有关系的放在一起：推导写在它推的那张图 / 矩阵旁边，题放在它要用的东西旁边，结论放在不挡事的地方；需要时用 mark 的箭头把两块连起来。
-  - **横着用满整块板**，左右都写，不要一列往下排；也别塞满，留一点白。
-  - 写满了先 ˋhideˋ 擦掉一块或 ˋmoveˋ 缩小，再写新的；讲全新的东西才 ˋboard newˋ。第 8 行以下学生要往下滑，尽量不用。
-  - 藏着的段（ˋadd … holdˋ）占着它写的 at=：学生看到那里先空着，揭开时就出现在那里。留的地方别太大。
-- 黑板现状里有当前板的**版面图**（每格写着占它的段 id，· 是空的）和每段实际要多大。比格子大的段页面先往旁边空处加宽（字多的段）、再往下加长，不行再缩小，你下一轮用 move 调或者精简。和别的段重叠的，页面挪到最近的空处（会告诉你）。
-- 板顶的话要短（一两句），讲解写在块里、挨着它讲的东西。学生能点任何一块角上的 ⤢ 把它放大铺满整屏。
+- ˋboard new … cols=7/5ˋ：这块板分两栏，宽 7:5（ˋcols=1/1/1ˋ 三栏等宽，不写就是一栏）。讲到一半要换：ˋboard layout cols=6/6ˋ。
+- 每一段写 ˋcol=1ˋ / ˋcol=2ˋ 放第几栏；同一栏里按写的先后**从上往下接**。不写就接着上一段那一栏。ˋcol=allˋ 是横跨整块板的一段：它前面、后面的段各成一层分栏（比如上面一张横跨的图，下面两栏）。
+- ˋboard move id=b3 col=2ˋ：挪到别的栏（放到那一栏最下面，不重画，作答都在）。
+- 栏和栏之间页面画一道竖线：**一栏从上往下读，左右两栏是两件事**。所以：
+  - 一句话、一段推导、一道题的几步不跨栏；左栏讲的东西不要在右栏接着讲。
+  - 两栏各放一件事：比如左栏推导、右栏题或对照；左栏讲一般、右栏回到例子。
+  - 内容少、一条线讲下来的板用一栏；有两件要对着看的事才分栏；三栏只给很短的几样并列（三个例子、三种情况）。
+  - 要学生看右边时，板顶那句话说「看右边」。
+- 黑板现状里写着当前板的版式（几栏、每栏从上往下是哪几段、各多高）和整块板比一屏长多少。两栏差得太多时把短的那栏补上下一件事，或者改成一栏。
+- 藏着的段（ˋadd … holdˋ）揭开时出现在它那一栏它的位置上。
+- 板顶的话要短（一两句），讲解写在板上、挨着它讲的东西。要拖、要看细节的图，学生能点角上的 ⤢ 放大铺满整屏。
 `;
 
 // —— 字节和截断 ——
@@ -560,10 +561,7 @@ function segmentLines(seg, { maxResults = Infinity } = {}) {
   if (seg.failed) { lines.push(`${head}（没画出来，学生只看到「这段没画出来」；可以用 board replace id=${seg.id} 重写）`); return lines; }
   // 藏着的段（add … hold）：画好了，学生还看不到，等预案的 show= 或 board show 揭开
   const held = seg.held ? '（藏着，学生还看不到；预案的 show= 或 board show 揭开）' : '';
-  // 版面：放在哪、实际要多大（canvas.js）
-  const fit = seg.fit || {};
-  const place = seg.at ? `［at=${seg.at}${seg.grew ? '（你给的小了，页面往下加长过）' : ''}${fit.need ? `，内容要 ${fit.need} 行${fit.scroll ? '，缩小了还放不下，块里要滑' : fit.scale < 1 ? `，缩小到 ${Math.round(fit.scale * 100)}% 才放下` : ''}` : ''}］` : '';
-  lines.push(seg.summary ? `${head}${place}${held}：${oneLine(seg.summary, 160)}` : head + place + held);
+  lines.push(seg.summary ? `${head}${held}：${oneLine(seg.summary, 160)}` : head + held);
   for (const b of seg.blocks || []) {
     if (!b?.id) continue;
     // 图能用 figure set / play 改的变量（课堂说明被压缩成摘要后，Claude 看不到当初写的命令，靠这里知道）
@@ -621,7 +619,7 @@ function pagedStateText(board) {
   const cur = Number(board.cur) || 0;
   const ids = `新的一段用 id ${nextSegmentId(list)}，常驻栏新的一条用 id ${nextPinId(list)}（用过的 id，包括撤回的，都不要再用）。`;
   const screen = screenLine(board.screen);
-  const grid = board.canvas ? `版面：12 列 × 8 行一屏${board.canvas.cell ? `，一格约 ${board.canvas.cell.w}×${board.canvas.cell.h} 像素` : ''}。` : '';
+  const grid = board.canvas ? '版面：整块横屏，这块板分几栏由你定（board new 的 cols=）。' : '';
   if (!pages.length && !list.length) return [`黑板是空的：第一块板用 board new 写。${screen}${grid}`, ids].filter(Boolean).join('\n');
   const lines = [];
   const curPage = pages.find((p) => p.n === cur);
@@ -637,8 +635,8 @@ function pagedStateText(board) {
       lines.push(board.canvas ? '当前板上的段：' : '当前板上的段（从上到下）：');
       for (const seg of here) lines.push(...segmentLines(seg));
     } else lines.push('当前板上还没有段。');
-    // 版面图：哪格被哪段占了、哪里空（你自己排板时用）
-    if (board.canvas?.map) lines.push(`当前板的版面（12 列 × 8 行一屏${board.canvas.cell ? `，一格约 ${board.canvas.cell.w}×${board.canvas.cell.h} 像素` : ''}；· 是空的）：\n\`\`\`\n${board.canvas.map}\n\`\`\``);
+    // 版式：几栏、每栏从上往下是哪几段、各多高（你自己排板时用）
+    if (board.canvas?.text) lines.push(board.canvas.text);
     const fit = board.fit;
     if (!board.canvas && fit && fit.fits === false && fit.need > 0 && fit.avail > 0) {
       // 稍长学生上下滑着看，不用为这个改板、也不用记成失误（改一次就是多写一整块板）；长到两屏多才提一句

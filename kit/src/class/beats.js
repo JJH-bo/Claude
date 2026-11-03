@@ -3,9 +3,9 @@
 // 纯函数，不碰 DOM（tests/class-beats.test.js）。
 
 // 会改板面的指令（memo、plan、react 学生看不到，不算拍子里的内容）
-export const VISUAL_OPS = new Set(['new', 'add', 'replace', 'hide', 'show', 'pin', 'unpin', 'figure', 'mark', 'unmark']);
+export const VISUAL_OPS = new Set(['new', 'add', 'replace', 'hide', 'show', 'move', 'layout', 'pin', 'unpin', 'figure', 'mark', 'unmark']);
 // 到了那一拍才执行的：段照常马上画（写错了要马上重写），只是先藏着；这些画了就改了学生正在看的东西
-export const DEFERRED_OPS = new Set(['hide', 'show', 'unpin', 'figure', 'mark', 'unmark']);
+export const DEFERRED_OPS = new Set(['hide', 'show', 'move', 'layout', 'unpin', 'figure', 'mark', 'unmark']);
 
 /**
  * segments：protocol.js parseOutput 的 segments（final）。isOp：闭合了、看得懂的 board 块。

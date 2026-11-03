@@ -7,7 +7,7 @@ import { tokenize, unquote } from '../tokens.js';
 import { parseMarkHead, parseMarkBlock, parseUnmark } from '../markspec.js';
 import { parseMemoLines } from '../memory/memo.js';
 import { parseReact } from './react.js';
-import { parseAt } from './canvas.js';
+import { parseCols, parseCol } from './canvas.js';
 
 // ```board add id=b7 title="…"：行首最多 3 个空格，` 或 ~ 至少 3 个，可有空格，然后是 board 和指令
 const OPEN_RE = /^([ \t]{0,3})(`{3,}|~{3,})[ \t]*board(?=\s|$)\s*(.*)$/i;
@@ -145,10 +145,10 @@ const tidy = (s) => s.replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
 
 // 段指令：new / add / replace / pin 带内容（可以有标题）；hide / unpin 只要 id
 // show：揭开预先写好、藏着的段（add … hold）
-// move：版面模式里把一段挪到别处、改大小（at=），不重画
+// move：版面模式里把一段挪到别的栏（col=），不重画
 export const SEGMENT_OPS = ['new', 'add', 'replace', 'hide', 'show', 'move', 'pin', 'unpin'];
 const NO_TITLE = new Set(['hide', 'show', 'move', 'unpin']);
-const OP_LIST = 'new / add / replace / hide / show / move / pin / unpin / figure / mark / unmark / react / memo / plan';
+const OP_LIST = 'new / add / replace / hide / show / move / layout / pin / unpin / figure / mark / unmark / react / memo / plan';
 
 /**
  * 解析 board 后面那一行：
@@ -172,6 +172,13 @@ export function parseCommand(header) {
   if (name === 'unmark') {
     const r = parseUnmark(m[2]);
     return r.error ? { error: r.error } : { op: 'unmark', ...r };
+  }
+  // 版面：换当前板的分栏（board layout cols=6/6）
+  if (name === 'layout') {
+    const m2 = String(m[2]).match(/cols\s*[=＝]\s*(\S+)/);
+    if (!m2) return { error: '要写分几栏：比如 board layout cols=6/6' };
+    const c = parseCols(m2[1]);
+    return c.error ? { error: c.error } : { op: 'layout', cols: c };
   }
   // 预案（react.js）：学生作答以后页面当场接的话，一行一条写在块里
   if (name === 'react') {
@@ -225,7 +232,7 @@ function markOp(op, body) {
 
 function segmentCommand(op, rest) {
   const toks = tokenize(rest);
-  let id, title, point, at, hold = false;
+  let id, title, point, col, cols, hold = false;
   for (let k = 0; k < toks.length; k++) {
     const t = toks[k];
     if (t.key === 'id') id = t.value;
@@ -233,8 +240,9 @@ function segmentCommand(op, rest) {
     else if (!t.key && !t.quoted && t.value === 'hold') hold = true;
     // 学习台里：这一段练的是哪个知识点（mastery 编号 # 后面那段），学生在这段的作答记成它的证据
     else if (t.key === 'point') point = t.value;
-    // 版面（canvas.js）：放在第几列到第几列、第几行到第几行
-    else if (t.key === 'at') at = t.value;
+    // 版面（canvas.js）：放在第几栏（col=2 / col=all）；new 上写这块板分几栏（cols=7/5）
+    else if (t.key === 'col') col = t.value;
+    else if (t.key === 'cols') cols = t.value;
     else if (t.key === 'title') {
       title = t.value;
       if (!t.quoted) {
@@ -253,12 +261,18 @@ function segmentCommand(op, rest) {
   if (!id) return { error: `${op} 缺少 id，比如 ${op} id=${eg}` };
   if (!validId(id)) return { error: `id「${id}」不合法：${ID_RULE}` };
   const out = { op, id };
-  if (at !== undefined && op !== 'hide' && op !== 'show' && op !== 'unpin') {
-    const a = parseAt(at);
-    if (a.error) return { error: a.error };
-    out.at = a;
+  if (col !== undefined && op !== 'hide' && op !== 'show' && op !== 'unpin' && op !== 'pin') {
+    const c = parseCol(col);
+    if (c?.error) return { error: c.error };
+    out.col = c;
   }
-  if (op === 'move' && !out.at) return { error: 'move 要写挪到哪：比如 move id=b3 at=1-6/5-8' };
+  if (cols !== undefined) {
+    if (op !== 'new') return { error: 'cols= 写在 board new 上（这块板分几栏）；换当前板的分栏用 board layout cols=…' };
+    const c = parseCols(cols);
+    if (c.error) return { error: c.error };
+    out.cols = c;
+  }
+  if (op === 'move' && out.col === undefined) return { error: 'move 要写挪到哪一栏：比如 move id=b3 col=2' };
   if (hold) {
     if (op !== 'add') return { error: `hold 只能写在 add 上（先画好藏着，等预案揭开），${op} 不能 hold` };
     out.hold = true;

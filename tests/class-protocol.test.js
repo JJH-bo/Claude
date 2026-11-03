@@ -304,7 +304,7 @@ test('parseCommand：new（换一块新板）/ pin（常驻栏）/ unpin', () =>
   assert.deepEqual(parseCommand('unpin id=k1 title="多余"'), { op: 'unpin', id: 'k1' }, 'unpin 不带标题');
   assert.match(parseCommand('new').error, /new 缺少 id，比如 new id=b1/);
   assert.match(parseCommand('pin title="x"').error, /pin 缺少 id，比如 pin id=k1/);
-  assert.match(parseCommand('page id=b1').error, /只认 new \/ add \/ replace \/ hide \/ show \/ move \/ pin \/ unpin \/ figure/);
+  assert.match(parseCommand('page id=b1').error, /只认 new \/ add \/ replace \/ hide \/ show \/ move \/ layout \/ pin \/ unpin \/ figure/);
   // 一轮里换新板、改常驻栏、动图可以一起写，按顺序都是 op
   const { ops } = parseOutput(['好，换一块板。', '````board new id=b2 title="新的一板"', '内容', '````', '````board pin id=k1', '$A=\\alpha\\beta^T$', '````', '````board unpin id=k0', '````', '放好了点确定。'].join('\n'), { final: true });
   assert.deepEqual(ops.map((o) => [o.op, o.id]), [['new', 'b2'], ['pin', 'k1'], ['unpin', 'k0']]);
