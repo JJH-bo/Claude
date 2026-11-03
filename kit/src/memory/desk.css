@@ -503,3 +503,13 @@
 :root[data-theme="xuan"] .dk-stat, :root[data-theme="xuan"] .dk-rv, :root[data-theme="xuan"] .dk-look-btn:not([aria-pressed="true"]) { background: #2c2c2e; box-shadow: none; }
 :root[data-theme="xuan"] .dk-deck { background: #2c2c2e; box-shadow: 0 7px 0 -4px #232325, 0 13px 0 -8px #1f1f21; }
 :root[data-theme="xuan"] .dk-look-btn[aria-pressed="true"] { box-shadow: inset 0 0 0 2px rgb(var(--blue-rgb)); }
+
+/* 墨夜：远山后面一弯月亮（主角卡的底色里画，山是上面那两层伪元素，所以月亮在山后面）；山脊是月光照亮的淡墨 */
+:root[data-theme="inknight"] .dk-class { background:
+  radial-gradient(circle at calc(100% - 118px) 58px, rgb(244 236 218 / 0.92) 0 15px, rgb(244 236 218 / 0.16) 16px, rgb(244 236 218 / 0.05) 34px, transparent 64px),
+  radial-gradient(420px 220px at calc(100% - 118px) 58px, rgb(240 226 196 / 0.05), transparent 70%),
+  var(--panel); }
+:root[data-theme="inknight"] .dk-class::before { background: linear-gradient(to bottom, rgb(var(--chalk-rgb) / 0.075), transparent 80%); }
+:root[data-theme="inknight"] .dk-class::after { background: linear-gradient(to bottom, rgb(var(--chalk-rgb) / 0.11), rgb(var(--chalk-rgb) / 0.02) 72%); }
+:root[data-theme="inknight"] .dk-stat { background: rgb(var(--chalk-rgb) / 0.04); }
+:root[data-theme="inknight"] .dk-eyebrow { color: rgb(var(--yellow-rgb)); }

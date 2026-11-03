@@ -18,7 +18,7 @@ export const PICKS = [
   { id: 'paper', name: '纸本', note: '暖白笔记纸，像在本子上写', sw: ['#f4efe4', '#fffdf8', '#28251f', '#b06c0a'] },
   { id: 'celadon', name: '青瓷', note: '浅青灰，白天看久了不刺眼', sw: ['#e5ece7', '#f8fbf9', '#1a2a28', '#b26812'] },
   { id: 'chalk', name: '黑板', note: '墨绿黑板，粉笔字，擦过的痕迹', sw: ['#233a31', '#2b463b', '#eef0e6', '#f2dc85'], dark: true },
-  { id: 'inknight', name: '墨夜', note: '水墨的夜里：浓墨的纸，米白的字', sw: ['#151413', '#1f1e1c', '#eae4d8', '#d6aa60'], dark: true },
+  { id: 'inknight', name: '墨夜', note: '水墨的夜里：黑漆描金，远山和月亮', sw: ['#131210', '#1f1e1b', '#eee8dc', '#d2ac6c'], dark: true },
   { id: 'xuan', name: '玄', note: 'iOS 的深色模式，纯黑、干净', sw: ['#000000', '#1c1c1e', '#ffffff', '#0a84ff'], dark: true },
 ];
 // 以前的几种，收在「更多」里
@@ -30,9 +30,22 @@ export const MORE = [
   { id: 'white', name: '白板', sw: ['#f3f5f8', '#ffffff', '#1f242e', '#cd7000'] },
 ];
 export const DAY_DEFAULT = 'ink';
-export const NIGHT_DEFAULT = 'chalk';
+export const NIGHT_DEFAULT = 'inknight';
 
+// 2026-11-03 我定下白天水墨、晚上墨夜：以前试样子时留下的那几种（没选过、水墨、黑板、墨夜、玄）换成「跟着 iPad」这一对，只换一次
+const PAIR_FLAG = `${KEY}-pair-1103`;
+function migratePair() {
+  try {
+    if (localStorage.getItem(PAIR_FLAG)) return;
+    localStorage.setItem(PAIR_FLAG, '1');
+    const raw = localStorage.getItem(KEY);
+    if (raw === null || ['ink', 'chalk', 'inknight', 'xuan', 'auto'].includes(raw)) {
+      localStorage.setItem(KEY, 'auto'); localStorage.setItem(`${KEY}-day`, 'ink'); localStorage.setItem(`${KEY}-night`, 'inknight');
+    }
+  } catch { /* 无痕模式 */ }
+}
 export function storedTheme(fallback = '') {
+  if (fallback === DESK_DEFAULT) migratePair();
   try {
     const raw = localStorage.getItem(KEY);
     if (raw === null) return fallback;
@@ -56,7 +69,8 @@ export function resolveTheme(t) {
   return darkMq()?.matches ? night : day;
 }
 export const isAuto = () => get(KEY, '') === 'auto';
-export const DESK_DEFAULT = 'ink';
+// 学习台没选过样子：跟着 iPad，白天水墨、晚上墨夜（2026-11-03 我定的一对）
+export const DESK_DEFAULT = 'auto';
 /** 换风格：写在 <html data-theme>（'' 是默认石墨），save 时记在这台设备上 */
 export function applyTheme(t, { save = false } = {}) {
   if (t === 'auto') {

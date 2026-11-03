@@ -405,59 +405,70 @@
 :root[data-theme^="ink"] .btn-primary:disabled { color: var(--chalk); background: rgb(var(--chalk-rgb) / 0.05); box-shadow: none; --frame: rgb(var(--chalk-rgb) / 0.3); }
 
 
-/* —— 墨夜：水墨的夜里那一面——一张浓墨的纸，字是宣纸的米白，几种颜料提亮一点；宋体、远山、朱砂印照旧。
-   和水墨一白一黑，「跟着 iPad 白天晚上」时最顺（2026-11-03 第三批：深色三种之一） —— */
+/* —— 墨夜（晚上默认，和白天的水墨一对，2026-11-03 我选的）：黑漆描金——一张浓墨的纸，字是宣纸的米白，
+   重点和主按钮是泥金，印是朱砂；远山后面升起一弯淡淡的月亮。版式、宋体、颜料的含义都和水墨一样，只是灯关了 —— */
 :root[data-theme="inknight"] {
-  --chalk-rgb: 234 228 216;
-  --yellow-rgb: 214 170 96;    /* 赭黄 */
-  --blue-rgb: 128 166 206;     /* 花青 */
-  --pink-rgb: 204 140 178;     /* 藕荷 */
-  --green-rgb: 118 176 146;    /* 石绿 */
-  --coral-rgb: 226 104 80;     /* 朱砂 */
+  --chalk-rgb: 238 232 220;
+  --yellow-rgb: 210 172 108;   /* 泥金：重点、结果、主按钮 */
+  --blue-rgb: 140 172 206;     /* 花青 */
+  --pink-rgb: 208 150 180;     /* 藕荷 */
+  --green-rgb: 130 180 150;    /* 石绿 */
+  --coral-rgb: 226 100 76;     /* 朱砂 */
   --shade-rgb: 0 0 0;
   --glow-rgb: 255 246 230;
-  --board-rgb: 21 20 19;
-  --board-2-rgb: 30 29 27;
-  --board-3-rgb: 15 14 13;
-  --bar-rgb: 21 20 19;
-  --halo-rgb: 21 20 19;
-  --muted: #9a9387;
-  --orange: #d29a62;
-  --lav: #a8a0d8;
+  --board-rgb: 18 17 15;
+  --board-2-rgb: 27 26 23;
+  --board-3-rgb: 13 12 11;
+  --bar-rgb: 18 17 15;
+  --halo-rgb: 18 17 15;
+  --muted: #9d968a;
+  --body: rgb(var(--chalk-rgb) / 0.86);
+  --orange: #d39a5e;
+  --lav: #aaa2d6;
   --wood: #3a3631;
   --wood-hi: #4a453e;
   --wood-dk: #2a2723;
-  --flash: #f2cf7a;
-  --ink-white: #eae4d8;
-  --ink-yellow: #d6aa60;
-  --ink-pink: #cc8cb2;
-  --ink-blue: #80a6ce;
-  --accent-ink: #161513;
-  --grp-ink: #161513;
-  --g1: #80a6ce; --g2: #cc8cb2; --g3: #76b092; --g4: #a8a0d8; --g5: #d6aa60; --g6: #d29a62;
+  --flash: #f0cf86;
+  --sel-ink: #f6f0e4;
+  --ink-white: #eee8dc;
+  --ink-yellow: #d2ac6c;
+  --ink-pink: #d096b4;
+  --ink-blue: #8cacce;
+  --accent-ink: #17140f;
+  --grp-ink: #17140f;
+  --g1: #8cacce; --g2: #d096b4; --g3: #82b496; --g4: #aaa2d6; --g5: #d2ac6c; --g6: #d39a5e;
   --page-bg:
-    radial-gradient(900px 600px at 85% -10%, rgba(255, 240, 220, 0.05), transparent 70%),
-    radial-gradient(800px 600px at 0% 110%, rgba(255, 240, 220, 0.035), transparent 70%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .88 0 0 0 .045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #181716 0%, #151413 60%, #121110 100%);
-  --keypad-bg: linear-gradient(#24221f, #1c1b19);
-  --key-bg: linear-gradient(#2f2d29, #272522);
+    radial-gradient(1100px 520px at 50% -16%, rgba(240, 226, 196, 0.055), transparent 70%),
+    radial-gradient(1400px 900px at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.35) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='2' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .86 0 0 0 .028 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #171614 0%, #131210 60%, #100f0e 100%);
+  --keypad-bg: linear-gradient(#23211e, #1b1a18);
+  --key-bg: linear-gradient(#2e2c28, #262420);
   --key-active: #3a3732;
-  --card-front: #1e1d1b;
-  --card-back: #23211f;
-  --sheet-bg: linear-gradient(170deg, #1f1e1c, #171614);
-  --sheet-bg-2: linear-gradient(170deg, #1f1e1c, #141312);
-  --slate-bg: linear-gradient(170deg, #22201e, #191816);
-  --card-solid: #1f1e1c; --card-solid-rgb: 31 30 28; --card-hover: #252422;
-  --panel: #1d1c1a;
-  --panel-edge: inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.09);
-  --lift: 0 1px 2px rgb(0 0 0 / 0.3), 0 14px 34px -18px rgb(0 0 0 / 0.7);
-  --field: rgb(var(--chalk-rgb) / 0.055);
+  --card-front: #1d1c1a;
+  --card-back: #22211e;
+  --sheet-bg: linear-gradient(170deg, #1e1d1b, #161513);
+  --sheet-bg-2: linear-gradient(170deg, #1e1d1b, #131211);
+  --slate-bg: linear-gradient(170deg, #211f1d, #181715);
+  --card-solid: #1e1d1b; --card-solid-rgb: 30 29 27; --card-hover: #24231f;
+  --panel: linear-gradient(180deg, #1f1e1b, #1a1917);
+  --panel-edge: inset 0 1px 0 rgb(255 245 225 / 0.05), inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.1);
+  --lift: 0 1px 2px rgb(0 0 0 / 0.35), 0 18px 40px -22px rgb(0 0 0 / 0.8);
+  --field: rgb(var(--chalk-rgb) / 0.05);
   --field-edge: inset 0 0 0 0.5px rgb(var(--chalk-rgb) / 0.07);
-  --btn-bg: rgb(var(--chalk-rgb) / 0.08);
+  --btn-bg: rgb(var(--chalk-rgb) / 0.075);
   --btn-bg-hi: rgb(var(--chalk-rgb) / 0.12);
-  --seg-on: #33312d;
+  --seg-on: #34322d;
+  --mk-fill-a: .38; --hl-a: .36;
 }
+/* 墨夜的主按钮是泥金（水墨里是浓墨）；印上的字是米白 */
+:root[data-theme="inknight"] .btn-primary { color: var(--accent-ink); background: linear-gradient(180deg, rgb(222 188 128), rgb(196 156 92)); box-shadow: inset 0 1px 0 rgb(255 240 210 / 0.45), 0 10px 22px -12px rgb(210 172 108 / 0.55); }
+:root[data-theme="inknight"] .btn-primary:hover { background: linear-gradient(180deg, rgb(230 198 140), rgb(206 166 100)); }
+:root[data-theme="inknight"] .btn-primary:disabled { color: rgb(var(--yellow-rgb)); background: rgb(var(--yellow-rgb) / 0.08); box-shadow: none; --frame: rgb(var(--yellow-rgb) / 0.4); }
+:root[data-theme="inknight"] .la-lesson .dk-title::before { color: #f6efe2; }
+:root[data-theme="inknight"] .dk-nav a[aria-current="true"] { background: rgb(var(--chalk-rgb) / 0.92); }
+:root[data-theme="inknight"] .cb-send { background: rgb(var(--yellow-rgb)); color: var(--accent-ink); }
+:root[data-theme="inknight"] .st-n::before { background: rgb(var(--yellow-rgb)); }
 
 /* —— 玄：iOS 的深色模式——纯黑的底（iPad 的 OLED 屏上省电、最干净），一张张深灰的分组卡片，
    系统那几种鲜亮的颜色；字全是苹方 / San Francisco，没有纹理、没有手写，最现代的一种 —— */
