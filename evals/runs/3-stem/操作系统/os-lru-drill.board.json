@@ -35,7 +35,7 @@
       "seq": 5,
       "page": 4,
       "title": "FIFO 还是 LRU",
-      "md": "最后混着来：每一题页面挑 FIFO 或 LRU（看题目里写的算法），写出依次换出的页。做对 2 题。\n\n```practice\nid: pr-mix\ntitle: 混着练\nuse: paging\ncount: 2\npick a = word(fifo, lru)\nalgo: \\calc{a}\nframes: 3\nquiz: victims\n```"
+      "md": "最后混着来：每一题页面挑 FIFO 或 LRU（看题目里写的算法），写出依次换出的页。做对 2 题。\n\n```practice\nid: pr-mix\ntitle: 混着练\nuse: paging\ncount: 2\npick a = word(fifo, lru)\npick r = seq(12, 0, 5)\nalgo: \\calc{a}\nrefs: \\calc{list(r)}\nframes: 3\nquiz: victims\n```"
     }
   ]
 }
