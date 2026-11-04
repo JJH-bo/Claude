@@ -280,7 +280,9 @@ export function planEntry(entry, ctx = {}) {
   const get = (c) => (Array.isArray(mem[c]) ? mem[c] : []);
   const find = (c, id) => get(c).find((d) => String(d.id) === String(id));
   const { ids: basis, missing } = resolveBasis(a.basis, ctx);
-  if (missing.length) return { error: `basis 里的 ${missing.join('、')} 找不到（写证据 id、记忆里的编号、黑板上的组件 id 或段 id，或者 say 指学生刚说的话）` };
+  // 依据里有找不到的（多半是讲解的段：上面没有作答，就没有证据）：还有别的依据、或者这一类本来不用依据，就去掉找不到的照记，
+  // 不整条拒掉——2026-11-02 那节课下课时 position 因为 basis=b32 找不到整条没记，下一节从哪接就丢了
+  if (missing.length && (NEED_BASIS.has(kind) && !basis.length)) return { error: `basis 里的 ${missing.join('、')} 找不到（写证据 id、记忆里的编号、黑板上的组件 id 或段 id，或者 say 指学生刚说的话）` };
   // 整理（合并、作废、停掉、退役）和改偏好的说法不用依据；新的结论、改证据级要
   const tidy = ['merged', 'void', 'retired', 'done'].includes(a.status);
   if (NEED_BASIS.has(kind) && !basis.length && !tidy && !(kind === 'pref' && a.id)) return { error: `${spec.label}要写依据：basis=组件 id / 证据 id / say（没有依据的结论不记）` };
@@ -440,7 +442,9 @@ export function planEntry(entry, ctx = {}) {
       // 题面、学生的答案没写：从依据里那次作答补上
       const rec = (ctx.evidence || []).filter((e) => basis.includes(e.id) && e.src === 'record').at(-1);
       const q = a.q || rec?.q || '';
-      const mine = a.mine || rec?.value || rec?.last || rec?.text || '';
+      // 选择题的记录没有 value：错选过的选项就是学生的答案（2026-11-02 qz-b29 的错题因为这个没记上）
+      const picks = Array.isArray(rec?.wrong) && rec.wrong.length ? `先选了 ${rec.wrong.join('、')}${rec.ok ? '，后来才选对' : ''}` : '';
+      const mine = a.mine || rec?.value || rec?.last || rec?.text || picks || '';
       for (const [k, v] of [['q', q], ['mine', mine], ['step', a.step], ['cause', a.cause]]) if (!v) return { error: `错题要写 ${k}${k === 'q' || k === 'mine' ? '（或者 basis 写那道题的组件 id，页面从作答里补）' : ''}` };
       const block = a.block || ctx.block || null;
       let id = a.id;
@@ -492,6 +496,12 @@ export function planEntry(entry, ctx = {}) {
         if (addE.length) patch.errors = [...(old.errors || []), ...addE];
         const addB = (a.blocks || []).filter((b) => !(old.blocks || []).includes(b));
         if (addB.length) patch.blocks = [...(old.blocks || []), ...addB];
+        // 只写了依据（同一个弱点这节课又出现了）：记下又出现、依据接上，不当成「没有要改的」拒掉
+        if (!Object.keys(patch).length && basis.length) {
+          const had = Array.isArray(old.basis) ? old.basis : [];
+          const more = basis.filter((x) => !had.includes(x));
+          if (more.length) { patch.basis = [...had, ...more].slice(-30); patch.last = date; }
+        }
         if (!Object.keys(patch).length) return { error: `${a.id} 没有要改的（level / scope / status / errors / blocks 都和现在一样）` };
         patch.last = date;
         return { ...base, op: 'update', target: old.id, patch };

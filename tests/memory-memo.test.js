@@ -100,7 +100,10 @@ test('分档：都直接写（规则也是，2026-11-03）；偏好什么 topic 
   // 弱点：改已有的（证据级）只记改了的字段；新的自动编号
   const w = run('weakness id=W19 level=L0 basis=q-b5');
   assert.deepEqual(w.patch, { level: 'L0', last: TODAY });
-  assert.match(run('weakness id=W19 level=L1 basis=q-b5').error, /没有要改的/);
+  // 证据级没变、只带了新依据（又出现了一次）：接上依据、记最近一次，不拒掉
+  const again = run('weakness id=W19 level=L1 basis=q-b5');
+  assert.equal(again.patch.last, TODAY);
+  assert.ok(again.patch.basis.length > 0);
   assert.match(run('weakness id=W19 level=L9 basis=q-b5').error, /level 只能是/);
   assert.equal(run('weakness title="分不清行列" scope=局部 level=L1 basis=q-b5').target, 'W20');
   // 复现组：判结果按档位走；加题；新组从明天开始

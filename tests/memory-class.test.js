@@ -280,7 +280,7 @@ test('memory_read：按集合、编号查（只读）；不写编号列这一类
 test('board new / add / replace / pin 可以写 point=（这一段练的知识点）', () => {
   assert.deepEqual(parseCommand('new id=b3 title="内积还是外积" point=tr'), { op: 'new', id: 'b3', title: '内积还是外积', point: 'tr' });
   assert.equal(parseCommand('add id=b4 point=ab-c_1').point, 'ab-c_1');
-  assert.match(parseCommand('add id=b4 point=a.b').error, /point「a.b」只能用字母、数字、- 和 _/);
+  { const r = parseCommand('add id=b4 point=a.b'); assert.equal(r.point, undefined); assert.match(r.warn, /point「a.b」没用上/); assert.equal(r.id, 'b4'); }
   assert.equal(parseCommand('hide id=b4 point=x').point, undefined);
   const out = parseOutput('````board new id=b5 point=tr\n内容\n````', { final: true });
   assert.equal(out.ops[0].point, 'tr');

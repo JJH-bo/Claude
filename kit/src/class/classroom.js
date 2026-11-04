@@ -276,7 +276,9 @@ export async function renderClass(root, meta, desk = null) {
     const block = (desk.mem?.curriculum || []).find((x) => x.id === (desk.block || pack.main?.block));
     // 这节课取过的条目一直留着（只算 Opus 5.5 讲完的轮：作废的轮不进 history 的有效记录）
     const calls = history.filter((t) => t && !t.discarded && t.role === 'claude' && Array.isArray(t.tools)).flatMap((t) => t.tools);
-    const read = calls.length ? readHistory(calls, b.chunks, b.books) : [];
+    // 上一节同一块取过的（desk.prevRead）排在前面，这节课取的在后面（最近取的优先留着）
+    const mine = calls.length ? readHistory(calls, b.chunks, b.books) : [];
+    const read = [...(desk.prevRead || []).filter((id) => !mine.includes(id)), ...mine];
     return textbookForClass({ main: pack.main, block, books: b.books, chunks: b.chunks, tools, read });
   }
   function packForPrompt(tools) {
@@ -773,6 +775,7 @@ export async function renderClass(root, meta, desk = null) {
 
   // 执行一条黑板指令。返回 { op, id, ok, error?, ... }；画不出来的 new/add/replace/pin 记进 failures 等着重写
   function execOp(op, failures, notes) {
+    if (op.warn) notes.push(`${op.op} ${op.id || ''}：${op.warn}`);
     // 教学计划：不上黑板；下一轮从对话历史里取最新的一份放进说明（prompt.js 的 latestPlan）
     if (op.op === 'plan') return { op: 'plan', ok: true, ...(op.cut ? { note: `plan 写了 ${op.cut} 个字，只留了前 ${PLAN_MAX} 个` } : {}) };
     if (op.op === 'memo') {
@@ -1971,7 +1974,7 @@ export async function renderClass(root, meta, desk = null) {
           staged.calls.push({ name: 'textbook_read', input: { ids, ...(pages ? { pages } : {}), ...(book ? { book } : {}) } });
           if (!ids.length && !pages) throw new Error('要写 ids（条目编号或范围）或者 pages（书页）');
           const r = readChunks(desk.books.chunks, desk.books.books, ids, { pages, book });
-          return { text: r.text || '（一条都没找到）', ...(r.missing.length ? { missing: r.missing } : {}), ...(r.more.length ? { more: r.more, note: '一次放不下，剩下的再取一次' } : {}) };
+          return { text: r.text || '（一条都没找到）', ...(r.missing.length ? { missing: r.missing } : {}), ...(r.more.length ? { more: r.more, note: `一次放不下，还有 ${r.more.length} 条没给：要的话 ids 写 ["${r.more[0]}~${r.more.at(-1)}"] 再取一次（别换着页码重取前面已经给了的）` } : {}) };
         },
       }, {
         name: 'textbook_search',

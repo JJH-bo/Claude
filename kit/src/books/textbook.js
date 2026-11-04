@@ -103,7 +103,9 @@ export function readChunks(chunks = [], books = [], ids = [], { max = 48 * 1024,
   const got = [];
   const more = [];
   let used = 0;
-  for (const id of [...new Set(want)].slice(0, 80)) {
+  // 一次最多 150 条（再多由 48 KB 的上限管）：多出来的也算进 more（以前悄悄截掉，2026-11-02 取「20-40 页」只拿到前半，它换着页码又取了 5 次）
+  for (const [k, id] of [...new Set(want)].entries()) {
+    if (k >= 150) { more.push(id); continue; }
     const c = chunks.find((x) => x.id === id);
     if (!c) { missing.push(id); continue; }
     const t = chunkText(c, books.find((b) => b.id === c.book));
