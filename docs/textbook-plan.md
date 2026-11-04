@@ -6,7 +6,7 @@
 
 ## 事实
 
-- 页面里的 Claude（`sample`）只收文字和图片，不收 PDF、Word。所以由页面把文件变成它能读的：Word / PowerPoint 页面自己解压取字（不花额度）；PDF 用 pdf.js 一页画成一张图，交给 Opus 5.5 看图转写。
+- 页面里的 Claude（`sample`）只收文字和图片，不收 PDF、Word。所以由页面把文件变成它能读的：Word / PowerPoint 页面自己解压取字（不花额度）；PDF 用 pdf.js 一页画成一张图，交给 Claude 看图转写（2026-11-04 起用 Haiku 5.5：一本书三四百页，Opus 转太费额度；课堂讲课照旧只用 Opus 5.5）。
 - 扫描版没有文字层，只能看图转写。看图的成本主要在**一次**：每页一张图（约一两千 token）加上转出来的字。转一次存起来，以后每节课按编号取几条，不用再看图。claude.ai 项目知识库里的扫描 PDF 是每次用到都要重新处理，慢、也贵。
 - 一次最多附几张图由平台定（`limits().images.maxCount`），一次转 3 页（`PAGES_PER_CALL`），两批同时转。
 

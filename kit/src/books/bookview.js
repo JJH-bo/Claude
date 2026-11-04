@@ -4,7 +4,7 @@ import { ask } from '../dialog.js';
 import { mdToHtml, escapeHtml } from '../render.js';
 import { toast } from '../record.js';
 import { assetUrl } from '../live/store.js';
-import { createImporter, kindOfFile, FILE_KINDS } from './importer.js';
+import { createImporter, kindOfFile, FILE_KINDS, TRANSCRIBE, modelName } from './importer.js';
 import { nextBookCode, PAGES_PER_CALL } from './ingest.js';
 import { openPdf } from './pdf.js';
 import { BOOK_KINDS, chunkLine } from './textbook.js';
@@ -16,7 +16,7 @@ const docsOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 const STATUS = { importing: '正在导入', partial: '没转完', ready: '转好了' };
 
 /**
- * host：放页面的元素；db、assets：学习台的；getAI()：取页面里的 Claude；space()：现在看着哪一科；model：转写用的模型；
+ * host：放页面的元素；db、assets：学习台的；getAI()：取页面里的 Claude；space()：现在看着哪一科；model：不用了（转写用 importer.js 的 TRANSCRIBE）；
  * plan：plan.js 的「挂到课程地图」（第 3 批，可以不给）
  */
 export function createBooksView(host, { db, assets, getAI, space, model, plan = null }) {
@@ -40,7 +40,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
     if (importer) return importer;
     const ai = await getAI();
     if (!ai?.images) throw new Error('这个学习台现在不能把图片交给 Claude（发布时要声明 sample 的 images），转写不了扫描页');
-    importer = createImporter({ db, assets, ai, model, onProgress: (p) => { progress = p; if (p.stage === 'done') { chunksCache.delete(p.book); pagesCache.delete(p.book); } paintProgress(); } });
+    importer = createImporter({ db, assets, ai, onProgress: (p) => { progress = p; if (p.stage === 'done') { chunksCache.delete(p.book); pagesCache.delete(p.book); } paintProgress(); } });
     return importer;
   }
 
@@ -117,8 +117,8 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
   // 估算：扫描页每 PAGES_PER_CALL 页一次调用（每页一张图，约一两千 token，加上转出来的字）
   function costText(from = null, to = null) {
     const n = pdfPages ? Math.max(0, Math.min(pdfPages, to || pdfPages) - Math.max(1, from || 1) + 1) : null;
-    return n === null ? `扫描页每 ${PAGES_PER_CALL} 页一次调用。整本几百页要几十次，花的额度不少：可以先转这一讲要用的几十页，以后再接着转别的页。`
-      : `这个 PDF 一共 ${pdfPages} 页。转 ${n} 页约 ${Math.ceil(n / PAGES_PER_CALL)} 次调用（每次 ${PAGES_PER_CALL} 页），每页约两三千 token（图 + 转出来的字；图先裁掉白边、空白页不调用）。可以先转这一讲要用的几十页，以后再接着转。`;
+    return n === null ? `扫描页每 ${PAGES_PER_CALL} 页一次调用（用 ${modelName(TRANSCRIBE.model)} 转写）。整本几百页要几十次：可以先转这一讲要用的几十页，以后再接着转别的页。`
+      : `这个 PDF 一共 ${pdfPages} 页。转 ${n} 页约 ${Math.ceil(n / PAGES_PER_CALL)} 次调用（每次 ${PAGES_PER_CALL} 页），用 ${modelName(TRANSCRIBE.model)} 转写（比 Opus 省得多），图先裁掉白边、空白页不调用。可以先转这一讲要用的几十页，以后再接着转。`;
   }
   function paintCost() {
     const f = host.querySelector('.bk-form');
@@ -136,7 +136,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
     const checked = chunks ? chunks.filter((c) => c.checked).length : 0;
     return `<p><a class="dk-link" href="#books">← 资料</a></p>
       <section class="dk-card"><h2 class="dk-h">${esc(b.id)} ${esc(b.title || '')}</h2>
-        <p class="muted">${esc(BOOK_KINDS[b.kind] || '')} · ${esc(STATUS[b.status] || '')}${b.chunks ? ` · ${b.chunks} 条` : ''}${chunks ? ` · 核对过 ${checked} 条` : ''}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}${savedText(b.cost)}</p>
+        <p class="muted">${esc(BOOK_KINDS[b.kind] || '')} · ${esc(STATUS[b.status] || '')}${b.chunks ? ` · ${b.chunks} 条` : ''}${chunks ? ` · 核对过 ${checked} 条` : ''}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}${savedText(b.cost)}${b.cost?.model ? ` · ${esc(modelName(b.cost.model))} 转写` : ''}</p>
         <div class="mm-acts">
           ${bad.length ? `<button type="button" class="btn btn-primary bk-resume" data-book="${esc(id)}">接着转（${bad.length} 页）</button>` : ''}
           ${plan ? `<button type="button" class="btn bk-plan" data-book="${esc(id)}">挂到课程地图</button>` : ''}

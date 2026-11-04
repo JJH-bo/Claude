@@ -50,7 +50,7 @@ export function createDevAI() {
       const p = String(prompt);
       const text = p.startsWith('你在把一本教材的扫描页') ? transcribe(p) : p.startsWith('你在帮学生整理学习台的课程地图') ? map(p) : p.startsWith('你是这个学生的老师，现在给下一节课备课') ? prep(p) : p.startsWith('你在给学生的一节课的题归类') ? skills(p) : '{}';
       opts.onText?.({ text, delta: text });
-      return { text, truncated: false, modelApplied: 'claude-opus-5-5', modelTierApplied: 'complex' };
+      return { text, truncated: false, modelApplied: opts.model || 'claude-opus-5-5', modelTierApplied: opts.modelTier || 'complex' };
     },
   };
 }

@@ -16,15 +16,20 @@ export const FILE_KINDS = [
 ];
 export const kindOfFile = (f) => FILE_KINDS.find((k) => k.re.test(f?.name || ''))?.kind || (String(f?.type || '').startsWith('image/') ? 'notes' : '');
 const PAGE_WIDTH = 1200; // 存进学习台的原页图：核对够清楚，300 页约 40–50 MB（assets 一共 100 MB）
+// 看图转写用 Haiku 5.5（2026-11-04 我定的：一本书三四百页，Opus 转太费额度；Haiku 的价钱约是 Opus 的四十分之一）。
+// 转写是认字、不是讲课，课堂讲课照旧只用 Opus 5.5（classroom.js 的 TEACH）。modelTier 是平台给的退路档，
+// 实际是哪个模型转的记在每一页的 by 和书的 cost.model 上，教材页显示出来
+export const TRANSCRIBE = { model: 'claude-haiku-5-5', modelTier: 'quick', effort: 'medium' };
+export const modelName = (id) => ({ 'claude-haiku-5-5': 'Haiku 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-opus-5-5': 'Opus 5.5' })[id] || id || '';
 const WORKERS = 3; // 同时转写几批：被限流就自动少一批（limit），这次导入一直按少的来
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const docsOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
 /**
- * db：学习台的数据库；assets：存原页图；ai：getAI() 的结果（要能发图）；model：转写用的模型；
+ * db：学习台的数据库；assets：存原页图；ai：getAI() 的结果（要能发图）；model：不用了（转写用 TRANSCRIBE）；
  * onProgress({ book, stage, done, total, msg })：进度（stage：read / render / transcribe / save / done / error）
  */
-export function createImporter({ db, assets, ai, model, onProgress = () => {} }) {
+export function createImporter({ db, assets, ai, onProgress = () => {} }) {
   let stopFlag = false;
   let busy = null; // 正在转的书的编号
   const report = (p) => { try { onProgress(p); } catch { /* 画面的错不影响入库 */ } };
@@ -32,6 +37,7 @@ export function createImporter({ db, assets, ai, model, onProgress = () => {} })
   let calls = 0; // 这次调用了 Claude 几次（拼条目时记进书的 cost）
   let saved = { tokens: 0, full: 0, blank: 0 }; // 裁白边、跳过空白页省下的（拼条目时记进书的 cost）
   let noEffort = false;
+  let usedModel = ''; // 平台实际用哪个模型转的（拼条目时记进书的 cost.model）
   let limit = WORKERS;
 
   async function upload(blob) {
@@ -208,8 +214,10 @@ export function createImporter({ db, assets, ai, model, onProgress = () => {} })
       for (let attempt = 0; attempt < 2 && !res; attempt++) {
         try {
           calls++;
-          // 看图转写是认字、不是推理：effort 用 medium 省思考的 token；这个查看方式不认 effort 时去掉它再试
-          res = await ai.call(prompt, { model, ...(noEffort ? {} : { effort: 'medium' }), modelTier: 'complex', images, cache: false });
+          // 这个查看方式不认 effort 时去掉它再试
+          const { effort, ...pick } = TRANSCRIBE;
+          res = await ai.call(prompt, { ...pick, ...(noEffort ? {} : { effort }), images, cache: false });
+          if (res?.modelApplied) usedModel = res.modelApplied;
         } catch (e) {
           if (!noEffort && ['invalid_argument', 'invalid_request', 'bad_request', 'unsupported_option'].includes(e?.code)) { noEffort = true; attempt--; continue; }
           if (e?.code === 'rate_limited' && attempt === 0) {
@@ -292,7 +300,8 @@ export function createImporter({ db, assets, ai, model, onProgress = () => {} })
     // 图的 token：裁白边以后实际交出去的、不裁要交的（空白页整页算省下的），给教材页显示省了多少
     const was = info.cost || {};
     const cost = { calls: (was.calls || 0) + calls, pages: pages.filter((p) => p.status === 'done').length,
-      imgTokens: (was.imgTokens || 0) + saved.tokens, imgFull: (was.imgFull || 0) + saved.full, blank: (was.blank || 0) + saved.blank };
+      imgTokens: (was.imgTokens || 0) + saved.tokens, imgFull: (was.imgFull || 0) + saved.full, blank: (was.blank || 0) + saved.blank,
+      ...(usedModel || was.model ? { model: usedModel || was.model } : {}) };
     calls = 0;
     saved = { tokens: 0, full: 0, blank: 0 };
     await db.doc(`books/${book}`).set({ ...info, status: left ? 'partial' : 'ready', chunks: chunks.length, toc, pagesDone: cost.pages, pagesLeft: left, cost, at: Date.now() });

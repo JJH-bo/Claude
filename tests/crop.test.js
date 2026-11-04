@@ -60,3 +60,9 @@ test('缩小图的框换回原图向外取整；token 估算', () => {
   assert.equal(imageTokens(1200, 1697), 2716);
   assert.ok(imageTokens(4000, 6000) <= 5000);
 });
+
+test('看图转写用 Haiku 5.5', async () => {
+  const { TRANSCRIBE, modelName } = await import('../kit/src/books/importer.js');
+  assert.equal(TRANSCRIBE.model, 'claude-haiku-5-5');
+  assert.equal(modelName(TRANSCRIBE.model), 'Haiku 5.5');
+});
