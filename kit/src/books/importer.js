@@ -25,7 +25,7 @@ const PAGE_WIDTH = 1200; // 存进学习台的原页图：核对够清楚，300 
 // 页面里转写的代码留着：TRANSCRIBE_HERE 改回 true 就是原来那样
 export const TRANSCRIBE_HERE = false;
 export const TRANSCRIBE = { model: 'claude-haiku-5-5', modelTier: 'quick', effort: 'medium' };
-export const modelName = (id) => ({ 'claude-haiku-5-5': 'Haiku 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-opus-5-5': 'Opus 5.5', codex: 'Codex' })[id] || id || '';
+export const modelName = (id) => ({ 'claude-haiku-5-5': 'Haiku 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-opus-5-5': 'Opus 5.5', codex: 'Codex', chat: '项目里的 Claude' })[id] || id || '';
 const WORKERS = 3;
 const UPLOADS = 4; // 只存不转时，同时传几页原图（传图主要是等网络） // 同时转写几批：被限流就自动少一批（limit），这次导入一直按少的来
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

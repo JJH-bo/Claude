@@ -5,7 +5,7 @@ import { mdToHtml, escapeHtml } from '../render.js';
 import { toast } from '../record.js';
 import { assetUrl } from '../live/store.js';
 import { createImporter, kindOfFile, FILE_KINDS, TRANSCRIBE, TRANSCRIBE_HERE, modelName } from './importer.js';
-import { nextBookCode, PAGES_PER_CALL } from './ingest.js';
+import { nextBookCode, PAGES_PER_CALL, parseTranscription } from './ingest.js';
 import { openPdf } from './pdf.js';
 import { BOOK_KINDS, chunkLine } from './textbook.js';
 import { SPACES } from '../memory/space.js';
@@ -54,6 +54,24 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
       for (const d of docs) {
         const book = String(d.book || '');
         if (!/^B\d+$/.test(book)) continue;
+        // 项目对话里的 Claude（或别处）直接写转写原文：{ book, text: '=== 第 82 页\n--- 定义 | …', by }，这里读懂（和页面里转写同一个 parseTranscription），
+        // 学习台里还没有的页照样建（原页图以后「存进学习台」时补）；读的结果写一条回执 book_inbox_log/{同一个 id}，它下次能查
+        if (typeof d.text === 'string') {
+          let log = { book, at: Date.now() };
+          try {
+            const { pages } = parseTranscription(d.text, []);
+            d.pages = Object.fromEntries([...pages].map(([n, items]) => [n, items]));
+            d.meta = { ...Object.fromEntries([...pages.keys()].map((n) => [n, {}])), ...(d.meta || {}) };
+            const ns = [...pages.keys()].sort((a, b) => a - b);
+            const gaps = [];
+            for (let i = 1; i < ns.length; i++) for (let n = ns[i - 1] + 1; n < ns[i]; n++) gaps.push(n);
+            log = { ...log, pages: ns, items: ns.reduce((s, n) => s + pages.get(n).length, 0), gaps, unclear: ns.filter((n) => pages.get(n).some((it) => /【看不清】/.test(it.text || ''))) };
+          } catch (e) {
+            d.pages = {};
+            log = { ...log, error: String(e?.message || e) };
+          }
+          await db.doc(`book_inbox_log/${d.id}`).set(log).catch(() => {});
+        }
         // 从仓库里的 PDF 转的：书、页在学习台里可能还没有，收件箱带着书的信息（info）和每页的原页图（meta）一起建
         if (d.info) {
           const bref = db.doc(`books/${book}`);
