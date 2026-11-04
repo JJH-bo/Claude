@@ -99,14 +99,16 @@ export async function renderDesk(root, meta) {
     <div class="dk-home">
     <div class="dk-col">
     <section class="dk-card dk-class" hidden aria-label="上课"><div class="dk-body"></div></section>
-    <section class="dk-card dk-today" hidden><h2 class="dk-h">复现</h2><div class="dk-body"></div></section>
-    <section class="dk-card dk-drill" hidden><h2 class="dk-h">练一练</h2><p class="dk-sub muted">页面从以前课上的题里挑几道，不同块混着做，页面判分，不调用 Claude。</p><div class="dk-body"></div></section>
+    <section class="dk-card dk-group" aria-label="今天">
+    <div class="dk-part dk-today" hidden><h2 class="dk-h">复现</h2><div class="dk-body"></div></div>
+    <div class="dk-part dk-recall" hidden><h2 class="dk-h">要记的</h2><p class="dk-sub muted">先写出来，再看答案。隔 1、3、7、14、30 天各想一遍。</p><div class="dk-body"></div><details class="dk-fold dk-radd"><summary><span class="muted">自己加一条</span></summary><div class="dk-radd-f"></div></details></div>
+    <div class="dk-part dk-drill" hidden><h2 class="dk-h">练一练</h2><p class="dk-sub muted">页面从以前课上的题里挑几道，不同块混着做，页面判分，不调用 Claude。</p><div class="dk-body"></div></div>
+    <div class="dk-part dk-manual" hidden><details class="dk-fold"><summary><h2 class="dk-h">补记</h2><span class="muted">在学习台外面做的题，写一句或贴张图</span></summary><div class="dk-body"></div><div class="dk-mlist"></div></details></div>
+    </section>
     </div>
     <div class="dk-col dk-col-side">
     <section class="dk-card dk-week" hidden><h2 class="dk-h">这一周</h2><div class="dk-body"></div></section>
-    <section class="dk-card dk-recall" hidden><h2 class="dk-h">要记的</h2><p class="dk-sub muted">先写出来，再看答案。隔 1、3、7、14、30 天各想一遍。</p><div class="dk-body"></div><details class="dk-fold dk-radd"><summary><span class="muted">自己加一条</span></summary><div class="dk-radd-f"></div></details></section>
     <section class="dk-card dk-pending" hidden><h2 class="dk-h">还没写进去的</h2><p class="dk-sub muted">以前留下的，点「全部确认」写进去，或者「全部不要」。</p><div class="dk-popen"></div></section>
-    <section class="dk-card dk-manual" hidden><details class="dk-fold"><summary><h2 class="dk-h">补记</h2><span class="muted">在学习台外面做的题，写一句或贴张图</span></summary><div class="dk-body"></div><div class="dk-mlist"></div></details></section>
     </div>
     </div>
     <div class="dk-manage" hidden>
@@ -364,7 +366,7 @@ export async function renderDesk(root, meta) {
       ${openPd.length ? `<p><a class="dk-link dk-to-pending" href="#">还有 ${openPd.length} 条以前留下的没写进去 ↓</a></p>` : ''}
       <div class="dk-hero">
         <p class="dk-eyebrow">${escapeHtml(SPACES[space].label)} · ${open ? '这节课还没下课' : main ? '备好的下一节' : '下一节'}${main?.by === 'desk' ? '<span class="muted"> · 学习台备的</span>' : ''}</p>
-        <h2 class="dk-hero-t">${inline(open ? (open.title && open.title !== unit ? open.title : (open.block && data.curriculum.find((c) => String(c.id) === String(open.block))?.title) || heroT) : heroT)}</h2>
+        <h2 class="dk-hero-t">${supRuns(inline(open ? (open.title && open.title !== unit ? open.title : (open.block && data.curriculum.find((c) => String(c.id) === String(open.block))?.title) || heroT) : heroT))}</h2>
         ${heroS ? `<p class="dk-hero-s dk-goal" title="点一下看全文">${inline(heroS)}</p>` : ''}
         ${debts.length ? `<p class="dk-debts"><span class="dk-k">欠账</span>${debts.map((x) => `<span class="dk-chip">${inline(x)}</span>`).join('')}</p>` : ''}
         <div class="dk-hero-acts">
@@ -529,8 +531,8 @@ export async function renderDesk(root, meta) {
     const t = recallToday(data.recall, { today });
     const body = box.querySelector('.dk-body');
     body.innerHTML = t.items.length
-      ? `<div class="dk-deck"><span class="dk-deck-n">${t.total}</span><span class="dk-deck-t">条今天要想<small>${escapeHtml(spaceCounts(t.bySpace))}${t.total > t.items.length ? ` · 这次先想 ${t.items.length} 条` : ''}</small></span></div>
-        <button type="button" class="btn btn-primary dk-recall-go">开始</button>`
+      ? `<div class="dk-deckrow"><div class="dk-deck"><span class="dk-deck-n">${t.total}</span><span class="dk-deck-t">条今天要想<small>${escapeHtml(spaceCounts(t.bySpace))}${t.total > t.items.length ? ` · 这次先想 ${t.items.length} 条` : ''}</small></span></div>
+        <button type="button" class="btn btn-primary dk-recall-go">开始</button></div>`
       : `<p class="muted">${live.length ? `今天没有要想的${t.next ? `，下一条 ${escapeHtml(t.next.slice(5).replace('-', '/'))} 到期` : ''}（一共在记 ${live.length} 条）。` : '还没有：上课时老师会把要背的（定义、结论、默写没写出的）记进来，也可以自己加一条。'}</p>`;
     body.querySelector('.dk-recall-go')?.addEventListener('click', () => {
       recalling = true;
@@ -874,7 +876,8 @@ export async function renderDesk(root, meta) {
     const auto = isAuto();
     const cur = document.documentElement.dataset.theme || 'graphite'; // 没有 data-theme 就是石墨（夜读）
     const { day, night } = dayNight();
-    const sw = (x) => `<span class="dk-sw" aria-hidden="true" style="background:${x.sw[0]}"><i style="background:${x.sw[1]}"><b style="background:${x.sw[2]}"></b><b style="background:${x.sw[3]}"></b></i></span>`;
+    // 缩略图是一张迷你的学习台：印、标题、主角卡（两行字、一个主按钮），各种样子自己的小细节（远山、月亮、横线……）在 desk.css 按 data-sw 画
+    const sw = (x) => `<span class="dk-sw" data-sw="${escapeHtml(x.id)}" aria-hidden="true" style="--sw-bg:${x.sw[0]};--sw-card:${x.sw[1]};--sw-ink:${x.sw[2]};--sw-acc:${x.sw[3]}"><span class="dk-sw-top"><span class="dk-sw-seal"></span><span class="dk-sw-name"></span></span><i class="dk-sw-card"><b class="dk-sw-l1"></b><b class="dk-sw-l2"></b><b class="dk-sw-btn"></b></i></span>`;
     const card = (x, slot, on) => `<button type="button" class="dk-look-btn" data-slot="${slot}" data-theme-id="${escapeHtml(x.id)}" aria-pressed="${on}">${sw(x)}<span class="dk-look-t"><b>${escapeHtml(x.name)}</b>${x.note ? `<span class="muted">${escapeHtml(x.note)}</span>` : ''}</span></button>`;
     const lights = PICKS.filter((x) => !x.dark), darks = PICKS.filter((x) => x.dark);
     const row = (title, list, slot, pick) => `<p class="dk-look-k">${title}</p><div class="dk-looks">${list.map((x) => card(x, slot, x.id === pick)).join('')}</div>`;
@@ -883,7 +886,8 @@ export async function renderDesk(root, meta) {
       <div class="dk-spaces dk-look-mode" role="tablist" aria-label="怎么换"><button type="button" class="dk-space dk-look-m" data-mode="fixed" aria-selected="${!auto}">固定一种</button><button type="button" class="dk-space dk-look-m" data-mode="auto" aria-selected="${auto}">跟着 iPad 白天晚上</button></div>
       ${auto
         ? `<p class="dk-sub">iPad 是浅色时用「白天」那种，切到深色（设置 → 显示与亮度，可以设成日落后自动）就换成「晚上」那种。现在 iPad 是${dark ? '深色' : '浅色'}。</p>
-          ${row('白天', [...lights, ...MORE.filter((x) => !x.dark)], 'day', day)}${row('晚上', [...darks, ...MORE.filter((x) => x.dark)], 'night', night)}`
+          ${row('白天', lights, 'day', day)}${row('晚上', darks, 'night', night)}
+          <details class="dk-soft"${MORE.some((x) => x.id === (x.dark ? night : day)) ? ' open' : ''}><summary>更多</summary><div class="dk-looks is-more">${MORE.map((x) => card(x, x.dark ? 'night' : 'day', x.id === (x.dark ? night : day))).join('')}</div></details>`
         : `${row('浅色', lights, 'fixed', cur)}${row('深色', darks, 'fixed', cur)}
           <details class="dk-soft"${MORE.some((x) => x.id === cur) ? ' open' : ''}><summary>更多</summary><div class="dk-looks is-more">${MORE.map((x) => card(x, 'fixed', x.id === cur)).join('')}</div></details>`}`;
   }
@@ -944,6 +948,11 @@ export async function renderDesk(root, meta) {
     bar.querySelector('.dk-clear').addEventListener('click', async () => { if (await ask('清空本地的示例记忆？', { ok: '清空', danger: true })) { db._clear?.(); location.reload(); } });
   }
 }
+
+// 标题里的 Unicode 上标（Aⁿ、tr(A)ⁿ⁻¹、αβᵀ）：宋体大字里这些字落到别的字体，又粗又高、基线不齐；
+// 换回普通的字放进 <sup>，跟着标题的字体走
+const SUP = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', 'ⁿ': 'n', '⁻': '−', '⁺': '+', 'ᵀ': 'T', 'ⁱ': 'i', 'ʲ': 'j', 'ᵏ': 'k' };
+export const supRuns = (html) => String(html).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹ⁿ⁻⁺ᵀⁱʲᵏ]+/g, (m) => `<sup class="dk-sup">${[...m].map((c) => SUP[c]).join('')}</sup>`);
 
 // —— 在学习台里上一节课 ——
 // 课堂的数据放在 sessions/{编号}/ 下面；记忆库一直订阅着（每一轮的记忆摘要用最新的）；sessions/{编号} 由页面改（核验、下课）
