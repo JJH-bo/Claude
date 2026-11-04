@@ -318,3 +318,9 @@ test('读回转写：小模型常见的分页写法也认（## 第 N 页、【�
   const r2 = parseTranscription('=== 第 7 页\n--- 说明 | x\n见第 3 页的例题。', [7]);
   assert.equal(r2.pages.size, 1);
 });
+
+test('Claude Code 转教材的工具：页码范围、分批', async () => {
+  const { parseRange, batchesOf } = await import('../tools/books.mjs');
+  assert.deepEqual(parseRange('64-66,55，57'), [55, 57, 64, 65, 66]);
+  assert.deepEqual(batchesOf([55, 56, 57, 64, 65, 66, 67, 68], 4), [[55, 56, 57], [64, 65, 66, 67], [68]]);
+});

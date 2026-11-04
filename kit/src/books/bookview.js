@@ -4,7 +4,7 @@ import { ask } from '../dialog.js';
 import { mdToHtml, escapeHtml } from '../render.js';
 import { toast } from '../record.js';
 import { assetUrl } from '../live/store.js';
-import { createImporter, kindOfFile, FILE_KINDS, TRANSCRIBE, modelName } from './importer.js';
+import { createImporter, kindOfFile, FILE_KINDS, TRANSCRIBE, TRANSCRIBE_HERE, modelName } from './importer.js';
 import { nextBookCode, PAGES_PER_CALL } from './ingest.js';
 import { openPdf } from './pdf.js';
 import { BOOK_KINDS, chunkLine } from './textbook.js';
@@ -13,7 +13,19 @@ import { SPACES } from '../memory/space.js';
 const esc = escapeHtml;
 const md = (s) => { try { return mdToHtml(String(s ?? '')); } catch { return `<pre>${esc(String(s ?? ''))}</pre>`; } };
 const docsOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-const STATUS = { importing: '正在导入', partial: '没转完', ready: '转好了' };
+const STATUS = { importing: '正在导入', partial: TRANSCRIBE_HERE ? '没转完' : '等转写', ready: '转好了' };
+// 页码连成段：[82, 83, …, 412] → 「第 82–412 页」（等转写的页可能几百页，一页一个标签放不下）
+export function pageRanges(nums = []) {
+  const ns = [...new Set(nums.map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
+  const out = [];
+  for (let i = 0; i < ns.length; i++) {
+    let j = i;
+    while (j + 1 < ns.length && ns[j + 1] === ns[j] + 1) j++;
+    out.push(i === j ? `${ns[i]}` : `${ns[i]}–${ns[j]}`);
+    i = j;
+  }
+  return out.length ? `第 ${out.join('、')} 页` : '';
+}
 
 /**
  * host：放页面的元素；db、assets：学习台的；getAI()：取页面里的 Claude；space()：现在看着哪一科；model：不用了（转写用 importer.js 的 TRANSCRIBE）；
@@ -31,6 +43,40 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
   let editing = null;
   let pdfPages = null; // 选好的 PDF 有几页（估算调用次数）
 
+  // Claude Code 转好的结果放在收件箱 book_inbox/{书-批}：{ book, pages: { 页码: items }, by, at }（每批一条新记录，它那边不用改已有的页、
+  // 不用管版本号）。页面看到了就并进各页（status done），删掉这条，再把这本书拼一遍条目（rebuild 是纯代码，不调用 Claude）
+  let inboxBusy = false;
+  async function takeInbox(docs) {
+    if (inboxBusy || !docs.length) return;
+    inboxBusy = true;
+    const touched = new Set();
+    try {
+      for (const d of docs) {
+        const book = String(d.book || '');
+        if (!/^B\d+$/.test(book)) continue;
+        for (const [n, items] of Object.entries(d.pages || {})) {
+          const ref = db.doc(`books/${book}/pages/${n}`);
+          const snap = await ref.get();
+          if (!snap.exists || !Array.isArray(items)) continue;
+          const rec = { ...snap.data(), items, status: 'done', err: '', by: d.by || '', via: 'claude-code', at: Date.now() };
+          delete rec.redo;
+          await ref.set(rec);
+        }
+        await db.doc(`book_inbox/${d.id}`).delete().catch(() => {});
+        touched.add(book);
+      }
+      const im = await getImporter();
+      for (const book of touched) {
+        await im.rebuild(book).catch(() => {});
+        chunksCache.delete(book);
+        pagesCache.delete(book);
+      }
+    } finally {
+      inboxBusy = false;
+      if (touched.size && route) paint();
+    }
+  }
+  db.collection('book_inbox').onSnapshot((s) => takeInbox(docsOf(s)), () => {});
   db.collection('books').onSnapshot((s) => { books = docsOf(s); if (route) paint(); }, () => {});
   host.addEventListener('click', onClick);
   host.addEventListener('change', onChange);
@@ -38,8 +84,8 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
 
   async function getImporter() {
     if (importer) return importer;
-    const ai = await getAI();
-    if (!ai?.images) throw new Error('这个学习台现在不能把图片交给 Claude（发布时要声明 sample 的 images），转写不了扫描页');
+    const ai = TRANSCRIBE_HERE ? await getAI() : null; // 只存原页图、拼条目，用不着 Claude
+    if (TRANSCRIBE_HERE && !ai?.images) throw new Error('这个学习台现在不能把图片交给 Claude（发布时要声明 sample 的 images），转写不了扫描页');
     importer = createImporter({ db, assets, ai, onProgress: (p) => { progress = p; if (p.stage === 'done') { chunksCache.delete(p.book); pagesCache.delete(p.book); } paintProgress(); } });
     return importer;
   }
@@ -72,7 +118,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
     const sp = space();
     const mine = books.filter((b) => !b.space || b.space === sp).sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
     return `<section class="dk-card"><h2 class="dk-h">导入资料</h2>
-        <p class="dk-sub muted">教材 PDF（扫描版也行）、截图和照片、视频课文稿（Word）、讲义（PowerPoint）。扫描页由 Claude 看图转写成文字，公式写成 LaTeX，每页的原图留着核对；文稿和讲义里的字页面自己取，不花额度。转写好的资料按「一条一条」存（定义、定理、例题……），上课时 Claude 只取要用的那几条。</p>
+        <p class="dk-sub muted">教材 PDF（扫描版也行）、截图和照片、视频课文稿（Word）、讲义（PowerPoint）。${TRANSCRIBE_HERE ? '扫描页由 Claude 看图转写成文字' : '扫描页这里只存原页图（不花额度），存好以后回 Claude Code 说「转 B几」，它看图转写成文字写回来'}，公式写成 LaTeX，每页的原图留着核对；文稿和讲义里的字页面自己取，不花额度。转写好的资料按「一条一条」存（定义、定理、例题……），上课时 Claude 只取要用的那几条。</p>
         <label class="btn bk-pick">选文件<input type="file" class="bk-file" multiple accept=".pdf,.docx,.pptx,image/*" hidden></label>
         ${picked.length ? pickForm() : ''}
         ${progressHtml()}
@@ -103,7 +149,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
         ${/\.pdf$/i.test(first.name) && picked.length === 1 ? `<div class="dk-mrow"><label class="mm-f"><span>从第几页</span><input type="number" name="from" min="1" placeholder="1" inputmode="numeric"></label><label class="mm-f"><span>到第几页（空着就是到最后）</span><input type="number" name="to" min="1" placeholder="最后" inputmode="numeric"></label></div>
           <p class="muted bk-cost">${costText()}</p>` : ''}
         <p class="muted">放在「${esc(SPACES[sp]?.label || sp)}」。</p>
-        <div class="dk-mrow dk-mfoot"><button type="button" class="btn bk-cancel">算了</button><button type="submit" class="btn btn-primary bk-go">开始导入</button></div>
+        <div class="dk-mrow dk-mfoot"><button type="button" class="btn bk-cancel">算了</button><button type="submit" class="btn btn-primary bk-go">${TRANSCRIBE_HERE ? "开始导入" : "存进学习台"}</button></div>
       </form>`;
   }
 
@@ -117,6 +163,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
   // 估算：扫描页每 PAGES_PER_CALL 页一次调用（每页一张图，约一两千 token，加上转出来的字）
   function costText(from = null, to = null) {
     const n = pdfPages ? Math.max(0, Math.min(pdfPages, to || pdfPages) - Math.max(1, from || 1) + 1) : null;
+    if (!TRANSCRIBE_HERE) return `${n === null ? '' : `这个 PDF 一共 ${pdfPages} 页，存 ${n} 页。`}这里只存原页图（每页先裁掉白边），不调用 Claude、不花额度；存好以后回 Claude Code 说「转 B几」，它转好写回来，这里自己拼成条目。`;
     return n === null ? `扫描页每 ${PAGES_PER_CALL} 页一次调用（用 ${modelName(TRANSCRIBE.model)} 转写）。整本几百页要几十次：可以先转这一讲要用的几十页，以后再接着转别的页。`
       : `这个 PDF 一共 ${pdfPages} 页。转 ${n} 页约 ${Math.ceil(n / PAGES_PER_CALL)} 次调用（每次 ${PAGES_PER_CALL} 页），用 ${modelName(TRANSCRIBE.model)} 转写（比 Opus 省得多），图先裁掉白边、空白页不调用。可以先转这一讲要用的几十页，以后再接着转。`;
   }
@@ -138,14 +185,15 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
       <section class="dk-card"><h2 class="dk-h">${esc(b.id)} ${esc(b.title || '')}</h2>
         <p class="muted">${esc(BOOK_KINDS[b.kind] || '')} · ${esc(STATUS[b.status] || '')}${b.chunks ? ` · ${b.chunks} 条` : ''}${chunks ? ` · 核对过 ${checked} 条` : ''}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}${savedText(b.cost)}${b.cost?.model ? ` · ${esc(modelName(b.cost.model))} 转写` : ''}</p>
         <div class="mm-acts">
-          ${bad.length ? `<button type="button" class="btn btn-primary bk-resume" data-book="${esc(id)}">接着转（${bad.length} 页）</button>` : ''}
+          ${bad.length && TRANSCRIBE_HERE ? `<button type="button" class="btn btn-primary bk-resume" data-book="${esc(id)}">接着转（${bad.length} 页）</button>` : ''}
           ${plan ? `<button type="button" class="btn bk-plan" data-book="${esc(id)}">挂到课程地图</button>` : ''}
           <button type="button" class="btn bk-del" data-book="${esc(id)}">删掉这本</button>
         </div>
         ${progressHtml()}
         <div class="bk-plan-host"></div>
       </section>
-      ${bad.length ? `<section class="dk-card"><h2 class="dk-h">没转好的页</h2><div class="bk-pages">${bad.map((p) => `<span class="dk-tag is-warn" title="${esc(p.err || '')}">第 ${p.n} 页${p.status === 'error' ? '（出错）' : ''}</span>`).join(' ')}</div></section>` : ''}
+      ${bad.length && !TRANSCRIBE_HERE ? `<section class="dk-card"><h2 class="dk-h">等转写的页</h2><p>${esc(pageRanges(bad.map((p) => p.n)))}，一共 ${bad.length} 页。回到 Claude Code 说「转 ${esc(id)}」，转好写回来以后这里自己拼成条目。${b.pages && b.pagesStored && b.pagesStored < b.pages ? `PDF 一共 ${b.pages} 页，存进来了 ${b.pagesStored} 页；没存的页重新选这个 PDF、写好页码范围再存。` : ''}</p></section>` : ''}
+      ${bad.length && TRANSCRIBE_HERE ? `<section class="dk-card"><h2 class="dk-h">没转好的页</h2><div class="bk-pages">${bad.map((p) => `<span class="dk-tag is-warn" title="${esc(p.err || '')}">第 ${p.n} 页${p.status === 'error' ? '（出错）' : ''}</span>`).join(' ')}</div></section>` : ''}
       <section class="dk-card"><h2 class="dk-h">条目</h2>
         ${!chunks ? '<p class="muted">正在读…</p>' : !chunks.length ? '<p class="muted">还没有条目。</p>' : chunkList(b, chunks)}
       </section>`;
@@ -166,7 +214,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
             ${(c.img || []).length ? `<div class="bk-imgs">${c.img.map((id) => `<a href="${esc(assetUrl(id))}" target="_blank" rel="noopener"><img class="bk-img" src="${esc(assetUrl(id))}" alt="原页" loading="lazy"></a>`).join('')}</div>` : ''}
             <div class="mm-acts">
               ${editing === c.id ? '<button type="button" class="btn btn-primary bk-save">保存</button><button type="button" class="btn bk-unedit">算了</button>'
-                : `<button type="button" class="btn btn-sm bk-check">${c.checked ? '取消核对' : '核对过了'}</button><button type="button" class="btn btn-sm bk-fix">改字</button>${(c.pages || []).length && (c.img || []).length ? `<button type="button" class="btn btn-sm bk-redo">重新转写第 ${esc(c.pages.join('、'))} 页</button>` : ''}`}
+                : `<button type="button" class="btn btn-sm bk-check">${c.checked ? '取消核对' : '核对过了'}</button><button type="button" class="btn btn-sm bk-fix">改字</button>${(c.pages || []).length && (c.img || []).length ? `<button type="button" class="btn btn-sm bk-redo">${TRANSCRIBE_HERE ? '重新转写' : '标成要重转'}第 ${esc(c.pages.join('、'))} 页</button>` : ''}`}
             </div></div>` : ''}
         </div>`);
     }
@@ -221,6 +269,18 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
         const c = chunksCache.get(bookId)?.find((x) => x.id === id);
         if (c?.fixed && !await ask('这一条你改过字，重新转写会盖掉改的。接着重转？', { ok: '重转' })) return;
         if (c?.fixed) await patch(bookId, id, () => ({ fixed: false }));
+        if (!TRANSCRIBE_HERE) {
+          // 不在这里转：把这几页标回「等转写」，Claude Code 下次转的时候一起转
+          for (const n of c.pages || []) {
+            const snap = await db.doc(`books/${bookId}/pages/${n}`).get();
+            if (snap.exists) await db.doc(`books/${bookId}/pages/${n}`).set({ ...snap.data(), status: 'todo', redo: true, at: Date.now() });
+          }
+          pagesCache.delete(bookId);
+          chunksCache.delete(bookId);
+          paint();
+          toast(`第 ${c.pages.join('、')} 页标成了要重转：回 Claude Code 说「转 ${bookId}」`);
+          return;
+        }
         const im = await getImporter();
         run(() => im.transcribe(bookId, { pages: c.pages, force: true }));
       }

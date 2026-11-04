@@ -19,6 +19,11 @@ const PAGE_WIDTH = 1200; // 存进学习台的原页图：核对够清楚，300 
 // 看图转写用 Haiku 5.5（2026-11-04 我定的：一本书三四百页，Opus 转太费额度；Haiku 的价钱约是 Opus 的四十分之一）。
 // 转写是认字、不是讲课，课堂讲课照旧只用 Opus 5.5（classroom.js 的 TEACH）。modelTier 是平台给的退路档，
 // 实际是哪个模型转的记在每一页的 by 和书的 cost.model 上，教材页显示出来
+// 学习台里不再调用 Claude 转写（2026-11-04 我定的）：页面里的 Haiku 觉得整页照抄教材涉及版权、不肯转，Opus 又太费额度。
+// 现在导入只存原页图（不调用），书上标「等转写」；转写在 Claude Code 那边做（tools/books.mjs，docs/textbook-plan.md「在 Claude Code 里转」）：
+// 它读原页图、把每页的结果写回 books/{书}/pages/{页}，再在书上写 rebuild（时间），页面看到了自己拼条目（rebuild 是纯代码，不调用）。
+// 页面里转写的代码留着：TRANSCRIBE_HERE 改回 true 就是原来那样
+export const TRANSCRIBE_HERE = false;
 export const TRANSCRIBE = { model: 'claude-haiku-5-5', modelTier: 'quick', effort: 'medium' };
 export const modelName = (id) => ({ 'claude-haiku-5-5': 'Haiku 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-opus-5-5': 'Opus 5.5' })[id] || id || '';
 const WORKERS = 3; // 同时转写几批：被限流就自动少一批（limit），这次导入一直按少的来
@@ -63,7 +68,7 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
       else if (/\.pdf$/i.test(file?.name || '')) await addPdf(file, opts, meta);
       else await addImages(opts.files || [file], opts);
       // 停下了就只拼已经转好的；没停：剩下没转的、转坏的再转一遍（PDF 是第二次机会）
-      if (stopFlag) return await rebuild(opts.book);
+      if (stopFlag || !TRANSCRIBE_HERE) return await rebuild(opts.book);
       return await transcribe(opts.book, { meta, fresh: false });
     } finally {
       busy = null;
@@ -93,7 +98,7 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
         const raw = files.get(m);
         if (!raw) continue;
         const blob = await shrinkImage(new Blob([raw]), { width: PAGE_WIDTH, quality: 0.8 }).catch(() => null);
-        if (blob) { const id = await upload(blob); imgs.push(id); blobs.set(`${opts.book}/${s.n}/${id}`, blob); }
+        if (blob) { const id = await upload(blob); imgs.push(id); if (TRANSCRIBE_HERE) blobs.set(`${opts.book}/${s.n}/${id}`, blob); }
       }
       // 有图的页交给 Claude 看图转写（板书截图里的公式只有图上有）；只有字的页直接成一条
       if (imgs.length) await savePage(opts.book, s.n, { img: imgs[0], imgs, layer: s.text, title: s.title, status: 'todo' });
@@ -120,7 +125,8 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
     try {
       for (const n of want) {
         if (stopFlag || run.fatal) break;
-        run.note(`存第 ${n} 页的原页图`);
+        if (TRANSCRIBE_HERE) run.note(`存第 ${n} 页的原页图`);
+        else report({ book: opts.book, stage: 'render', done: want.indexOf(n) + 1, total: want.length, msg: `存第 ${n} 页的原页图（第 ${from}–${to} 页）…` });
         const pic = await renderScan(doc, n, { width: PAGE_WIDTH, quality: 0.8 });
         const layer = await pageText(doc, n).catch(() => '');
         const id = await upload(pic.blob);
@@ -133,8 +139,9 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
         if (blank) { saved.blank++; saved.full += pic.full; run.skip(n); continue; }
         saved.tokens += pic.tokens;
         saved.full += pic.full;
-        blobs.set(`${opts.book}/${n}/${id}`, pic.blob);
+        if (TRANSCRIBE_HERE) blobs.set(`${opts.book}/${n}/${id}`, pic.blob); // 不在这里转就不留：几百页的图囤在 iPad 内存里会崩
         buf.push(rec);
+        if (!TRANSCRIBE_HERE) { buf = []; continue; }
         if (buf.length >= per) { run.push(buf); buf = []; }
         await run.room();
       }
@@ -156,7 +163,7 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
       report({ book: opts.book, stage: 'render', done: ++i, total: list.length, msg: `存第 ${i} 张图…` });
       const blob = await shrinkImage(f, { width: PAGE_WIDTH, quality: 0.8 });
       const id = await upload(blob);
-      blobs.set(`${opts.book}/${n}/${id}`, blob);
+      if (TRANSCRIBE_HERE) blobs.set(`${opts.book}/${n}/${id}`, blob);
       await savePage(opts.book, n, { img: id, imgs: [id], layer: '', status: 'todo' });
       n++;
     }
@@ -306,11 +313,11 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
     const was = info.cost || {};
     const cost = { calls: (was.calls || 0) + calls, pages: pages.filter((p) => p.status === 'done').length,
       imgTokens: (was.imgTokens || 0) + saved.tokens, imgFull: (was.imgFull || 0) + saved.full, blank: (was.blank || 0) + saved.blank,
-      ...(usedModel || was.model ? { model: usedModel || was.model } : {}) };
+      ...(modelOfPages(pages) || usedModel || was.model ? { model: modelOfPages(pages) || usedModel || was.model } : {}) };
     calls = 0;
     saved = { tokens: 0, full: 0, blank: 0 };
-    await db.doc(`books/${book}`).set({ ...info, status: left ? 'partial' : 'ready', chunks: chunks.length, toc, pagesDone: cost.pages, pagesLeft: left, cost, at: Date.now() });
-    report({ book, stage: 'done', done: chunks.length, total: chunks.length, msg: `${chunks.length} 条${left ? `，还有 ${left} 页没转好` : ''}` });
+    await db.doc(`books/${book}`).set({ ...info, status: left ? 'partial' : 'ready', chunks: chunks.length, toc, pagesDone: cost.pages, pagesLeft: left, pagesStored: pages.length, cost, at: Date.now(), rebuiltAt: Date.now() });
+    report({ book, stage: 'done', done: chunks.length, total: chunks.length, msg: TRANSCRIBE_HERE || !left ? `${chunks.length} 条${left ? `，还有 ${left} 页没转好` : ''}` : `存好了，${left} 页等转写（回 Claude Code 说「转 ${book}」）${chunks.length ? `；已有 ${chunks.length} 条` : ''}` });
     return { chunks: chunks.length, left };
   }
 
@@ -331,6 +338,13 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
   }
 
   return { add, transcribe, rebuild, writeChunks, stop: () => { stopFlag = true; }, get busy() { return busy; } };
+}
+
+/** 这本书转好的页大多是哪个模型转的（教材页显示「… 转写」） */
+export function modelOfPages(pages = []) {
+  const n = new Map();
+  for (const p of pages) if (p.status === 'done' && p.by && p.by !== 'page') n.set(p.by, (n.get(p.by) || 0) + 1);
+  return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
 }
 
 /** 学习台里某一科的书和全部条目（课堂开课时读一次；条目多，不订阅） */

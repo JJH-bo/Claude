@@ -34,6 +34,13 @@
 
 没做的：一是本地 OCR（Tesseract 一类）代替 Claude。扫描的数学书满是公式、矩阵、上下标，本地 OCR 认不出来，质量会掉，而且要额外带十几 MB 的识别模型。二是把 effort 从 medium 再降到 low。思考的 token 也算钱，但降了以后切条、判断「接上页」可能变差，要拿真书比过才能定。
 
+**在 Claude Code 里转（2026-11-04 起，学习台里不再转）**：学习台里的 Haiku 觉得「整页照抄教材」涉及版权、回一句不肯转（第 64–81 页都是这样），Opus 又太费额度。所以改成：
+
+- 学习台的「教材」页只**存**：选 PDF（截图、讲义同样）→「存进学习台」，每页裁好白边存原页图，页标成等转写，不调用 Claude。书上写「等转写」，等转写的页连成页码段显示。`importer.js` 的 `TRANSCRIBE_HERE = false`（改回 true 就是原来那样在页面里转）。
+- 我回 Claude Code 说「转 B3」：外部 Claude 用 `ArtifactData list` 把书和页存到本地，`node tools/books.mjs plan` 分批（一批 4 页，每批一份转写的规矩，就是原来的 `transcribePrompt`，开头说明这是学生自己的书、只存进私人学习台），每批交给一个转写助手（自己取那几张原页图、看图、写成 `bNNN.out.txt`），`node tools/books.mjs apply` 读回、拼成收件箱记录，`ArtifactData batch` 写进 `book_inbox`。
+- 收件箱：每批一条新记录 `book_inbox/{书-页-时间}` = `{ book, pages: { 页码: items }, by }`，不改已有的页、不用管版本号。学习台打开时（`bookview.js` 的 `takeInbox`）并进各页（`status: done`、`via: claude-code`），删掉这条，再把这本书拼一遍条目（`rebuild`，纯代码）。
+- 条目的「标成要重转」把那几页标回等转写，下次一起转。
+
 **核对**：教材页一条条展开，左边转出来的字（KaTeX 渲染），右边原页图；「核对过了」「改字」「重新转写这几页」。
 
 **课堂里按需读**（`books/textbook.js`）：
