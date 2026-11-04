@@ -47,6 +47,7 @@ import { createBooksView } from '../books/bookview.js';
 import { createPlanner } from '../books/planview.js';
 import { createDevAI } from '../books/devmock.js';
 import { loadBooks } from '../books/importer.js';
+import { readHistory } from '../books/textbook.js';
 import { suggestBlock } from '../books/plan.js';
 import { renderLive } from '../live/live.js';
 import { renderGuided } from '../guided.js';
@@ -156,7 +157,10 @@ export async function renderDesk(root, meta) {
   const sv = () => filterSpace(data, space);
   let pack = packs[space];
   // 还没用过的那份资料包（开过课的算用掉了，见 newClass）
-  const livePack = () => (pack.main && !pack.main.usedBy ? pack : { main: null, problems: null });
+  // 以前（还没有 usedBy 的时候）开过课的教案也算用掉：sessions 里抄着它的 unit、goal、updatedAt，对得上就是同一份
+  // （2026-10-28 那份英语教案连着开了 5 节课，后来讲时态了还按第三章、开头 10 分钟复现开）
+  const usedBefore = (m) => data.sessions.some((x) => x.pack && x.pack.unit === (m.unit || '') && x.pack.goal === (m.goal || '') && (x.pack.updatedAt ?? null) === (m.updatedAt ?? null));
+  const livePack = () => (pack.main && !pack.main.usedBy && !usedBefore(pack.main) ? pack : { main: null, problems: null });
   let lastRes = null;
   function setSpace(k) {
     if (!SPACES[k]) return;
@@ -1005,6 +1009,9 @@ async function enterClass(root, meta, sid, { readOnly = false } = {}) {
   if (kind === 'unit') return enterUnit(root, meta, { db, store, sid, doc, block, title, readOnly, finish });
   // 教材（books/）：这一科的书和条目，开课时读一次。资料包点名的条目全文放进资料包，别的课堂里按需取
   const books = await loadBooks(db, space).catch(() => ({ books: [], chunks: [] }));
+  // 上一节同一块的课用 textbook_read 取过的教材：这节课一开始就放进「教材原文」（接着往下的几条页面也顺带放），
+  // 不用开讲先取一轮——课程地图还没挂教材条目时，英语课每节都要先取（2026-11-02 三节课取了 30 次，每次多等一整轮）
+  const prevRead = !readOnly && !doc.review && books.chunks.length && !(Array.isArray(main?.chunks) && main.chunks.length) ? await priorReads(db, mem.sessions || [], { sid, block, books }).catch(() => []) : [];
   if (readOnly) {
     return renderClass(root, { ...meta, unit: doc.title || meta.unit }, {
       store: { ...store, db: readOnlyDb(scopeDb(db, sid)), assets: null }, sid, block, space, mem, readOnly: true, books,
@@ -1013,7 +1020,7 @@ async function enterClass(root, meta, sid, { readOnly = false } = {}) {
     });
   }
   return renderClass(root, { ...meta, unit: doc.title || meta.unit }, {
-    store: { ...store, db: scopeDb(db, sid) }, sid, block, space, mem, updateSession, onHome: () => goto(''), books,
+    store: { ...store, db: scopeDb(db, sid) }, sid, block, space, mem, updateSession, onHome: () => goto(''), books, prevRead,
     writeReport: ({ turns, steps } = {}) => writeReport(db, sid, { doc, turns, steps, update: updateSession }),
     // 下课时先算一份（还没下课：结束时间按现在算）放进给课堂 Claude 的输入
     makeReport: ({ turns, steps } = {}) => makeReport(db, sid, { doc: { ...doc, endedAt: doc.endedAt || Date.now() }, turns, steps }),
@@ -1048,6 +1055,21 @@ async function enterUnit(root, meta, { db, store, sid, doc, block, title, readOn
     session.sink = sink;
   }
   renderGuided(String(u.md), root, { ...meta, unit: u.unit || title });
+}
+
+/**
+ * 同一块最近一节（不算练习）课堂里 textbook_read 取到过的条目编号（最近取的在后面）。只看最近两节，取不到就是空的
+ */
+async function priorReads(db, sessions, { sid, block, books }) {
+  if (!block) return [];
+  const prev = sessions.filter((x) => x && x.id !== sid && x.block === block && kindOf(x) === 'class').sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0)).slice(0, 2);
+  for (const x of prev) {
+    const snap = await scopeDb(db, x.id).collection('class_turns').get().catch(() => null);
+    const calls = (snap ? snap.docs.map((d) => d.data()) : []).filter((t) => t && !t.discarded && t.role === 'claude' && Array.isArray(t.tools)).sort((a, b) => (a.seq || 0) - (b.seq || 0)).flatMap((t) => t.tools);
+    const ids = calls.length ? readHistory(calls, books.chunks, books.books) : [];
+    if (ids.length) return ids;
+  }
+  return [];
 }
 
 /**

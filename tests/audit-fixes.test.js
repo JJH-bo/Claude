@@ -103,3 +103,18 @@ test('掌握：删了那节课（依据的作答都没了），页面定的状�
   // 我定的：不动
   assert.equal(masteryProposals({ ...mem, mastery: [{ ...mem.mastery[0], log: [{ field: 'state', from: '讲过', to: '基础题过', by: 'me', date: '2026-11-03' }] }] }).length, 0);
 });
+
+test('真课里被拒的几条（2026-11-02）：依据里有讲解段照记 position；选择题的错题从错选补 mine', async () => {
+  const { sampleMemory } = await import('../kit/src/memory/sample.js');
+  const mem = sampleMemory(TODAY);
+  const one = (t) => parseMemoLines(t).entries[0];
+  const ev = [{ id: 'ev-q1', src: 'record', kind: 'quiz', comp: 'qz-b29', q: '哪个是完整谓语', ok: true, attempts: 2, wrong: ['are'], session: 'c-1', at: 1 }];
+  const ctx = { mem, evidence: ev, session: 'c-1', block: 'L2.2.2', date: TODAY };
+  const pos = planEntry(one('position next="接着讲时态" basis=b32'), ctx);
+  assert.ok(!pos.error, pos.error);
+  const err = planEntry(one('error step="选完整谓语" cause="只认 be" weakness=W19 basis=qz-b29'), ctx);
+  assert.ok(!err.error, err.error);
+  assert.match(err.data.mine, /先选了 are/);
+  // 要依据的、依据一个都找不到：照旧拒
+  assert.match(planEntry(one('error step=s cause=c basis=b99'), ctx).error, /找不到/);
+});

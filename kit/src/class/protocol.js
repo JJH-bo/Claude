@@ -287,8 +287,9 @@ function segmentCommand(op, rest) {
   }
   if (!NO_TITLE.has(op) && title !== undefined) out.title = title.trim();
   if (point !== undefined && !NO_TITLE.has(op)) {
-    if (!/^[A-Za-z0-9_-]{1,40}$/.test(point)) return { error: `point「${point}」只能用字母、数字、- 和 _（写掌握状态编号 # 后面那段，比如 point=tr）` };
-    out.point = point;
+    // point 写错只丢掉 point，段照常写（2026-10-28 point=复现R19 让整块板当成普通文字写在了板顶）
+    if (!/^[A-Za-z0-9_-]{1,40}$/.test(point)) out.warn = `point「${point}」没用上：只能用字母、数字、- 和 _（写掌握状态编号 # 后面那段，比如 point=tr），这一段的作答没记成知识点的证据`;
+    else out.point = point;
   }
   return out;
 }
