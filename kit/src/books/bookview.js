@@ -204,6 +204,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
         ${progressHtml()}
         <div class="bk-plan-host"></div>
       </section>
+      ${b.storeFailed?.length ? `<section class="dk-card"><h2 class="dk-h">没存上的页</h2><p>${esc(pageRanges(b.storeFailed))}没传上去（网络断了一下之类）。再选一次这本 PDF、存进这本书，只会补这些页，已经存好的不重复存。</p></section>` : ''}
       ${bad.length && !TRANSCRIBE_HERE ? `<section class="dk-card"><h2 class="dk-h">等转写的页</h2><p>${esc(pageRanges(bad.map((p) => p.n)))}，一共 ${bad.length} 页。回到 Claude Code 说「转 ${esc(id)}」，转好写回来以后这里自己拼成条目。${b.pages && b.pagesStored && b.pagesStored < b.pages ? `PDF 一共 ${b.pages} 页，存进来了 ${b.pagesStored} 页；没存的页重新选这个 PDF、写好页码范围再存。` : ''}</p></section>` : ''}
       ${bad.length && TRANSCRIBE_HERE ? `<section class="dk-card"><h2 class="dk-h">没转好的页</h2><div class="bk-pages">${bad.map((p) => `<span class="dk-tag is-warn" title="${esc(p.err || '')}">第 ${p.n} 页${p.status === 'error' ? '（出错）' : ''}</span>`).join(' ')}</div></section>` : ''}
       <section class="dk-card"><h2 class="dk-h">条目</h2>

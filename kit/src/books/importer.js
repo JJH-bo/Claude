@@ -26,7 +26,8 @@ const PAGE_WIDTH = 1200; // 存进学习台的原页图：核对够清楚，300 
 export const TRANSCRIBE_HERE = false;
 export const TRANSCRIBE = { model: 'claude-haiku-5-5', modelTier: 'quick', effort: 'medium' };
 export const modelName = (id) => ({ 'claude-haiku-5-5': 'Haiku 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-opus-5-5': 'Opus 5.5', codex: 'Codex' })[id] || id || '';
-const WORKERS = 3; // 同时转写几批：被限流就自动少一批（limit），这次导入一直按少的来
+const WORKERS = 3;
+const UPLOADS = 4; // 只存不转时，同时传几页原图（传图主要是等网络） // 同时转写几批：被限流就自动少一批（limit），这次导入一直按少的来
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const docsOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
@@ -125,38 +126,75 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
     const run = runner(opts.book, { info: meta, all, total: want.length, range: `（第 ${from}–${to} 页）` });
     const per = perCall();
     let buf = [];
+    // 只存不转时：画（吃 CPU）一页接一页，传图、写记录（等网络）同时进行 UPLOADS 页——以前画完一页要等它传完才画下一页，
+    // 一页一两秒都在等网络（实测画一页只要零点几秒）。一页传失败不停下：记下来，存完再说；没存上的页再存一次就补上
+    const inflight = new Set();
+    const failed = [];
+    let doneCount = 0;
+    const t0 = Date.now();
+    const eta = () => {
+      if (doneCount < 3) return '';
+      const each = (Date.now() - t0) / doneCount / 1000;
+      const left = Math.round((each * (want.length - doneCount)) / 60);
+      return `，每页约 ${each < 1 ? each.toFixed(1) : Math.round(each)} 秒${left >= 1 ? `，还要约 ${left} 分钟` : ''}`;
+    };
+    const progress = (n) => report({ book: opts.book, stage: 'render', done: doneCount, total: want.length, msg: `存好 ${doneCount} / ${want.length} 页（第 ${from}–${to} 页${eta()}）…${n ? ` 正在画第 ${n} 页` : ''}` });
+    async function store(n, pic, layer) {
+      let id = null;
+      for (let attempt = 0; attempt < 3 && !id; attempt++) {
+        try { id = await upload(pic.blob); } catch (e) {
+          if (e?.code === 'quota_or_state') { stopFlag = true; throw new Error('学习台的存储满了（1 GB 或 5000 个文件），先腾出地方再存'); }
+          if (attempt === 2) throw e;
+          await sleep(1500 * (attempt + 1)); // 网络抖一下、被限流：歇一下再传
+        }
+      }
+      const blank = pic.blank && !layer.trim();
+      const was = have.get(n);
+      const kept = was?.status === 'done' && !was.img && !opts.force; // 先转好、后存图：保留转写
+      const rec = kept ? { ...was, n, img: id, imgs: [id], size: [pic.w, pic.h] } : { n, img: id, imgs: [id], layer: layer.slice(0, 6000), size: [pic.w, pic.h],
+        ...(blank ? { items: [], status: 'done', blank: true, by: 'page' } : { status: 'todo' }) };
+      delete rec.id;
+      await savePage(opts.book, n, rec);
+      const k = all.findIndex((x) => x.n === n);
+      if (k >= 0) all[k] = rec; else all.push(rec);
+      return { rec, id, kept, blank };
+    }
     try {
       for (const n of want) {
         if (stopFlag || run.fatal) break;
         if (TRANSCRIBE_HERE) run.note(`存第 ${n} 页的原页图`);
-        else report({ book: opts.book, stage: 'render', done: want.indexOf(n) + 1, total: want.length, msg: `存第 ${n} 页的原页图（第 ${from}–${to} 页）…` });
+        else progress(n);
         const pic = await renderScan(doc, n, { width: PAGE_WIDTH, quality: 0.8 });
         const layer = await pageText(doc, n).catch(() => '');
-        const id = await upload(pic.blob);
-        const blank = pic.blank && !layer.trim();
-        const was = have.get(n);
-        const kept = was?.status === 'done' && !was.img && !opts.force; // 先转好、后存图：保留转写
-        const rec = kept ? { ...was, n, img: id, imgs: [id], size: [pic.w, pic.h] } : { n, img: id, imgs: [id], layer: layer.slice(0, 6000), size: [pic.w, pic.h],
-          ...(blank ? { items: [], status: 'done', blank: true, by: 'page' } : { status: 'todo' }) };
-        delete rec.id;
-        await savePage(opts.book, n, rec);
-        const k = all.findIndex((x) => x.n === n);
-        if (k >= 0) all[k] = rec; else all.push(rec);
+        if (!TRANSCRIBE_HERE) {
+          while (inflight.size >= UPLOADS) await Promise.race(inflight);
+          if (stopFlag) break;
+          const job = store(n, pic, layer).then(({ kept, blank }) => {
+            if (!kept) { if (blank) saved.blank++; else saved.tokens += pic.tokens; saved.full += pic.full; }
+          }).catch((e) => { failed.push(n); if (stopFlag) report({ book: opts.book, stage: 'error', msg: e.message }); })
+            .finally(() => { inflight.delete(job); doneCount++; progress(); });
+          inflight.add(job);
+          continue;
+        }
+        const { rec, id, kept, blank } = await store(n, pic, layer);
         if (kept) continue;
         if (blank) { saved.blank++; saved.full += pic.full; run.skip(n); continue; }
         saved.tokens += pic.tokens;
         saved.full += pic.full;
-        if (TRANSCRIBE_HERE) blobs.set(`${opts.book}/${n}/${id}`, pic.blob); // 不在这里转就不留：几百页的图囤在 iPad 内存里会崩
+        blobs.set(`${opts.book}/${n}/${id}`, pic.blob);
         buf.push(rec);
-        if (!TRANSCRIBE_HERE) { buf = []; continue; }
         if (buf.length >= per) { run.push(buf); buf = []; }
         await run.room();
       }
+      await Promise.all(inflight);
       if (buf.length && !stopFlag) run.push(buf);
       await run.finish();
     } finally {
       doc.destroy?.();
     }
+    // 没存上的页记在书上（教材页提示再存一次）；这次全存上了就清掉以前记的
+    const bk = (await db.doc(`books/${opts.book}`).get()).data() || {};
+    if (failed.length || bk.storeFailed?.length) await db.doc(`books/${opts.book}`).set({ ...bk, storeFailed: failed.sort((x, y) => x - y) });
     if (run.fatal) { await rebuild(opts.book); throw run.fatal; }
   }
 

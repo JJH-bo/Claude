@@ -180,6 +180,9 @@ function cmp(x, op, v) {
 function fakeAssets() {
   return {
     async upload(blob) {
+      // ?dev&uplag=1000：每次上传先等这么多毫秒，本地模拟真实网络（量教材存页有多快）
+      const lag = Number(new URLSearchParams(location.search).get('uplag')) || 0;
+      if (lag) await new Promise((r) => setTimeout(r, lag));
       const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
       const id = 'dev-' + newId();
       try { localStorage.setItem(`la-devasset:${id}`, url); } catch { /* 太大就只留在内存 */ }
