@@ -6,6 +6,7 @@ import { toast } from '../record.js';
 import { assetUrl } from '../live/store.js';
 import { createImporter, kindOfFile, FILE_KINDS, TRANSCRIBE, TRANSCRIBE_HERE, modelName } from './importer.js';
 import { nextBookCode, PAGES_PER_CALL, parseTranscription } from './ingest.js';
+import { stashedFile } from './stash.js';
 import { openPdf } from './pdf.js';
 import { BOOK_KINDS, chunkLine } from './textbook.js';
 import { SPACES } from '../memory/space.js';
@@ -155,8 +156,8 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
       <section class="dk-card"><h2 class="dk-h">${esc(SPACES[sp]?.label || '')}的资料</h2>
         ${mine.length ? mine.map((b) => `<a class="dk-class-row bk-row" href="#books/${esc(b.id)}">
             <span class="dk-cr-d"><b>${esc(b.id)}</b><span class="muted">${esc(BOOK_KINDS[b.kind] || b.kind || '')}</span></span>
-            <span class="dk-cr-m">${esc(b.title || '')}<br><span class="muted">${b.chunks ? `${b.chunks} 条` : '还没有条目'}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.pagesLeft ? ` · 还有 ${b.pagesLeft} 页没转` : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}</span></span>
-            <span class="dk-cr-n"><span class="dk-tag ${b.status === 'ready' ? 'is-ok' : 'is-warn'}">${esc(STATUS[b.status] || b.status || '')}</span></span>
+            <span class="dk-cr-m">${esc(b.title || '')}<br><span class="muted">${b.chunks ? `${b.chunks} 条` : '还没有条目'}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.pagesLeft ? ` · 还有 ${b.pagesLeft} 页没转` : ''}${b.storing && importer?.busy !== b.id ? ' · 上次没存完' : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}</span></span>
+            <span class="dk-cr-n"><span class="dk-tag ${b.status === 'ready' ? 'is-ok' : 'is-warn'}">${esc(statusOf(b))}</span></span>
           </a>`).join('') : '<p class="muted">还没有资料。</p>'}
       </section>`;
   }
@@ -203,6 +204,28 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
     if (el) el.textContent = costText(Number(f.querySelector('[name=from]')?.value) || null, Number(f.querySelector('[name=to]')?.value) || null);
   }
 
+  const statusOf = (b) => (b.storing && importer?.busy !== b.id ? '没存完' : b.status === 'importing' && importer?.busy !== b.id ? '没存完' : STATUS[b.status] || b.status || '');
+  // 上次没存完（中途退出、刷新、屏幕熄了）：书上记着 storing（哪个文件、哪几页），给一个「接着存」
+  function resumeCard(b) {
+    const s = b.storing;
+    if (!s || importer?.busy === b.id) return '';
+    const range = s.to ? `第 ${s.from}–${s.to} 页` : `第 ${s.from} 页到最后`;
+    return `<section class="dk-card"><h2 class="dk-h">上次没存完</h2>
+      <p>「${esc(s.file || '')}」${esc(range)}还没存完。已经存好的页都在，接着存只存剩下的。</p>
+      <div class="mm-acts"><button type="button" class="btn btn-primary bk-continue" data-book="${esc(b.id)}">接着存</button></div>
+      <input type="file" class="bk-refile" data-book="${esc(b.id)}" accept=".pdf" hidden>
+    </section>`;
+  }
+  async function continueStore(bookId, file, fromStash) {
+    const b = books.find((x) => x.id === bookId);
+    const s = b?.storing;
+    if (!b || !s) return;
+    const im = await getImporter();
+    progress = { book: bookId, stage: 'read', msg: fromStash ? '用上次留在这台设备上的 PDF 接着存…' : '接着存…' };
+    paint();
+    run(() => im.add(file, { book: bookId, title: b.title, kind: b.kind, space: b.space, subject: b.subject, from: s.from, to: s.to || '', fromStash }));
+  }
+
   /* —— 一本书：目录、条目对着原页核对、页的状态 —— */
   function bookPage(id) {
     const b = books.find((x) => x.id === id);
@@ -213,7 +236,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
     const checked = chunks ? chunks.filter((c) => c.checked).length : 0;
     return `<p><a class="dk-link" href="#books">← 资料</a></p>
       <section class="dk-card"><h2 class="dk-h">${esc(b.id)} ${esc(b.title || '')}</h2>
-        <p class="muted">${esc(BOOK_KINDS[b.kind] || '')} · ${esc(STATUS[b.status] || '')}${b.chunks ? ` · ${b.chunks} 条` : ''}${chunks ? ` · 核对过 ${checked} 条` : ''}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}${savedText(b.cost)}${b.cost?.model ? ` · ${esc(modelName(b.cost.model))} 转写` : ''}</p>
+        <p class="muted">${esc(BOOK_KINDS[b.kind] || '')} · ${esc(statusOf(b))}${b.chunks ? ` · ${b.chunks} 条` : ''}${chunks ? ` · 核对过 ${checked} 条` : ''}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}${savedText(b.cost)}${b.cost?.model ? ` · ${esc(modelName(b.cost.model))} 转写` : ''}</p>
         <div class="mm-acts">
           ${bad.length && TRANSCRIBE_HERE ? `<button type="button" class="btn btn-primary bk-resume" data-book="${esc(id)}">接着转（${bad.length} 页）</button>` : ''}
           ${plan ? `<button type="button" class="btn bk-plan" data-book="${esc(id)}">挂到课程地图</button>` : ''}
@@ -222,6 +245,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
         ${progressHtml()}
         <div class="bk-plan-host"></div>
       </section>
+      ${resumeCard(b)}
       ${b.storeFailed?.length ? `<section class="dk-card"><h2 class="dk-h">没存上的页</h2><p>${esc(pageRanges(b.storeFailed))}没传上去（网络断了一下之类）。再选一次这本 PDF、存进这本书，只会补这些页，已经存好的不重复存。</p></section>` : ''}
       ${bad.length && !TRANSCRIBE_HERE ? `<section class="dk-card"><h2 class="dk-h">等转写的页</h2><p>${esc(pageRanges(bad.map((p) => p.n)))}，一共 ${bad.length} 页。回到 Claude Code 说「转 ${esc(id)}」，转好写回来以后这里自己拼成条目。${b.pages && b.pagesStored && b.pagesStored < b.pages ? `PDF 一共 ${b.pages} 页，存进来了 ${b.pagesStored} 页；没存的页重新选这个 PDF、写好页码范围再存。` : ''}</p></section>` : ''}
       ${bad.length && TRANSCRIBE_HERE ? `<section class="dk-card"><h2 class="dk-h">没转好的页</h2><div class="bk-pages">${bad.map((p) => `<span class="dk-tag is-warn" title="${esc(p.err || '')}">第 ${p.n} 页${p.status === 'error' ? '（出错）' : ''}</span>`).join(' ')}</div></section>` : ''}
@@ -264,7 +288,16 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
     if (route === `books/${id}`) paint();
   }
 
-  function onChange(e) {
+  async function onChange(e) {
+    if (e.target.matches('.bk-refile')) {
+      const f = e.target.files?.[0];
+      const id = e.target.dataset.book;
+      const s = books.find((x) => x.id === id)?.storing;
+      if (!f || !s) return;
+      if (f.name !== s.file && f.size !== s.size && !await ask(`上次存的是「${s.file}」，这次选的是「${f.name}」。是同一本书吗？不是的话页码会对不上。`, { ok: '是同一本，接着存' })) return;
+      continueStore(id, f, false);
+      return;
+    }
     if (e.target.matches('.bk-file')) {
       picked = [...(e.target.files || [])].filter((f) => kindOfFile(f));
       pdfPages = null;
@@ -288,6 +321,12 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
       if (b.matches('.bk-cancel')) { picked = []; paint(); }
       else if (b.matches('.bk-go')) { e.preventDefault(); await startImport(b.closest('form')); }
       else if (b.matches('.bk-stop')) { importer?.stop(); toast('停下了：转好的页留着，下次点「接着转」'); }
+      else if (b.matches('.bk-continue')) {
+        // 先用这台设备上留的那份；没有（清了数据、换了设备）就让我再选一次同一个 PDF
+        const f = await stashedFile(b.dataset.book);
+        if (f) continueStore(b.dataset.book, f, true);
+        else { toast('这台设备上没留着这个 PDF，再选一次同一个文件就接着存'); host.querySelector(`.bk-refile[data-book="${b.dataset.book}"]`)?.click(); }
+      }
       else if (b.matches('.bk-resume')) { const im = await getImporter(); run(() => im.transcribe(b.dataset.book)); }
       else if (b.matches('.bk-del')) await removeBook(b.dataset.book);
       else if (b.matches('.bk-plan')) plan?.open(host.querySelector('.bk-plan-host'), b.dataset.book);

@@ -7,6 +7,7 @@ import { docxParagraphs, pptxSlides } from './office.js';
 import { transcribePrompt, parseTranscription, assembleChunks, transcriptChunks, PAGES_PER_CALL } from './ingest.js';
 import { openPdf, renderScan, pageText, shrinkImage } from './pdf.js';
 import { assetUrl } from '../live/store.js';
+import { stashFile, dropStash } from './stash.js';
 
 export const FILE_KINDS = [
   { re: /\.pdf$/i, kind: 'textbook', label: 'PDF（教材、讲义）' },
@@ -55,24 +56,43 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
   const pagesOf = async (book) => docsOf(await db.collection(`books/${book}/pages`).get()).sort((a, b) => a.n - b.n);
 
   /** 一个文件入库。opts：{ book（编号）, title, kind, space, subject, from, to（PDF 只转这几页）, start（截图的起始页码）, files（多张截图）} */
+  // 存的时候不让屏幕自己熄（熄了页面就停了）；切回来再要一次（切走时浏览器会收回）
+  let lock = null;
+  const keepAwake = async () => { try { if (busy && document.visibilityState === 'visible' && !lock) { lock = await navigator.wakeLock?.request?.('screen'); lock?.addEventListener?.('release', () => { lock = null; }); } } catch { lock = null; } };
+  try { document.addEventListener('visibilitychange', keepAwake); } catch { /* 没有 document（测试） */ }
+
   async function add(file, opts) {
     if (busy) throw new Error(`正在转 ${busy}，等它完了（或者停下）再导入`);
     busy = opts.book;
     stopFlag = false;
+    keepAwake();
     try {
       const kind = opts.kind || kindOfFile(file);
-      const meta = { title: opts.title || file?.name || '没有名字', kind, space: opts.space || 'math', subject: opts.subject || '', file: file?.name || '', status: 'importing', at: Date.now() };
+      const pdf = /\.pdf$/i.test(file?.name || '') && !TRANSCRIBE_HERE;
+      // PDF 这次要存哪个文件、哪几页：中途退出了，教材页靠它显示「上次没存完 · 接着存」；存完清掉
+      const storing = pdf ? { file: file.name, size: file.size, from: Math.max(1, Number(opts.from) || 1), to: Number(opts.to) || 0, at: Date.now() } : null;
+      if (pdf && !opts.fromStash) stashFile(opts.book, file); // 在这台设备的浏览器里留一份，「接着存」不用再选文件（不等它）
+      const meta = { title: opts.title || file?.name || '没有名字', kind, space: opts.space || 'math', subject: opts.subject || '', file: file?.name || '', status: 'importing', at: Date.now(), ...(storing ? { storing } : {}) };
       const old = await db.doc(`books/${opts.book}`).get().then((s) => (s.exists ? s.data() : null)).catch(() => null);
       await db.doc(`books/${opts.book}`).set({ ...(old || {}), ...meta, createdAt: old?.createdAt || Date.now() });
       if (/\.docx$/i.test(file?.name || '')) return await addDocx(file, opts, meta);
       if (/\.pptx$/i.test(file?.name || '')) await addPptx(file, opts);
-      else if (/\.pdf$/i.test(file?.name || '')) await addPdf(file, opts, meta);
+      else if (/\.pdf$/i.test(file?.name || '')) {
+        const r = await addPdf(file, opts, meta);
+        if (pdf && !stopFlag && !r?.failed) {
+          const now = (await db.doc(`books/${opts.book}`).get()).data() || {};
+          await db.doc(`books/${opts.book}`).set({ ...now, storing: null });
+          dropStash(opts.book);
+        }
+      }
       else await addImages(opts.files || [file], opts);
       // 停下了就只拼已经转好的；没停：剩下没转的、转坏的再转一遍（PDF 是第二次机会）
       if (stopFlag || !TRANSCRIBE_HERE) return await rebuild(opts.book);
       return await transcribe(opts.book, { meta, fresh: false });
     } finally {
       busy = null;
+      try { await lock?.release?.(); } catch { /* 已经收回了 */ }
+      lock = null;
     }
   }
 
@@ -196,6 +216,7 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
     const bk = (await db.doc(`books/${opts.book}`).get()).data() || {};
     if (failed.length || bk.storeFailed?.length) await db.doc(`books/${opts.book}`).set({ ...bk, storeFailed: failed.sort((x, y) => x - y) });
     if (run.fatal) { await rebuild(opts.book); throw run.fatal; }
+    return { failed: failed.length };
   }
 
   async function addImages(list, opts) {
