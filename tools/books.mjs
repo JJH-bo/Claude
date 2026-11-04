@@ -10,7 +10,8 @@
 // 收件箱每批一条新记录：不改已有的页、不用管版本号，学习台那边同时在存别的页也不冲突。
 //
 // PDF 放在我的私有仓库里时（不经过学习台存页）：
-//   0. node tools/books.mjs render --pdf 文件 --book B3 --from 82 --to 412 --work 工作目录 [--title … --space cs --subject 数据结构]
+//   0. node tools/books.mjs render --pdf 文件 --book B3 --from 82 --to 412 --work 工作目录 [--title … --space cs --subject 数据结构] [--first 151 --total 412]
+//      （PDF 超过 100 MB 拆成几份放进仓库时：--first 是这一份的第 1 页在原书里是第几页，--total 是原书一共几页；页码照原书记）
 //      → 这边画页（pdftoppm，1200 像素宽）、按 crop.js 同一套规则裁白边、认空白页，写 pages.json 和每页的 jpg
 //   1. 原页图传进学习台的 assets（Artifact publish asset，一次 25 张），把「页码 → asset id」记进 assets.json
 //   2. plan 不带 --dump、带 --local：直接用这边的 jpg；apply 时收件箱带上书的信息和每页的原页图，学习台连书带页一起建
@@ -43,8 +44,11 @@ export function readPgm(buf) {
 function render() {
   const pdf = opt('pdf'), book = opt('book'), work = opt('work');
   if (!pdf || !book || !work) throw new Error('要 --pdf 文件 --book B3 --work 工作目录');
-  const total = Number(execFileSync('pdfinfo', [pdf]).toString().match(/Pages:\s+(\d+)/)?.[1] || 0);
-  const from = Math.max(1, Number(opt('from', 1)) || 1), to = Math.min(total, Number(opt('to', total)) || total);
+  const count = Number(execFileSync('pdfinfo', [pdf]).toString().match(/Pages:\s+(\d+)/)?.[1] || 0);
+  const shift = (Number(opt('first', 1)) || 1) - 1; // 拆开的一份：这份第 k 页 = 原书第 k + shift 页
+  const total = Number(opt('total', 0)) || count + shift;
+  // --from / --to 写原书的页码
+  const from = Math.max(1 + shift, Number(opt('from', 1 + shift)) || 1 + shift), to = Math.min(count + shift, Number(opt('to', count + shift)) || count + shift);
   const dir = path.join(work, book, 'pages');
   fs.mkdirSync(dir, { recursive: true });
   const listFile = path.join(work, book, 'pages.json');
@@ -55,21 +59,22 @@ function render() {
   for (let n = from; n <= to; n++) {
     if (have.has(n) && fs.existsSync(have.get(n).file || '')) continue;
     const base = path.join(tmp, `s${n}`);
-    execFileSync('pdftoppm', ['-f', n, '-l', n, '-gray', '-scale-to-x', SMALL, '-scale-to-y', -1, '-singlefile', pdf, base].map(String));
+    const k = n - shift; // 这一份 PDF 里的第几页
+    execFileSync('pdftoppm', ['-f', k, '-l', k, '-gray', '-scale-to-x', SMALL, '-scale-to-y', -1, '-singlefile', pdf, base].map(String));
     const { w, h, gray } = readPgm(fs.readFileSync(`${base}.pgm`));
     fs.rmSync(`${base}.pgm`);
     const found = contentBox(gray, w, h);
     const H = Math.round((h * WIDTH) / w);
     const box = found.box ? scaleBox(found.box, WIDTH / w, WIDTH, H) : { x: 0, y: 0, w: WIDTH, h: H };
     const out = path.join(dir, `p${pad(n)}`);
-    execFileSync('pdftoppm', ['-f', n, '-l', n, '-jpeg', '-jpegopt', 'quality=80', '-scale-to-x', WIDTH, '-scale-to-y', -1,
+    execFileSync('pdftoppm', ['-f', k, '-l', k, '-jpeg', '-jpegopt', 'quality=80', '-scale-to-x', WIDTH, '-scale-to-y', -1,
       '-x', box.x, '-y', box.y, '-W', box.w, '-H', box.h, '-singlefile', pdf, out].map(String));
     let layer = '';
-    try { layer = execFileSync('pdftotext', ['-f', n, '-l', n, pdf, '-'].map(String)).toString().replace(/[ \t]+/g, ' ').trim().slice(0, 6000); } catch { /* 没有文字层 */ }
+    try { layer = execFileSync('pdftotext', ['-f', k, '-l', k, pdf, '-'].map(String)).toString().replace(/[ \t]+/g, ' ').trim().slice(0, 6000); } catch { /* 没有文字层 */ }
     have.set(n, { n, file: path.resolve(`${out}.jpg`), size: [box.w, box.h], blank: !!found.blank && !layer, layer });
     if (n % 20 === 0) console.error(`画到第 ${n} 页`);
   }
-  const info = { title: opt('title', old?.info?.title || path.basename(pdf, '.pdf')), kind: opt('kind', old?.info?.kind || 'textbook'), space: opt('space', old?.info?.space || 'cs'), subject: opt('subject', old?.info?.subject || ''), pages: total, file: path.basename(pdf) };
+  const info = { title: opt('title', old?.info?.title || path.basename(pdf, '.pdf')), kind: opt('kind', old?.info?.kind || 'textbook'), space: opt('space', old?.info?.space || 'cs'), subject: opt('subject', old?.info?.subject || ''), pages: total, file: old?.info?.file || path.basename(pdf) };
   const pages = [...have.values()].sort((a, b) => a.n - b.n);
   fs.writeFileSync(listFile, JSON.stringify({ book, info, pages }, null, 1));
   console.log(JSON.stringify({ book, total, rendered: pages.length, blank: pages.filter((p) => p.blank).map((p) => p.n) }));
