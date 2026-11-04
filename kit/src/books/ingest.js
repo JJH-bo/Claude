@@ -52,6 +52,13 @@ export function transcribePrompt(book = {}, pages = [], ctx = {}) {
 }
 
 const HEAD_RE = /^---\s*([^|]+?)\s*(?:\|\s*(.*?))?\s*(?:\|\s*(接上页)\s*)?$/;
+// 分页那一行：照规矩是「=== 第 23 页」；小一点的模型（Haiku）常写成「## 第 23 页」「**=== 第23页 ===**」「【第 23 页】」「第 23 页：」，都认
+const PAGE_RE = /^[\s#>*_]*(?:={2,}\s*)?[【\[]?\s*第\s*(\d+)\s*页\s*[】\]]?\s*(?:={2,})?[\s*_:：]*$/;
+// 每一行开头的 Markdown 装饰（「- **--- 定义 | …**」「> --- 例题」）去掉再认
+const unmark = (line) => {
+  const t = line.replace(/^\s*(?:>\s*)?(?:[-*]\s+(?=-{3}))?(?:\*\*|__)?(?=-{3})/, '');
+  return /^-{3}/.test(t) ? t.replace(/\s*(?:\*\*|__)\s*$/, '') : line;
+};
 /**
  * 读 Claude 回的转写：「=== 第 N 页」分页，「--- 类型 | 名字 | 接上页」开一条，下面到下一个标记前是正文（原样，公式不转义）。
  * 也认旧的 JSON 写法 {"pages":[…]}。返回 { pages: Map(页码 → items), missing: 没转出来的页 }
@@ -64,9 +71,9 @@ export function parseTranscription(raw, pages = []) {
   let item = null;
   const flush = () => { if (item && page !== null) { item.text = clean(item.lines.join('\n')); delete item.lines; if (item.kind === '标题' ? item.title : item.text || item.title) out.get(page).push(item); } item = null; };
   for (const line of src.replace(/\r\n?/g, '\n').split('\n')) {
-    const pm = line.match(/^===\s*第\s*(\d+)\s*页/);
+    const pm = line.match(/^===\s*第\s*(\d+)\s*页/) || line.match(PAGE_RE);
     if (pm) { flush(); page = Number(pm[1]); if (!out.has(page)) out.set(page, []); continue; }
-    const hm = page !== null && line.match(HEAD_RE);
+    const hm = page !== null && unmark(line).match(HEAD_RE);
     if (hm) {
       flush();
       const k = hm[1].trim();

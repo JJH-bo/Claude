@@ -303,3 +303,18 @@ test('textbook_read 取过的条目页面替它留着：按当时的参数解析
   // 没取过：和原来一样
   assert.doesNotMatch(textbookForClass({ main: { chunks: ['B1-10.1'] }, books, chunks }).textbook, /取过的/);
 });
+
+test('读回转写：小模型常见的分页写法也认（## 第 N 页、【第 N 页】、加粗）', async () => {
+  const { parseTranscription } = await import('../kit/src/books/ingest.js');
+  const raw = ['## 第 64 页', '--- 说明 | 求公共结点', '从第一个公共结点开始……', '', '**=== 第65页 ===**', '**--- 例题 | 06 | 接上页**', '算法思想：……', '【第 66 页】', '- --- 定义 | 定义1', '线性表是……'].join('\n');
+  const r = parseTranscription(raw, [64, 65, 66]);
+  assert.deepEqual(r.missing, []);
+  assert.equal(r.pages.get(64)[0].title, '求公共结点');
+  assert.equal(r.pages.get(65)[0].kind, '例题');
+  assert.equal(r.pages.get(65)[0].cont, true);
+  assert.equal(r.pages.get(66)[0].kind, '定义');
+  assert.match(r.pages.get(66)[0].text, /线性表/);
+  // 正文里提到「第 3 页」的一句话不算分页
+  const r2 = parseTranscription('=== 第 7 页\n--- 说明 | x\n见第 3 页的例题。', [7]);
+  assert.equal(r2.pages.size, 1);
+});

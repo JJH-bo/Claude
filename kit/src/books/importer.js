@@ -230,7 +230,12 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
           throw e;
         }
       }
-      const parsed = parseTranscription(res.text, nums);
+      let parsed;
+      try { parsed = parseTranscription(res.text, nums); } catch (e) {
+        // 留下回复的开头：以后看得出是模型回了别的格式、说了看不清，还是平台换了模型
+        const head = String(res?.text || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+        throw new Error(`${e.message}${res?.modelApplied ? `（${modelName(res.modelApplied)}）` : ''}：${head || '回复是空的'}`);
+      }
       for (const p of batch) {
         const items = parsed.pages.get(p.n);
         const rec = items ? { ...p, items, status: 'done', err: '', by: res.modelApplied || '' } : { ...p, status: 'error', err: '这一页没转出来' };
