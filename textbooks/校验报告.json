@@ -1,0 +1,731 @@
+{
+  "limit_bytes_exclusive": 28000000,
+  "MB_definition": "1 MB = 1,000,000 bytes",
+  "method": "pypdf add_page; no compression/OCR/rotation/cropping/resampling",
+  "test_volume_excluded_from_coverage_totals": true,
+  "books": [
+    {
+      "book": "数据结构",
+      "source": "26王道《数据结构》.pdf",
+      "source_sha256": "f14b5e69f6788847613f86c8f52e7f26abf0207333ad47024db35944833802e7",
+      "source_unchanged": true,
+      "total_pages": 412,
+      "volume_count": 5,
+      "covered_pages": 412,
+      "no_gaps_or_overlaps": true,
+      "every_page_content_and_resources_identical": true,
+      "greedy_boundary_checks": [
+        {
+          "last_page": 85,
+          "next_page": 86,
+          "candidate_bytes": 28256134
+        },
+        {
+          "last_page": 175,
+          "next_page": 176,
+          "candidate_bytes": 28230565
+        },
+        {
+          "last_page": 263,
+          "next_page": 264,
+          "candidate_bytes": 28289021
+        },
+        {
+          "last_page": 346,
+          "next_page": 347,
+          "candidate_bytes": 28090384
+        }
+      ]
+    },
+    {
+      "book": "线代",
+      "source": "27张宇基础30讲线代.pdf",
+      "source_sha256": "b58f57d5d131573da409b289be23e6421110d3c74aa5578651237e4740393283",
+      "source_unchanged": true,
+      "total_pages": 213,
+      "volume_count": 5,
+      "covered_pages": 213,
+      "no_gaps_or_overlaps": true,
+      "every_page_content_and_resources_identical": true,
+      "greedy_boundary_checks": [
+        {
+          "last_page": 51,
+          "next_page": 52,
+          "candidate_bytes": 28497166
+        },
+        {
+          "last_page": 96,
+          "next_page": 97,
+          "candidate_bytes": 28856860
+        },
+        {
+          "last_page": 148,
+          "next_page": 149,
+          "candidate_bytes": 29635068
+        },
+        {
+          "last_page": 188,
+          "next_page": 189,
+          "candidate_bytes": 28568780
+        }
+      ]
+    },
+    {
+      "book": "英语",
+      "source": "27田静《句句真研》英一.pdf",
+      "source_sha256": "10492dd96b37a00fddee0cb0cbe0a0f84d8e80d69583bd6eeab598e596e41440",
+      "source_unchanged": true,
+      "total_pages": 310,
+      "volume_count": 28,
+      "covered_pages": 310,
+      "no_gaps_or_overlaps": true,
+      "every_page_content_and_resources_identical": true,
+      "greedy_boundary_checks": [
+        {
+          "last_page": 12,
+          "next_page": 13,
+          "candidate_bytes": 28550264
+        },
+        {
+          "last_page": 27,
+          "next_page": 28,
+          "candidate_bytes": 28993303
+        },
+        {
+          "last_page": 39,
+          "next_page": 40,
+          "candidate_bytes": 28028920
+        },
+        {
+          "last_page": 51,
+          "next_page": 52,
+          "candidate_bytes": 29237014
+        },
+        {
+          "last_page": 65,
+          "next_page": 66,
+          "candidate_bytes": 29076652
+        },
+        {
+          "last_page": 78,
+          "next_page": 79,
+          "candidate_bytes": 29343192
+        },
+        {
+          "last_page": 92,
+          "next_page": 93,
+          "candidate_bytes": 31323020
+        },
+        {
+          "last_page": 99,
+          "next_page": 100,
+          "candidate_bytes": 29820117
+        },
+        {
+          "last_page": 116,
+          "next_page": 117,
+          "candidate_bytes": 29040717
+        },
+        {
+          "last_page": 126,
+          "next_page": 127,
+          "candidate_bytes": 31174154
+        },
+        {
+          "last_page": 139,
+          "next_page": 140,
+          "candidate_bytes": 29371202
+        },
+        {
+          "last_page": 151,
+          "next_page": 152,
+          "candidate_bytes": 28306338
+        },
+        {
+          "last_page": 164,
+          "next_page": 165,
+          "candidate_bytes": 29812485
+        },
+        {
+          "last_page": 176,
+          "next_page": 177,
+          "candidate_bytes": 28234739
+        },
+        {
+          "last_page": 185,
+          "next_page": 186,
+          "candidate_bytes": 29970736
+        },
+        {
+          "last_page": 194,
+          "next_page": 195,
+          "candidate_bytes": 28658875
+        },
+        {
+          "last_page": 206,
+          "next_page": 207,
+          "candidate_bytes": 30878779
+        },
+        {
+          "last_page": 214,
+          "next_page": 215,
+          "candidate_bytes": 28402451
+        },
+        {
+          "last_page": 223,
+          "next_page": 224,
+          "candidate_bytes": 30422499
+        },
+        {
+          "last_page": 237,
+          "next_page": 238,
+          "candidate_bytes": 28644752
+        },
+        {
+          "last_page": 252,
+          "next_page": 253,
+          "candidate_bytes": 30154612
+        },
+        {
+          "last_page": 260,
+          "next_page": 261,
+          "candidate_bytes": 30638677
+        },
+        {
+          "last_page": 269,
+          "next_page": 270,
+          "candidate_bytes": 30287015
+        },
+        {
+          "last_page": 278,
+          "next_page": 279,
+          "candidate_bytes": 30117274
+        },
+        {
+          "last_page": 287,
+          "next_page": 288,
+          "candidate_bytes": 30885980
+        },
+        {
+          "last_page": 295,
+          "next_page": 296,
+          "candidate_bytes": 28905637
+        },
+        {
+          "last_page": 304,
+          "next_page": 305,
+          "candidate_bytes": 30094289
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "book": "数据结构",
+      "filename": "数据结构_p001-085.pdf",
+      "relative_path": "数据结构/数据结构_p001-085.pdf",
+      "first": 1,
+      "last": 85,
+      "pages": 85,
+      "bytes": 27929220,
+      "MB": 27.9292,
+      "sha256": "b7de3a912d1654ed0291a16176552d2206b234b0740081200263a8134f71933a",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "数据结构",
+      "filename": "数据结构_p086-175.pdf",
+      "relative_path": "数据结构/数据结构_p086-175.pdf",
+      "first": 86,
+      "last": 175,
+      "pages": 90,
+      "bytes": 27987131,
+      "MB": 27.9871,
+      "sha256": "8a4e5cd5a6b5d93eaf7fd914d1c460c84003b1365c498dbaa99ff2da0e6549a9",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "数据结构",
+      "filename": "数据结构_p176-263.pdf",
+      "relative_path": "数据结构/数据结构_p176-263.pdf",
+      "first": 176,
+      "last": 263,
+      "pages": 88,
+      "bytes": 27911010,
+      "MB": 27.911,
+      "sha256": "42dacaf45a4afd3bd89614d9984cb6407d46982e86d7c90975c36527d0817dd6",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "数据结构",
+      "filename": "数据结构_p264-346.pdf",
+      "relative_path": "数据结构/数据结构_p264-346.pdf",
+      "first": 264,
+      "last": 346,
+      "pages": 83,
+      "bytes": 27793148,
+      "MB": 27.7931,
+      "sha256": "0b70c309dda6491f6a2820649ab36457f262f6385f2f26daaadf4d39304191d3",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "数据结构",
+      "filename": "数据结构_p347-412.pdf",
+      "relative_path": "数据结构/数据结构_p347-412.pdf",
+      "first": 347,
+      "last": 412,
+      "pages": 66,
+      "bytes": 23745257,
+      "MB": 23.7453,
+      "sha256": "634edb35f64b01dcb5d3ac7c88a16118863f9b176cf2d2f671e6fb32da7b01d3",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "数据结构",
+      "filename": "数据结构_p082-091.pdf",
+      "relative_path": "数据结构/测试/数据结构_p082-091.pdf",
+      "first": 82,
+      "last": 91,
+      "pages": 10,
+      "bytes": 2956310,
+      "MB": 2.9563,
+      "sha256": "4e6e0b3dec02f36af6f44f9de8fbef04e225c54870240fe3a03374fd3c995e22",
+      "test": true,
+      "page_content_verified": true
+    },
+    {
+      "book": "线代",
+      "filename": "线代_p001-051.pdf",
+      "relative_path": "线代/线代_p001-051.pdf",
+      "first": 1,
+      "last": 51,
+      "pages": 51,
+      "bytes": 27773495,
+      "MB": 27.7735,
+      "sha256": "19cdda392bcf837ca469caf0254b245bc1a25745789d644d925ed1b6172f6c43",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "线代",
+      "filename": "线代_p052-096.pdf",
+      "relative_path": "线代/线代_p052-096.pdf",
+      "first": 52,
+      "last": 96,
+      "pages": 45,
+      "bytes": 27542483,
+      "MB": 27.5425,
+      "sha256": "67d7e0e9c2a1272ec61e2b2982cd484908351d5eeb1d54ffe02dc13abca40cb8",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "线代",
+      "filename": "线代_p097-148.pdf",
+      "relative_path": "线代/线代_p097-148.pdf",
+      "first": 97,
+      "last": 148,
+      "pages": 52,
+      "bytes": 27960919,
+      "MB": 27.9609,
+      "sha256": "fadec398109731cdd04dbc7d21c386893cbf9279e0b9aed2a67a5501a118f7eb",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "线代",
+      "filename": "线代_p149-188.pdf",
+      "relative_path": "线代/线代_p149-188.pdf",
+      "first": 149,
+      "last": 188,
+      "pages": 40,
+      "bytes": 27928111,
+      "MB": 27.9281,
+      "sha256": "40273c3bce848f95eb6bd70fa6a24791d8e6867bf7760d07d6792cb9dc1964d9",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "线代",
+      "filename": "线代_p189-213.pdf",
+      "relative_path": "线代/线代_p189-213.pdf",
+      "first": 189,
+      "last": 213,
+      "pages": 25,
+      "bytes": 12520453,
+      "MB": 12.5205,
+      "sha256": "29bfaeab2de1d2802cf297a45918b04aac2367e3d3588ff19cd9b9d25da29994",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p001-012.pdf",
+      "relative_path": "英语/英语_p001-012.pdf",
+      "first": 1,
+      "last": 12,
+      "pages": 12,
+      "bytes": 26834351,
+      "MB": 26.8344,
+      "sha256": "4cd8528424ef800dd101cdd96ef35fee627422601594999a12e27d56a59ecdde",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p013-027.pdf",
+      "relative_path": "英语/英语_p013-027.pdf",
+      "first": 13,
+      "last": 27,
+      "pages": 15,
+      "bytes": 27135065,
+      "MB": 27.1351,
+      "sha256": "4b5b487ba74f459f61890b2edd60fcfc51c1925aecb3dd08a1d49a29013ba6fa",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p028-039.pdf",
+      "relative_path": "英语/英语_p028-039.pdf",
+      "first": 28,
+      "last": 39,
+      "pages": 12,
+      "bytes": 26652602,
+      "MB": 26.6526,
+      "sha256": "a697c6cce14a1f308dbcebc968dc471eab9f5aee572dd935ba4a3e2f9099f1ee",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p040-051.pdf",
+      "relative_path": "英语/英语_p040-051.pdf",
+      "first": 40,
+      "last": 51,
+      "pages": 12,
+      "bytes": 24855778,
+      "MB": 24.8558,
+      "sha256": "b32934b6264a46d8496fd1e4f6a584972e8b0b5c9c07e480161be06f9f2e76c5",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p052-065.pdf",
+      "relative_path": "英语/英语_p052-065.pdf",
+      "first": 52,
+      "last": 65,
+      "pages": 14,
+      "bytes": 27269388,
+      "MB": 27.2694,
+      "sha256": "baa3012975a643b9e974cb58f68f70ad992c883d7b61107a44b0e5c6976f8fbf",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p066-078.pdf",
+      "relative_path": "英语/英语_p066-078.pdf",
+      "first": 66,
+      "last": 78,
+      "pages": 13,
+      "bytes": 27416253,
+      "MB": 27.4163,
+      "sha256": "57e560c5a13a66db39185779f07bc7155e248c8b1f0cd614494fd4d1e28a0562",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p079-092.pdf",
+      "relative_path": "英语/英语_p079-092.pdf",
+      "first": 79,
+      "last": 92,
+      "pages": 14,
+      "bytes": 26742958,
+      "MB": 26.743,
+      "sha256": "496b8ac41ff81bb4524ff108f3abb12dc13192aaa9492c6147dfbdfb2c418d2e",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p093-099.pdf",
+      "relative_path": "英语/英语_p093-099.pdf",
+      "first": 93,
+      "last": 99,
+      "pages": 7,
+      "bytes": 27930298,
+      "MB": 27.9303,
+      "sha256": "14c2a8ca8611b0e82ebfd7795c0e3a47bd11bac7edbabe386e26956a5fb22a54",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p100-116.pdf",
+      "relative_path": "英语/英语_p100-116.pdf",
+      "first": 100,
+      "last": 116,
+      "pages": 17,
+      "bytes": 27621449,
+      "MB": 27.6214,
+      "sha256": "ad3638a3084096f5cf07cef9b5be249f43b582dc18e7f8634d249617d716e017",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p117-126.pdf",
+      "relative_path": "英语/英语_p117-126.pdf",
+      "first": 117,
+      "last": 126,
+      "pages": 10,
+      "bytes": 25782154,
+      "MB": 25.7822,
+      "sha256": "017b44299a34f434f15267d6d08f79090beb808632649515e93fb6d97b4e876d",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p127-139.pdf",
+      "relative_path": "英语/英语_p127-139.pdf",
+      "first": 127,
+      "last": 139,
+      "pages": 13,
+      "bytes": 27253346,
+      "MB": 27.2533,
+      "sha256": "784acacf2ef31e8f04af861f866799d0c6579f337cadfbd4ee9c09f23ca05d0c",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p140-151.pdf",
+      "relative_path": "英语/英语_p140-151.pdf",
+      "first": 140,
+      "last": 151,
+      "pages": 12,
+      "bytes": 26117116,
+      "MB": 26.1171,
+      "sha256": "a22cf04234f561e69e07d155a39bd7c62b6a8df566ef7f6f157841bb38cebb6c",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p152-164.pdf",
+      "relative_path": "英语/英语_p152-164.pdf",
+      "first": 152,
+      "last": 164,
+      "pages": 13,
+      "bytes": 27853335,
+      "MB": 27.8533,
+      "sha256": "2d3a8632f1db0d485ea1a862ade99e974dbd8cbd8c6ffea08a2bf7da7cd99ccd",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p165-176.pdf",
+      "relative_path": "英语/英语_p165-176.pdf",
+      "first": 165,
+      "last": 176,
+      "pages": 12,
+      "bytes": 20965284,
+      "MB": 20.9653,
+      "sha256": "55eabe30a8849064bef03224aac386db3e6f200bc550e0f870e2468ed0079ce3",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p177-185.pdf",
+      "relative_path": "英语/英语_p177-185.pdf",
+      "first": 177,
+      "last": 185,
+      "pages": 9,
+      "bytes": 26545150,
+      "MB": 26.5451,
+      "sha256": "f9651466d8cc71fd17c149b1b7eb46b30a0fdfd98201a347bf3d63d03da788a6",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p186-194.pdf",
+      "relative_path": "英语/英语_p186-194.pdf",
+      "first": 186,
+      "last": 194,
+      "pages": 9,
+      "bytes": 27094660,
+      "MB": 27.0947,
+      "sha256": "3e5b2636cb0b43d59d57e78196747f3fc5f1356c3611c95d99c424359996a7e7",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p195-206.pdf",
+      "relative_path": "英语/英语_p195-206.pdf",
+      "first": 195,
+      "last": 206,
+      "pages": 12,
+      "bytes": 25741464,
+      "MB": 25.7415,
+      "sha256": "148e009cab17a2e703dba47eb526e708df2a5349e8cd34f8eb6edffb2b26b283",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p207-214.pdf",
+      "relative_path": "英语/英语_p207-214.pdf",
+      "first": 207,
+      "last": 214,
+      "pages": 8,
+      "bytes": 26753376,
+      "MB": 26.7534,
+      "sha256": "a56de6d18ed36641ca76d6c7052a71370eba3b8c33539faffd6713863821e484",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p215-223.pdf",
+      "relative_path": "英语/英语_p215-223.pdf",
+      "first": 215,
+      "last": 223,
+      "pages": 9,
+      "bytes": 27861964,
+      "MB": 27.862,
+      "sha256": "046aaace5c7acd39b0a386bf8b80564e6105b705b9024cc88d2982938f5200a7",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p224-237.pdf",
+      "relative_path": "英语/英语_p224-237.pdf",
+      "first": 224,
+      "last": 237,
+      "pages": 14,
+      "bytes": 27005367,
+      "MB": 27.0054,
+      "sha256": "4d139068bc626582d0ca0dacde759c9e52c82293a1876f1c6115a5d0263fcf43",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p238-252.pdf",
+      "relative_path": "英语/英语_p238-252.pdf",
+      "first": 238,
+      "last": 252,
+      "pages": 15,
+      "bytes": 25081882,
+      "MB": 25.0819,
+      "sha256": "d5be5de7312ee8e042ebab258c677a0513650617539821be88e3088a11e04428",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p253-260.pdf",
+      "relative_path": "英语/英语_p253-260.pdf",
+      "first": 253,
+      "last": 260,
+      "pages": 8,
+      "bytes": 27779481,
+      "MB": 27.7795,
+      "sha256": "813db1fd19fd5fd201f5f0e213b37df5f0602bbb5bb1edcbc9236f1746208f56",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p261-269.pdf",
+      "relative_path": "英语/英语_p261-269.pdf",
+      "first": 261,
+      "last": 269,
+      "pages": 9,
+      "bytes": 27355831,
+      "MB": 27.3558,
+      "sha256": "b8bae926086756b82c46c74721b0a4270d791eda9aa945eddce4fa2f62f406db",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p270-278.pdf",
+      "relative_path": "英语/英语_p270-278.pdf",
+      "first": 270,
+      "last": 278,
+      "pages": 9,
+      "bytes": 26849457,
+      "MB": 26.8495,
+      "sha256": "c141a29ae570931ad9d95487b66e625dfae1fee17bf74a07ded75c2c632ffbc2",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p279-287.pdf",
+      "relative_path": "英语/英语_p279-287.pdf",
+      "first": 279,
+      "last": 287,
+      "pages": 9,
+      "bytes": 27964226,
+      "MB": 27.9642,
+      "sha256": "3d4fc03d84f37b95918f71711bfb897fe8a98f163e422cb2e4f0c913dc49c331",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p288-295.pdf",
+      "relative_path": "英语/英语_p288-295.pdf",
+      "first": 288,
+      "last": 295,
+      "pages": 8,
+      "bytes": 25554906,
+      "MB": 25.5549,
+      "sha256": "939f513aad719ab1a0d2211ca9777daff9040b2d2421e5a955436ce4f18405ab",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p296-304.pdf",
+      "relative_path": "英语/英语_p296-304.pdf",
+      "first": 296,
+      "last": 304,
+      "pages": 9,
+      "bytes": 27264255,
+      "MB": 27.2643,
+      "sha256": "50a0c6aee6915ecc545c951b8193d36b596371ff52d6f5daef3090885577eb14",
+      "test": false,
+      "page_content_verified": true
+    },
+    {
+      "book": "英语",
+      "filename": "英语_p305-310.pdf",
+      "relative_path": "英语/英语_p305-310.pdf",
+      "first": 305,
+      "last": 310,
+      "pages": 6,
+      "bytes": 17497789,
+      "MB": 17.4978,
+      "sha256": "ccd88bbea6487df12a470c585485030db4194e85c4c1a696464d53dcf5483821",
+      "test": false,
+      "page_content_verified": true
+    }
+  ]
+}

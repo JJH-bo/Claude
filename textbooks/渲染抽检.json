@@ -1,0 +1,46 @@
+[
+  {
+    "case": "数据结构测试首",
+    "original_page": 82,
+    "split_page": 1,
+    "render_pixels_identical": true,
+    "image_size": [
+      1005,
+      1400
+    ],
+    "pixel_sha256": "e9f758c09223e30bb4cd4910411fa25ed3f7d13e34a7d41b426d5d2381d69d8b"
+  },
+  {
+    "case": "数据结构测试末",
+    "original_page": 91,
+    "split_page": 10,
+    "render_pixels_identical": true,
+    "image_size": [
+      1005,
+      1400
+    ],
+    "pixel_sha256": "3c136134c4d9d4846e5ae51a4aa23e0ad037f8296bef296dd5901fe9bc92637e"
+  },
+  {
+    "case": "线代",
+    "original_page": 52,
+    "split_page": 1,
+    "render_pixels_identical": true,
+    "image_size": [
+      964,
+      1400
+    ],
+    "pixel_sha256": "302fafc32b5aef97d05ac0fa0a59a8cc625af280222806c88fd60365d2adaa81"
+  },
+  {
+    "case": "英语",
+    "original_page": 93,
+    "split_page": 1,
+    "render_pixels_identical": true,
+    "image_size": [
+      990,
+      1400
+    ],
+    "pixel_sha256": "2671fa7b4bf98eac7b37ef340ad4333f16fac5d3487e209d6552dab84b5bf4a9"
+  }
+]
