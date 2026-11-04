@@ -107,11 +107,18 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
       </form>`;
   }
 
+  // 裁白边、跳过空白页让看图少花了多少（importer.js 记在 cost 里）
+  function savedText(c) {
+    if (!c?.imgFull) return '';
+    const pct = Math.round((1 - (c.imgTokens || 0) / c.imgFull) * 100);
+    return pct > 0 ? ` · 看图少花 ${pct}%${c.blank ? `（${c.blank} 页空白没转）` : ''}` : '';
+  }
+
   // 估算：扫描页每 PAGES_PER_CALL 页一次调用（每页一张图，约一两千 token，加上转出来的字）
   function costText(from = null, to = null) {
     const n = pdfPages ? Math.max(0, Math.min(pdfPages, to || pdfPages) - Math.max(1, from || 1) + 1) : null;
     return n === null ? `扫描页每 ${PAGES_PER_CALL} 页一次调用。整本几百页要几十次，花的额度不少：可以先转这一讲要用的几十页，以后再接着转别的页。`
-      : `这个 PDF 一共 ${pdfPages} 页。转 ${n} 页约 ${Math.ceil(n / PAGES_PER_CALL)} 次调用（每次 ${PAGES_PER_CALL} 页），每页约两三千 token（图 + 转出来的字）。可以先转这一讲要用的几十页，以后再接着转。`;
+      : `这个 PDF 一共 ${pdfPages} 页。转 ${n} 页约 ${Math.ceil(n / PAGES_PER_CALL)} 次调用（每次 ${PAGES_PER_CALL} 页），每页约两三千 token（图 + 转出来的字；图先裁掉白边、空白页不调用）。可以先转这一讲要用的几十页，以后再接着转。`;
   }
   function paintCost() {
     const f = host.querySelector('.bk-form');
@@ -129,7 +136,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
     const checked = chunks ? chunks.filter((c) => c.checked).length : 0;
     return `<p><a class="dk-link" href="#books">← 资料</a></p>
       <section class="dk-card"><h2 class="dk-h">${esc(b.id)} ${esc(b.title || '')}</h2>
-        <p class="muted">${esc(BOOK_KINDS[b.kind] || '')} · ${esc(STATUS[b.status] || '')}${b.chunks ? ` · ${b.chunks} 条` : ''}${chunks ? ` · 核对过 ${checked} 条` : ''}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}</p>
+        <p class="muted">${esc(BOOK_KINDS[b.kind] || '')} · ${esc(STATUS[b.status] || '')}${b.chunks ? ` · ${b.chunks} 条` : ''}${chunks ? ` · 核对过 ${checked} 条` : ''}${b.pagesDone ? ` · 转好 ${b.pagesDone} 页` : ''}${b.cost?.calls ? ` · 调用 ${b.cost.calls} 次` : ''}${savedText(b.cost)}</p>
         <div class="mm-acts">
           ${bad.length ? `<button type="button" class="btn btn-primary bk-resume" data-book="${esc(id)}">接着转（${bad.length} 页）</button>` : ''}
           ${plan ? `<button type="button" class="btn bk-plan" data-book="${esc(id)}">挂到课程地图</button>` : ''}
