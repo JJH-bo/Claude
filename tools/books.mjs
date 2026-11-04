@@ -8,9 +8,72 @@
 //      → 读每批的 out.txt（ingest.js 的 parseTranscription），拼成收件箱记录 inbox/*.json，打印 ArtifactData batch 的 writes
 //   5. ArtifactData batch 写进 book_inbox；学习台打开时（bookview.js 的 takeInbox）并进各页、自己拼条目
 // 收件箱每批一条新记录：不改已有的页、不用管版本号，学习台那边同时在存别的页也不冲突。
+//
+// PDF 放在我的私有仓库里时（不经过学习台存页）：
+//   0. node tools/books.mjs render --pdf 文件 --book B3 --from 82 --to 412 --work 工作目录 [--title … --space cs --subject 数据结构]
+//      → 这边画页（pdftoppm，1200 像素宽）、按 crop.js 同一套规则裁白边、认空白页，写 pages.json 和每页的 jpg
+//   1. 原页图传进学习台的 assets（Artifact publish asset，一次 25 张），把「页码 → asset id」记进 assets.json
+//   2. plan 不带 --dump、带 --local：直接用这边的 jpg；apply 时收件箱带上书的信息和每页的原页图，学习台连书带页一起建
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { transcribePrompt, parseTranscription } from '../kit/src/books/ingest.js';
+import { contentBox, scaleBox } from '../kit/src/books/crop.js';
+
+const WIDTH = 1200; // 和学习台存的原页图一样宽
+const SMALL = 400; // 找内容用的小图
+
+/** 读 pdftoppm -gray 出的 PGM（P5） */
+export function readPgm(buf) {
+  let pos = 0;
+  const next = () => {
+    while (/\s/.test(String.fromCharCode(buf[pos]))) pos++;
+    if (buf[pos] === 35) { while (buf[pos] !== 10) pos++; return next(); } // # 注释
+    let s = '';
+    while (!/\s/.test(String.fromCharCode(buf[pos]))) s += String.fromCharCode(buf[pos++]);
+    return s;
+  };
+  if (next() !== 'P5') throw new Error('不是 P5 的 PGM');
+  const w = Number(next()), h = Number(next()), max = Number(next());
+  pos++; // 头后面一个空白
+  if (max > 255) throw new Error('只认 8 位灰度');
+  return { w, h, gray: buf.subarray(pos, pos + w * h) };
+}
+
+function render() {
+  const pdf = opt('pdf'), book = opt('book'), work = opt('work');
+  if (!pdf || !book || !work) throw new Error('要 --pdf 文件 --book B3 --work 工作目录');
+  const total = Number(execFileSync('pdfinfo', [pdf]).toString().match(/Pages:\s+(\d+)/)?.[1] || 0);
+  const from = Math.max(1, Number(opt('from', 1)) || 1), to = Math.min(total, Number(opt('to', total)) || total);
+  const dir = path.join(work, book, 'pages');
+  fs.mkdirSync(dir, { recursive: true });
+  const listFile = path.join(work, book, 'pages.json');
+  const old = fs.existsSync(listFile) ? readJson(listFile) : null;
+  const have = new Map((old?.pages || []).map((p) => [p.n, p]));
+  const tmp = path.join(work, book, 'tmp');
+  fs.mkdirSync(tmp, { recursive: true });
+  for (let n = from; n <= to; n++) {
+    if (have.has(n) && fs.existsSync(have.get(n).file || '')) continue;
+    const base = path.join(tmp, `s${n}`);
+    execFileSync('pdftoppm', ['-f', n, '-l', n, '-gray', '-scale-to-x', SMALL, '-scale-to-y', -1, '-singlefile', pdf, base].map(String));
+    const { w, h, gray } = readPgm(fs.readFileSync(`${base}.pgm`));
+    fs.rmSync(`${base}.pgm`);
+    const found = contentBox(gray, w, h);
+    const H = Math.round((h * WIDTH) / w);
+    const box = found.box ? scaleBox(found.box, WIDTH / w, WIDTH, H) : { x: 0, y: 0, w: WIDTH, h: H };
+    const out = path.join(dir, `p${pad(n)}`);
+    execFileSync('pdftoppm', ['-f', n, '-l', n, '-jpeg', '-jpegopt', 'quality=80', '-scale-to-x', WIDTH, '-scale-to-y', -1,
+      '-x', box.x, '-y', box.y, '-W', box.w, '-H', box.h, '-singlefile', pdf, out].map(String));
+    let layer = '';
+    try { layer = execFileSync('pdftotext', ['-f', n, '-l', n, pdf, '-'].map(String)).toString().replace(/[ \t]+/g, ' ').trim().slice(0, 6000); } catch { /* 没有文字层 */ }
+    have.set(n, { n, file: path.resolve(`${out}.jpg`), size: [box.w, box.h], blank: !!found.blank && !layer, layer });
+    if (n % 20 === 0) console.error(`画到第 ${n} 页`);
+  }
+  const info = { title: opt('title', old?.info?.title || path.basename(pdf, '.pdf')), kind: opt('kind', old?.info?.kind || 'textbook'), space: opt('space', old?.info?.space || 'cs'), subject: opt('subject', old?.info?.subject || ''), pages: total, file: path.basename(pdf) };
+  const pages = [...have.values()].sort((a, b) => a.n - b.n);
+  fs.writeFileSync(listFile, JSON.stringify({ book, info, pages }, null, 1));
+  console.log(JSON.stringify({ book, total, rendered: pages.length, blank: pages.filter((p) => p.blank).map((p) => p.n) }));
+}
 
 const args = process.argv.slice(2);
 const cmd = args.shift();
@@ -64,11 +127,16 @@ const CONTEXT = '（这些是学生自己手里这本教材的扫描页。转写
 
 function plan() {
   const dir = opt('dump'), book = opt('book'), work = opt('work');
-  if (!dir || !book || !work) throw new Error('要 --dump 目录 --book B3 --work 工作目录');
+  const local = args.includes('--local');
+  if ((!dir && !local) || !book || !work) throw new Error('要 --dump 目录（或 --local）--book B3 --work 工作目录');
   const per = Number(opt('per', 4)) || 4;
-  const { info, pages } = loadDump(dir, book);
+  // --local：用这边画好的页（pages.json）；带了 --dump 时，学习台里已经转好的页拿来判断「接着上一页」
+  const dumped = dir ? loadDump(dir, book) : { info: null, pages: [] };
+  const mine = local ? readJson(path.join(work, book, 'pages.json')) : null;
+  const info = mine?.info || dumped.info;
+  const pages = local ? [...dumped.pages.filter((p) => p.status === 'done' && !mine.pages.some((x) => x.n === p.n)), ...mine.pages.map((p) => ({ ...p, status: 'todo', img: p.file }))].sort((a, b) => a.n - b.n) : dumped.pages;
   const byN = new Map(pages.map((p) => [p.n, p]));
-  const want = opt('pages') ? parseRange(opt('pages')).filter((n) => byN.has(n)) : pages.filter((p) => p.status !== 'done').map((p) => p.n);
+  const want = opt('pages') ? parseRange(opt('pages')).filter((n) => byN.has(n)) : pages.filter((p) => p.status !== 'done' && !p.blank).map((p) => p.n);
   const noImg = want.filter((n) => !byN.get(n).img);
   const todo = want.filter((n) => byN.get(n).img);
   const out = path.join(work, book);
@@ -95,6 +163,22 @@ function apply() {
   const writes = [];
   const report = [];
   const stamp = Date.now().toString(36);
+  // 从仓库的 PDF 转的：书的信息、每页的原页图（assets.json：页码 → 学习台 assets 的 id）一起带上
+  const mine = fs.existsSync(path.join(dir, 'pages.json')) ? readJson(path.join(dir, 'pages.json')) : null;
+  const ids = fs.existsSync(path.join(dir, 'assets.json')) ? readJson(path.join(dir, 'assets.json')) : {};
+  const metaOf = (nums) => (mine ? Object.fromEntries(nums.map((n) => [n, mine.pages.find((p) => p.n === Number(n))]).filter(([, p]) => p).map(([n, p]) => [n, { img: ids[n] || '', size: p.size, ...(p.blank ? { blank: true } : {}) }])) : null);
+  if (mine) {
+    const noId = mine.pages.filter((p) => !ids[p.n]).map((p) => p.n);
+    if (noId.length) report.push(`第 ${noId.join('、')} 页还没传原页图（assets.json 里没有），写进学习台以后这些条目没有原图可核对`);
+    // 空白页不转：收件箱里直接记成转好了（没有内容）
+    const blanks = mine.pages.filter((p) => p.blank).map((p) => p.n);
+    if (blanks.length && !fs.existsSync(path.join(dir, 'blank.sent'))) {
+      const docId = `${book}-blank-${stamp}`;
+      const file = path.join(inbox, `${docId}.json`);
+      fs.writeFileSync(file, JSON.stringify({ book, batch: 'blank', info: mine.info, pages: Object.fromEntries(blanks.map((n) => [n, []])), meta: metaOf(blanks), by: 'page', at: Date.now() }));
+      writes.push({ op: 'set', collection: 'book_inbox', doc_id: docId, file_path: path.resolve(file), _batch: 'blank' });
+    }
+  }
   for (const f of fs.readdirSync(dir).filter((x) => /^b\d+\.json$/.test(x)).sort()) {
     const { pages: nums } = readJson(path.join(dir, f));
     const id = f.replace(/\.json$/, '');
@@ -109,7 +193,7 @@ function apply() {
     if (!Object.keys(got).length) continue;
     const docId = `${book}-${pad(nums[0])}-${stamp}`;
     const file = path.join(inbox, `${docId}.json`);
-    fs.writeFileSync(file, JSON.stringify({ book, batch: id, pages: got, by, at: Date.now() }));
+    fs.writeFileSync(file, JSON.stringify({ book, batch: id, pages: got, by, at: Date.now(), ...(mine ? { info: mine.info, meta: metaOf(Object.keys(got)) } : {}) }));
     writes.push({ op: 'set', collection: 'book_inbox', doc_id: docId, file_path: path.resolve(file), _batch: id });
   }
   // 一次 batch 最多 50 条、1 MiB：按大小切
@@ -137,7 +221,8 @@ function sent() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
-    if (cmd === 'plan') plan();
+    if (cmd === 'render') render();
+    else if (cmd === 'plan') plan();
     else if (cmd === 'apply') apply();
     else if (cmd === 'sent') sent();
     else console.log('用法：node tools/books.mjs plan|apply|sent …（见文件开头）');

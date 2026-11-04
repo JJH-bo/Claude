@@ -324,3 +324,12 @@ test('Claude Code 转教材的工具：页码范围、分批', async () => {
   assert.deepEqual(parseRange('64-66,55，57'), [55, 57, 64, 65, 66]);
   assert.deepEqual(batchesOf([55, 56, 57, 64, 65, 66, 67, 68], 4), [[55, 56, 57], [64, 65, 66, 67], [68]]);
 });
+
+test('读 pdftoppm 出的灰度图（PGM）', async () => {
+  const { readPgm } = await import('../tools/books.mjs');
+  const head = Buffer.from('P5\n# x\n3 2\n255\n');
+  const r = readPgm(Buffer.concat([head, Buffer.from([0, 128, 255, 1, 2, 3])]));
+  assert.equal(r.w, 3);
+  assert.equal(r.h, 2);
+  assert.deepEqual([...r.gray], [0, 128, 255, 1, 2, 3]);
+});

@@ -54,11 +54,22 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
       for (const d of docs) {
         const book = String(d.book || '');
         if (!/^B\d+$/.test(book)) continue;
+        // 从仓库里的 PDF 转的：书、页在学习台里可能还没有，收件箱带着书的信息（info）和每页的原页图（meta）一起建
+        if (d.info) {
+          const bref = db.doc(`books/${book}`);
+          const bs = await bref.get();
+          if (!bs.exists) await bref.set({ ...d.info, status: 'importing', createdAt: Date.now(), at: Date.now() });
+          else if (d.info.pages && !bs.data().pages) await bref.set({ ...bs.data(), pages: d.info.pages });
+        }
         for (const [n, items] of Object.entries(d.pages || {})) {
+          if (!Array.isArray(items)) continue;
           const ref = db.doc(`books/${book}/pages/${n}`);
           const snap = await ref.get();
-          if (!snap.exists || !Array.isArray(items)) continue;
-          const rec = { ...snap.data(), items, status: 'done', err: '', by: d.by || '', via: 'claude-code', at: Date.now() };
+          const m = d.meta?.[n];
+          if (!snap.exists && !m) continue;
+          const base = snap.exists ? snap.data() : { n: Number(n), img: m.img || '', imgs: m.img ? [m.img] : [], layer: '', ...(m.size ? { size: m.size } : {}), ...(m.blank ? { blank: true } : {}) };
+          if (m?.img && !base.img) Object.assign(base, { img: m.img, imgs: [m.img] });
+          const rec = { ...base, items, status: 'done', err: '', by: m?.blank ? 'page' : d.by || '', via: 'claude-code', at: Date.now() };
           delete rec.redo;
           await ref.set(rec);
         }
