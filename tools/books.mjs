@@ -213,6 +213,58 @@ function apply() {
   console.log(JSON.stringify({ book, inbox: writes.length, report, groups: groups.map((g) => g.map(({ _batch, ...w }) => w)) }, null, 1));
 }
 
+/**
+ * Codex（或别的地方）写好的转写文本：--src 目录下所有 .txt，照「=== 第 N 页 / --- 类型 | 名字」的格式。
+ * node tools/books.mjs text --book B3 --src 目录 --work 工作目录 [--by codex] [--pages 82-412] [--title 书名 --space cs --subject 数据结构 --total 412（新书）]
+ * 每 8 页拼一条收件箱记录（学习台里还没有这一页也照样建，原页图以后在学习台里「存进学习台」时补上），打印 batch 的 writes 和检查结果
+ */
+function text() {
+  const book = opt('book'), src = opt('src'), work = opt('work'), by = opt('by', 'codex');
+  if (!book || !src || !work) throw new Error('要 --book B3 --src 文本目录 --work 工作目录');
+  const files = fs.readdirSync(src, { recursive: true }).map(String).filter((f) => f.endsWith('.txt')).sort();
+  const pages = new Map();
+  const report = [];
+  for (const f of files) {
+    const raw = fs.readFileSync(path.join(src, f), 'utf8');
+    try {
+      const { pages: got } = parseTranscription(raw, []);
+      for (const [n, items] of got) {
+        if (pages.has(n)) report.push(`第 ${n} 页在两个文件里都有（用 ${f} 的）`);
+        pages.set(n, items);
+      }
+    } catch (e) { report.push(`${f}：${e.message}`); }
+  }
+  const only = opt('pages') ? new Set(parseRange(opt('pages'))) : null;
+  const nums = [...pages.keys()].filter((n) => !only || only.has(n)).sort((a, b) => a - b);
+  // 检查：中间缺的页、整页没内容的页、看不清的地方、写得特别短的页（可能漏了）
+  const gaps = [];
+  for (let i = 1; i < nums.length; i++) for (let n = nums[i - 1] + 1; n < nums[i]; n++) gaps.push(n);
+  if (gaps.length) report.push(`中间缺这些页：${gaps.join('、')}`);
+  const empty = nums.filter((n) => !pages.get(n).length);
+  if (empty.length) report.push(`这些页没有内容（空白页没事，不是空白就要重转）：${empty.join('、')}`);
+  const unclear = nums.filter((n) => pages.get(n).some((it) => /【看不清】/.test(it.text || '')));
+  if (unclear.length) report.push(`这些页有【看不清】：${unclear.join('、')}`);
+  const short = nums.filter((n) => { const len = pages.get(n).reduce((s, it) => s + (it.text || '').length, 0); return pages.get(n).length && len < 150; });
+  if (short.length) report.push(`这些页字特别少，看看是不是漏了：${short.join('、')}`);
+  const inbox = path.join(work, book, 'inbox-text');
+  fs.mkdirSync(inbox, { recursive: true });
+  const stamp = Date.now().toString(36);
+  const writes = [];
+  for (let i = 0; i < nums.length; i += 8) {
+    const part = nums.slice(i, i + 8);
+    const docId = `${book}-${pad(part[0])}-${stamp}`;
+    const file = path.join(inbox, `${docId}.json`);
+    // meta 每页给一个空对象：学习台里还没有这一页时也建出来（没有原图）
+    // 学习台里还没有这本书时（新书先让 Codex 转）：带上 --title 等，书也一起建
+    const info = opt('title') ? { title: opt('title'), kind: opt('kind', 'textbook'), space: opt('space', 'cs'), subject: opt('subject', ''), ...(opt('total') ? { pages: Number(opt('total')) } : {}) } : null;
+    fs.writeFileSync(file, JSON.stringify({ book, batch: `t${pad(part[0])}`, pages: Object.fromEntries(part.map((n) => [n, pages.get(n)])), meta: Object.fromEntries(part.map((n) => [n, {}])), by, at: Date.now(), ...(info ? { info } : {}) }));
+    writes.push({ op: 'set', collection: 'book_inbox', doc_id: docId, file_path: path.resolve(file) });
+  }
+  const groups = [];
+  for (let i = 0; i < writes.length; i += 40) groups.push(writes.slice(i, i + 40));
+  console.log(JSON.stringify({ book, files: files.length, pages: nums.length, from: nums[0], to: nums[nums.length - 1], report, groups }, null, 1));
+}
+
 /** 写进学习台以后记一下，下次 apply 不再重发 */
 function sent() {
   const book = opt('book'), work = opt('work');
@@ -230,6 +282,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     else if (cmd === 'plan') plan();
     else if (cmd === 'apply') apply();
     else if (cmd === 'sent') sent();
+    else if (cmd === 'text') text();
     else console.log('用法：node tools/books.mjs plan|apply|sent …（见文件开头）');
   } catch (e) {
     console.error(e.message);

@@ -40,6 +40,7 @@
 - 我回 Claude Code 说「转 B3」：外部 Claude 用 `ArtifactData list` 把书和页存到本地，`node tools/books.mjs plan` 分批（一批 4 页，每批一份转写的规矩，就是原来的 `transcribePrompt`，开头说明这是学生自己的书、只存进私人学习台），每批交给一个转写助手（自己取那几张原页图、看图、写成 `bNNN.out.txt`），`node tools/books.mjs apply` 读回、拼成收件箱记录，`ArtifactData batch` 写进 `book_inbox`。
 - 收件箱：每批一条新记录 `book_inbox/{书-页-时间}` = `{ book, pages: { 页码: items }, by }`，不改已有的页、不用管版本号。学习台打开时（`bookview.js` 的 `takeInbox`）并进各页（`status: done`、`via: claude-code`），删掉这条，再把这本书拼一遍条目（`rebuild`，纯代码）。
 - 条目的「标成要重转」把那几页标回等转写，下次一起转。
+- **让电脑上的 Codex 转**（省 Claude 的额度）：照 `docs/codex-transcribe.md` 把那段话贴给 Codex，它看图转写、按同样的格式写成文本推进我的私有仓库；外部 Claude `node tools/books.mjs text` 读回、检查（缺页、【看不清】、字太少）、写进收件箱。学习台「存进学习台」能选已有的书：已经存过原图的页不再存，转好了还没原图的页只补图。
 - **PDF 放在我的私有仓库里**（更快，不用在学习台里存页；不要放进公开的开发仓库）：外部 Claude 把仓库接进会话，`node tools/books.mjs render` 在云端画页（`pdftoppm`，1200 像素宽，按 `crop.js` 同一套规则裁白边、认空白页，有文字层就一起取），原页图用 Artifact 的 asset 上传（一次 25 张）、「页码 → id」记进 `assets.json`，`plan --local` 直接用画好的图，`apply` 时收件箱带上书的信息 `info` 和每页的原页图 `meta`，学习台的 `takeInbox` 连书带页一起建（空白页记成转好了、没有内容）。
 
 **核对**：教材页一条条展开，左边转出来的字（KaTeX 渲染），右边原页图；「核对过了」「改字」「重新转写这几页」。

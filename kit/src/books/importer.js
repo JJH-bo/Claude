@@ -25,7 +25,7 @@ const PAGE_WIDTH = 1200; // 存进学习台的原页图：核对够清楚，300 
 // 页面里转写的代码留着：TRANSCRIBE_HERE 改回 true 就是原来那样
 export const TRANSCRIBE_HERE = false;
 export const TRANSCRIBE = { model: 'claude-haiku-5-5', modelTier: 'quick', effort: 'medium' };
-export const modelName = (id) => ({ 'claude-haiku-5-5': 'Haiku 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-opus-5-5': 'Opus 5.5' })[id] || id || '';
+export const modelName = (id) => ({ 'claude-haiku-5-5': 'Haiku 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-opus-5-5': 'Opus 5.5', codex: 'Codex' })[id] || id || '';
 const WORKERS = 3; // 同时转写几批：被限流就自动少一批（limit），这次导入一直按少的来
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const docsOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -118,7 +118,10 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
     const all = await pagesOf(opts.book);
     const have = new Map(all.map((p) => [p.n, p]));
     const want = [];
-    for (let n = from; n <= to; n++) if (!(have.get(n)?.status === 'done' && !opts.force)) want.push(n);
+    // 转好了但还没有原页图的页（Codex 在别处先转好写回来的）也要画、存图，只是不动它的转写
+    // 已经存过原图的页不再存（不在这里转时 todo 的页也一样：同一本分几次存、存到一半重来，不重复占空间）
+    const stored = (p) => p?.img && (p.status === 'done' || !TRANSCRIBE_HERE);
+    for (let n = from; n <= to; n++) if (!(stored(have.get(n)) && !opts.force)) want.push(n);
     const run = runner(opts.book, { info: meta, all, total: want.length, range: `（第 ${from}–${to} 页）` });
     const per = perCall();
     let buf = [];
@@ -131,11 +134,15 @@ export function createImporter({ db, assets, ai, onProgress = () => {} }) {
         const layer = await pageText(doc, n).catch(() => '');
         const id = await upload(pic.blob);
         const blank = pic.blank && !layer.trim();
-        const rec = { n, img: id, imgs: [id], layer: layer.slice(0, 6000), size: [pic.w, pic.h],
+        const was = have.get(n);
+        const kept = was?.status === 'done' && !was.img && !opts.force; // 先转好、后存图：保留转写
+        const rec = kept ? { ...was, n, img: id, imgs: [id], size: [pic.w, pic.h] } : { n, img: id, imgs: [id], layer: layer.slice(0, 6000), size: [pic.w, pic.h],
           ...(blank ? { items: [], status: 'done', blank: true, by: 'page' } : { status: 'todo' }) };
+        delete rec.id;
         await savePage(opts.book, n, rec);
         const k = all.findIndex((x) => x.n === n);
         if (k >= 0) all[k] = rec; else all.push(rec);
+        if (kept) continue;
         if (blank) { saved.blank++; saved.full += pic.full; run.skip(n); continue; }
         saved.tokens += pic.tokens;
         saved.full += pic.full;

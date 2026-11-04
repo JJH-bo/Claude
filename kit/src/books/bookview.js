@@ -157,6 +157,7 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
         <label class="mm-f"><span>名字（书名、这一讲的名字）</span><input type="text" name="title" value="${esc(title)}" placeholder="比如：张宇 线代基础30讲"></label>
         ${sp === 'cs' ? `<label class="mm-f"><span>哪门课</span><select name="subject">${['数据结构', '操作系统', '组成原理', '计网'].map((x) => `<option>${x}</option>`).join('')}</select></label>` : ''}
         <label class="mm-f"><span>是什么</span><select name="kind">${Object.entries(BOOK_KINDS).map(([k, v]) => `<option value="${k}"${k === (images ? 'textbook' : kind) ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+        ${/\.pdf$/i.test(first.name) && picked.length === 1 && mine.length ? `<label class="mm-f"><span>存进哪本书（同一本书分几次存，就选它）</span><select name="book"><option value="">新的一本</option>${mine.map((b) => `<option value="${esc(b.id)}"${b.file && b.file === first.name ? ' selected' : ''}>${esc(b.id)} ${esc(b.title || '')}</option>`).join('')}</select></label>` : ''}
         ${/\.pdf$/i.test(first.name) && picked.length === 1 ? `<div class="dk-mrow"><label class="mm-f"><span>从第几页</span><input type="number" name="from" min="1" placeholder="1" inputmode="numeric"></label><label class="mm-f"><span>到第几页（空着就是到最后）</span><input type="number" name="to" min="1" placeholder="最后" inputmode="numeric"></label></div>
           <p class="muted bk-cost">${costText()}</p>` : ''}
         <p class="muted">放在「${esc(SPACES[sp]?.label || sp)}」。</p>
@@ -309,7 +310,9 @@ export function createBooksView(host, { db, assets, getAI, space, model, plan = 
     const im = await getImporter();
     const sp = space();
     const images = picked.every((x) => kindOfFile(x) === 'notes');
-    const book = (images && f.get('book')) || nextBookCode(books);
+    // 截图、同一本 PDF 分几次存：都能选已有的书接着存（页码照 PDF 的页码，不会和已有的页混）
+    const single = picked.length === 1 && /\.pdf$/i.test(picked[0].name);
+    const book = ((images || single) && f.get('book')) || nextBookCode(books);
     const title = String(f.get('title') || '').trim() || books.find((x) => x.id === book)?.title || picked[0].name;
     const subject = String(f.get('subject') || '') || ({ math: '线代', en: '英语' })[sp] || '';
     const opts = { book, title, kind: String(f.get('kind') || ''), space: sp, subject, from: f.get('from'), to: f.get('to'), start: f.get('start') };
