@@ -17,6 +17,7 @@
 - **板书标注做到老师的水平**（任何文字都能圈、一组一个大圈或大括号、不压字、新画法、`=={yellow}…==` 换颜色）：`docs/mark-plan.md`
 - 离考研多少天（2027-12-21）、首页「这一周」（连着学几天、这周学了多久、真实的进步、每科进度）、课前热身、积压分摊：`docs/journey-plan.md`（`memory/journey.js`，不调用 Claude、不进课堂说明）
 - **黑板不像对话框**（预案 `board react`：学生作答后页面当场接、不调用；拍子：一轮一拍一拍地播；固定画面的板为什么不做）和进度：`docs/board-plan.md`
+- **额度放开以后学习台更聪明，但回话不许变慢**（速度硬杠和基线、抢跑、后台让路、课外的教研组、站在身后看我写）和进度：`docs/smart-plan.md`。加任何会调用 Claude 的东西先看它第 0 节。
 - 计算机四门课第一轮（第 0～5 批）的计划：`docs/408-plan.md`；数据结构 `trace` / `tree` / `net` 的细节方案：`docs/ds-components-design.md`
 
 ## 分支
@@ -118,7 +119,9 @@ npm run build     # 生成 kit/dist/la-kit.js（DEBUG=1 时不压缩）
 - 这节课的一页（`memory/sheet.js` 纯函数，`docs/board-plan.md` 第 6 节）：`lessonSheet` 从这节课的段（常驻栏、`key` / `definition` / `theorem` / `warning` 框，撤回的不要）和课后报告的题（改对的带 `wrongs` 当时的错答、没拿下的）拼成一页，`report.js` 的 `buildReport` 存进报告的 `sheet`；下课小结那块板下面画出来（`class_pages.sheet`，`boardview.js`），学习台「以前的课」里也有（`pages.js`），开复现课时 `desk.js` 读那一块以前几节课的报告，`reviewPack({ sheets })` 放进资料包「以前这一块整理的一页」，计划第 0 步从当时错的地方出题。不调用 Claude。
 - 「下面还有」去掉了（`boardview.js` 的 `syncMoreHint` 一直藏着）。每次调用记 `cost.ms`（写完）、`cost.first`（出第一个字），「⋯」里「每轮平均等几秒」。下课小结也边写边显示（`drawDraft` 的第二个参数是状态那行字），也记 `ms` / `first`；已经写过小结、之后没再上课时再点「下课」先问「看小结 / 重新写一份」（`endClass`，免得白等一两分钟再写一遍）。
 - 拍子（`beats.js`，纯函数）：一轮里话和指令交替时分拍（一拍 = 一段话 + 后面的指令，没有改板面指令的拍并进前一拍，第二拍以后有 new 就不播）。段照常马上画好，后几拍的先藏（`beat-wait`）；hide / show / mark / unmark / figure 到那一拍才执行、补进这一轮的 `boardOps`。板顶一次一拍（`boardview.js` 画「‹ 2 / 4 下一拍 ›」，`onBeat`），这一拍的段亮、别的淡；学生有动作、要调用 Claude、下课之前 `finishBeats` 一下子播完；快捷「继续」在还有拍子时只走下一拍。`class_pages` 存 `beats`，刷新后停在最后一拍。`features.js` 的 `beats` 开关。
-- `prompt.js`：每一轮发给课堂 Claude 的内容（红线 `DEFAULT_RULES`、黑板指令说明 `PROTOCOL_DOC`、组件手册、资料包、黑板现状、对话历史和压缩）。纯函数。最近 `STUB_AFTER`（6）轮以前 Claude 写的长段原文换成一行「页面省略了……」（`stubBoardText`，有工具时才省），工具 `board_read` 按段 id 取回；取回过的段最近几轮不再省（`recentlyFetched`，只留最后写它的那一轮）。开课时页面先取好以前的课（`digest.js` 的 `earlierClasses`：这一科最近一节 + 这一块最近一节，和 `memory_read` 取 sessions 给的一样），放进资料包，开场不用先取一整轮。**等得久主要是工具轮**：每调一次工具平台再跑一整轮（整份说明再读一遍、再想一遍），所以能让页面先放好的就不要让它取。
+- 抢跑（`spec.js` 纯函数，`docs/smart-plan.md` 第 1 批；`features.js` 的 `spec`）：一轮讲完、当前板上没有要做的题、没有草稿和新板书、拍子播完时，等 `SPEC_DELAY`（2.5 秒）先按「学生点了继续」调用（`specFor`）；开课页先按「开始上课」调用。学生真点了，`converse` 第一轮拼好的整份内容和抢跑那份的指纹一样（`specKey`：版面的「约 N」估算数不算）就接上（`takeSpec`：写出来的先画，接着流式画；`cost.spec = 'hit'`），不一样就停掉它、照常调用，记一条作废的 `kind: spec` 轮（`cost.why = 'spec'`，`diff` 是两份第一处不同的地方，查没接上的原因）。接上的结果照旧核验 Opus 5.5。下课先 `dropSpec`。「⋯」里「抢跑接上几次（没用上几次）」。`window.LAKit.classroom.specState()` 看现在为什么不抢跑。
+- 调用让路（`kit/src/lane.js`）：平台给一个人同时只跑两三个调用。`ai.js` 的 `call` / `ask` / `json` 都走 `laned`：`opts.lane === 'bg'` 的后台调用等讲课的跑完再发、一次一个、`fast: false`；别的马上发。对话太长时的后台摘要走 bg。以后加后台的活（复盘、观察、审板）都要写 `lane: 'bg'`。
+- `prompt.js`：每一轮发给课堂 Claude 的内容（红线 `DEFAULT_RULES`、黑板指令说明 `PROTOCOL_DOC`、组件手册、资料包、黑板现状、对话历史和压缩）。纯函数。最近 `STUB_AFTER`（6）轮以前 Claude 写的长段原文换成一行「页面省略了……」（`stubBoardText`，有工具时才省），工具 `board_read` 按段 id 取回——但整段原文放得下、不丢轮、只多 `NOSTUB_EXTRA`（40 KiB）以内时 `fitTurns` 照发原文（额度够了，一次 `board_read` 就多等一整轮）；取回过的段最近几轮不再省（`recentlyFetched`，只留最后写它的那一轮）。开课时页面先取好以前的课（`digest.js` 的 `earlierClasses`：这一科最近一节 + 这一块最近一节，和 `memory_read` 取 sessions 给的一样），放进资料包，开场不用先取一整轮。**等得久主要是工具轮**：每调一次工具平台再跑一整轮（整份说明再读一遍、再想一遍），所以能让页面先放好的就不要让它取。
 - `docs.js` + `kit/build-docs.js`：构建时从 `CLAUDE-PROJECT.md` 第三节截出组件手册打包进去。小节里 `<!-- 完整写法 -->` 以前是精简版（每一轮都带），以后是不常用的写法：课堂 Claude 用工具 `component_doc` 按名字取；某个组件写错要重写时，页面把它的完整写法附在提醒里；资料包 `main.components` 点了名的组件直接带完整写法（`subject.js` 的 `docsForSubject` / `componentDoc`，`prompt.js` 的 `systemDocs` / `lintDocs`）。对话里写课件的 Claude 读整份 `CLAUDE-PROJECT.md`，两部分都看得到。
 - `bar.js`：底部输入框（附图、手写板、「⋯」菜单、iPad 软键盘）和它上面的一条：翻页（上一块 / 下一块 / 板列表 / 回到当前板）、快捷回答。不显示消息。
 - `devteacher.js`：`?dev` 的模拟老师；`devpanel.js`：开发面板（还有本地试用的模拟讲义图 `ensureDemoSlide`）。

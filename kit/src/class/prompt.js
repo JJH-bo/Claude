@@ -1348,7 +1348,17 @@ export function pendingTurn(history) {
 }
 
 // 拼这一轮的对话，保证不超过 maxBytes：先丢最早的；最近 20 条本身就太长时，逐步少留几条原文
+// stub（能用 board_read 取回）时：整段对话不省略也放得下、一轮不丢、只比省略的多 NOSTUB_EXTRA 以内，就发原文。
+// 省略是为了省额度，可它一取原文就多跑一整轮（真课一轮多等 20～60 秒）；额度够了以后速度优先（docs/smart-plan.md）
+export const NOSTUB_EXTRA = 40 * 1024;
 export function fitTurns({ system, history, maxBytes = 262144, stub = false } = {}) {
+  if (stub) {
+    const full = buildTurns({ system, history, maxBytes, keepRecent: KEEP_RECENT, stub: false });
+    if (full.bytes <= maxBytes && !full.dropped) {
+      const short = buildTurns({ system, history, maxBytes, keepRecent: KEEP_RECENT, stub: true });
+      if (full.bytes - short.bytes <= NOSTUB_EXTRA) return { ...full, keepRecent: KEEP_RECENT, fits: true, stubbed: false };
+    }
+  }
   let out = null;
   for (const keepRecent of [KEEP_RECENT, 12, 8, 4, 2, 1]) {
     out = buildTurns({ system, history, maxBytes, keepRecent, stub });
